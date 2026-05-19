@@ -1,0 +1,31 @@
+{
+  "name": "fleetos",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "description": "FleetOS — Comprehensive Logistics & Fleet Management System (TMS)",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @fleetos/api exec prisma migrate dev",
+    "db:migrate:deploy": "pnpm --filter @fleetos/api exec prisma migrate deploy",
+    "db:migrate:status": "pnpm --filter @fleetos/api exec prisma migrate status",
+    "db:push": "pnpm --filter @fleetos/api exec prisma db push",
+    "db:seed": "pnpm --filter @fleetos/api exec prisma db seed",
+    "dev:sample-pdf": "pnpm --filter @fleetos/api exec tsx ../../scripts/dev/generate-sample-pdf.ts",
+    "db:studio": "pnpm --filter @fleetos/api exec prisma studio",
+    "docker:up": "docker compose -f infrastructure/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker-compose.yml down",
+    "docker:prod:up": "docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env.prod up --build -d",
+    "docker:prod:down": "docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env.prod down"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
+}

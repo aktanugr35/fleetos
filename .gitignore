@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment
+.env
+.env.local
+.env.*.local
+infrastructure/.env.prod
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Prisma / uploads
+apps/api/uploads/
+docs/samples/*.pdf
+
+# Dev artifacts (generate via pnpm dev:sample-pdf)
+sample_*.pdf
+test-zod.ts
+
+# Compiled seed artifacts (source is .ts only)
+apps/api/prisma/*.js
+apps/api/prisma/*.js.map
+apps/api/prisma/*.d.ts
+apps/api/prisma/*.d.ts.map
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+
+# Docker
+postgres_data/
+
+# Turbo
+.turbo/

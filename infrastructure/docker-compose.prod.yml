@@ -1,0 +1,83 @@
+# Production-style stack: Postgres + Redis + API + Web
+# Usage:
+#   cp infrastructure/.env.prod.example infrastructure/.env.prod
+#   # Edit secrets (JWT 32+ chars, S3 keys). For local smoke without S3, use staging profile below.
+#   docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env.prod up --build -d
+#
+# Local smoke without S3: set NODE_ENV=staging is still strict — use real S3 or MinIO.
+# Minimum local prod test: set AWS_* to MinIO-compatible keys in .env.prod.
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: fleetos-prod-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fleetos}
+      POSTGRES_USER: ${POSTGRES_USER:-fleetos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-fleetos}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: fleetos-prod-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: fleetos-prod-api
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fleetos}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fleetos}
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: ${NODE_ENV:-production}
+      API_PORT: 3001
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - '${API_PORT:-3001}:3001'
+    volumes:
+      - api_uploads:/app/apps/api/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    container_name: fleetos-prod-web
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  api_uploads:

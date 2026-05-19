@@ -1,0 +1,479 @@
+// ============================================
+// FleetOS — Prisma Schema
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── TENANT ──────────────────────────────────────────
+model Company {
+  id                        String   @id @default(uuid())
+  name                      String
+  slug                      String   @unique
+  dotNumber                 String   @unique
+  mcNumber                  String   @unique
+  address                   String?
+  phone                     String?
+  email                     String?
+  logoUrl                   String?
+  defaultOOCommissionRate   Int      @default(1200) // %12 → 1200 (yüzde * 100)
+  weeklyCompanyFee          Int      @default(0)    // cent — auto-added to each settlement
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  users         User[]
+  drivers       Driver[]
+  trucks        Truck[]
+  trailers      Trailer[]
+  loads         Load[]
+  settlements   Settlement[]
+  deductions    Deduction[]
+  credits       Credit[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@map("companies")
+}
+
+// ─── USER / AUTH ──────────────────────────────────────
+enum UserRole {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  DISPATCHER
+  ACCOUNTING
+  DRIVER
+}
+
+model User {
+  id           String    @id @default(uuid())
+  companyId    String?
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company       Company?       @relation(fields: [companyId], references: [id])
+  driver        Driver?
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── DRIVER ───────────────────────────────────────────
+enum DriverType {
+  COMPANY_DRIVER
+  OWNER_OPERATOR
+}
+
+enum PayStructure {
+  PER_MILE
+  FIXED_SALARY
+  PERCENTAGE
+}
+
+model Driver {
+  id                String       @id @default(uuid())
+  companyId         String
+  userId            String?      @unique
+  firstName         String
+  lastName          String
+  phone             String?
+  email             String?
+  driverType        DriverType
+  payStructure      PayStructure
+  payRate           Int          // cent/mile VEYA yüzde*100 (örn: %88 → 8800)
+  cdlNumber         String
+  cdlState          String       @db.VarChar(2)
+  cdlExpiryDate     DateTime
+  medicalCardExpiry DateTime
+  isActive          Boolean      @default(true)
+  llcName           String?
+  address           String?
+  city              String?
+  state             String?      @db.VarChar(2)
+  zip               String?
+  escrowBalance     Int          @default(0) // cent
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  company     Company      @relation(fields: [companyId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+  truck       Truck?
+  loads       Load[]
+  settlements Settlement[]
+  documents   Document[]
+  deductions  Deduction[]
+  credits     Credit[]
+
+  @@index([companyId])
+  @@map("drivers")
+}
+
+// ─── TRUCK ────────────────────────────────────────────
+model Truck {
+  id                  String    @id @default(uuid())
+  companyId           String
+  ownerDriverId       String?   @unique
+  unitNumber          String
+  make                String
+  model               String
+  year                Int
+  vin                 String    @unique
+  licensePlate        String
+  plateState          String    @db.VarChar(2)
+  dotInspectionExpiry DateTime
+  irpExpiry           DateTime
+  hvutExpiry          DateTime
+  insuranceExpiry     DateTime
+  isActive            Boolean   @default(true)
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  company     Company   @relation(fields: [companyId], references: [id])
+  ownerDriver Driver?   @relation(fields: [ownerDriverId], references: [id])
+  loads       Load[]
+  documents   Document[]
+
+  @@index([companyId])
+  @@map("trucks")
+}
+
+// ─── TRAILER ─────────────────────────────────────────
+model Trailer {
+  id                  String    @id @default(uuid())
+  companyId           String
+  unitNumber          String
+  make                String?
+  model               String?
+  year                Int?
+  vin                 String?   @unique
+  licensePlate        String
+  plateState          String    @db.VarChar(2)
+  dotInspectionExpiry DateTime?
+  irpExpiry           DateTime?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id])
+  loads     Load[]
+  documents Document[]
+
+  @@index([companyId])
+  @@map("trailers")
+}
+
+// ─── LOAD ─────────────────────────────────────────────
+enum LoadStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  TONU
+}
+
+model Load {
+  id                 String     @id @default(uuid())
+  companyId          String
+  driverId           String
+  truckId            String
+  trailerId          String?
+  externalTrailerRef String?    // Hook & drop / external trailer (not company fleet)
+  loadNumber         String     @unique
+  brokerName         String
+  brokerMC           String?
+  referenceNumber    String?
+  status             LoadStatus @default(PENDING)
+
+  // Rota
+  pickupLocation     String
+  pickupDate         DateTime
+  deliveryLocation   String
+  deliveryDate       DateTime?
+  actualDeliveryDate DateTime?
+  loadedMiles        Int?       @default(0)
+  deadheadMiles      Int?       @default(0)
+  totalMiles         Int?
+
+  // Ücret (cent cinsinden)
+  rateTotal          Int
+  rateMiles          Int?
+  fuelSurcharge      Int?       @default(0)
+  detentionPay       Int?       @default(0)
+  lumperFee          Int?       @default(0)
+  tonuAmount         Int?       @default(0)
+
+  notes              String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id])
+  driver          Driver           @relation(fields: [driverId], references: [id])
+  truck           Truck            @relation(fields: [truckId], references: [id])
+  trailer         Trailer?         @relation(fields: [trailerId], references: [id])
+  documents       Document[]
+  settlementLines SettlementLine[]
+
+  @@index([companyId])
+  @@index([driverId])
+  @@index([status])
+  @@map("loads")
+}
+
+// ─── SETTLEMENT (WEEKLY STATEMENT) ───────────────────
+enum SettlementStatus {
+  DRAFT
+  FINALIZED
+  PAID
+}
+
+model Settlement {
+  id                String           @id @default(uuid())
+  companyId         String
+  driverId          String
+  periodStart       DateTime
+  periodEnd         DateTime
+  payrollId         String?          // e.g. "2026-17"
+  statementNumber   String?          // e.g. "96"
+  status            SettlementStatus @default(DRAFT)
+  pdfUrl            String?
+
+  grossAmount       Int              // cent
+  deductionTotal    Int              // cent
+  creditTotal       Int              @default(0) // cent
+  netAmount         Int              // cent
+  companyCommission Int              // cent
+
+  notes             String?
+  finalizedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  company    Company              @relation(fields: [companyId], references: [id])
+  driver     Driver               @relation(fields: [driverId], references: [id])
+  lines      SettlementLine[]
+  deductions SettlementDeduction[]
+  credits    SettlementCredit[]
+
+  @@index([companyId])
+  @@index([driverId])
+  @@map("settlements")
+}
+
+model SettlementLine {
+  id               String     @id @default(uuid())
+  settlementId     String
+  loadId           String
+  description      String
+  grossAmount      Int        // cent
+  commissionRate   Int        // %*100
+  commissionAmount Int        // cent
+  netAmount        Int        // cent
+
+  settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  load       Load       @relation(fields: [loadId], references: [id])
+
+  @@map("settlement_lines")
+}
+
+// ─── DEDUCTION ────────────────────────────────────────
+enum DeductionType {
+  FUEL
+  INSURANCE_ESCROW
+  CASH_ADVANCE
+  MAINTENANCE
+  LUMPER
+  TOLL
+  VIOLATION_FINE
+  COMPANY_FEE
+  OTHER
+}
+
+model Deduction {
+  id          String        @id @default(uuid())
+  companyId   String
+  driverId    String
+  type        DeductionType
+  description String
+  amount      Int           // cent
+  date        DateTime
+  isRecurring Boolean       @default(false)
+  receiptUrl  String?
+  metadata    Json?         // e.g. for Fuel: { merchant, gallons, discount }
+
+  company              Company               @relation(fields: [companyId], references: [id])
+  driver               Driver                @relation(fields: [driverId], references: [id])
+  settlementDeductions SettlementDeduction[]
+
+  @@index([companyId])
+  @@index([driverId])
+  @@map("deductions")
+}
+
+model SettlementDeduction {
+  id           String     @id @default(uuid())
+  settlementId String
+  deductionId  String
+  amount       Int        // cent
+
+  settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  deduction  Deduction  @relation(fields: [deductionId], references: [id])
+
+  @@map("settlement_deductions")
+}
+
+// ─── CREDIT ───────────────────────────────────────────
+enum CreditType {
+  REIMBURSEMENT
+  BONUS
+  OTHER
+}
+
+model Credit {
+  id          String        @id @default(uuid())
+  companyId   String
+  driverId    String
+  type        CreditType
+  description String
+  amount      Int           // cent
+  date        DateTime
+  isRecurring Boolean       @default(false)
+  metadata    Json?
+
+  company              Company               @relation(fields: [companyId], references: [id])
+  driver               Driver                @relation(fields: [driverId], references: [id])
+  settlementCredits    SettlementCredit[]
+
+  @@index([companyId])
+  @@index([driverId])
+  @@map("credits")
+}
+
+model SettlementCredit {
+  id           String     @id @default(uuid())
+  settlementId String
+  creditId     String
+  amount       Int        // cent
+
+  settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  credit     Credit     @relation(fields: [creditId], references: [id])
+
+  @@map("settlement_credits")
+}
+
+// ─── DOCUMENT ─────────────────────────────────────────
+enum DocumentType {
+  CDL
+  MEDICAL_CARD
+  DOT_INSPECTION
+  IRP_REGISTRATION
+  FORM_2290
+  INSURANCE_POLICY
+  BILL_OF_LADING
+  LUMPER_RECEIPT
+  RATE_CONFIRMATION
+  OTHER
+}
+
+model Document {
+  id           String       @id @default(uuid())
+  companyId    String
+  type         DocumentType
+  title        String
+  fileUrl      String
+  fileSize     Int?
+  mimeType     String?
+  expiryDate   DateTime?
+  driverId     String?
+  truckId      String?
+  trailerId    String?
+  loadId       String?
+  uploadedById String
+  createdAt    DateTime     @default(now())
+
+  driver  Driver?  @relation(fields: [driverId], references: [id])
+  truck   Truck?   @relation(fields: [truckId], references: [id])
+  trailer Trailer? @relation(fields: [trailerId], references: [id])
+  load    Load?    @relation(fields: [loadId], references: [id])
+
+  @@index([companyId])
+  @@map("documents")
+}
+
+// ─── NOTIFICATION ─────────────────────────────────────
+enum NotificationType {
+  COMPLIANCE_WARNING
+  COMPLIANCE_EXPIRED
+  SETTLEMENT_READY
+  LOAD_ASSIGNED
+  SYSTEM
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  companyId String
+  userId    String?
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@index([userId])
+  @@map("notifications")
+}
+
+// ─── AUDIT LOG ────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  companyId  String?
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  company Company? @relation(fields: [companyId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
