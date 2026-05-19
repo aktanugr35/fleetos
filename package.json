@@ -11,6 +11,7 @@
     "test": "turbo run test",
     "db:migrate": "pnpm --filter @fleetos/api exec prisma migrate dev",
     "db:migrate:deploy": "pnpm --filter @fleetos/api exec prisma migrate deploy",
+    "start:api": "pnpm db:migrate:deploy && pnpm --filter @fleetos/api start",
     "db:migrate:status": "pnpm --filter @fleetos/api exec prisma migrate status",
     "db:push": "pnpm --filter @fleetos/api exec prisma db push",
     "db:seed": "pnpm --filter @fleetos/api exec prisma db seed",
