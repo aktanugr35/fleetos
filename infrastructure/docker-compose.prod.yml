@@ -1,11 +1,11 @@
-# Production-style stack: Postgres + Redis + API + Web
-# Usage:
-#   cp infrastructure/.env.prod.example infrastructure/.env.prod
-#   # Edit secrets (JWT 32+ chars, S3 keys). For local smoke without S3, use staging profile below.
-#   docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env.prod up --build -d
+# Production stack for VPS (IONOS etc.): Postgres + Redis + API + Web
+# Guide: docs/DEPLOY-VPS.md
 #
-# Local smoke without S3: set NODE_ENV=staging is still strict — use real S3 or MinIO.
-# Minimum local prod test: set AWS_* to MinIO-compatible keys in .env.prod.
+#   cp infrastructure/.env.prod.example infrastructure/.env.prod
+#   sh scripts/vps/deploy.sh
+#
+# API/Web bind to 127.0.0.1 — expose HTTPS via host Nginx (infrastructure/nginx/).
+# mem_limit values target ~2 GB VPS; increase if you upgrade RAM.
 
 services:
   db:
@@ -23,6 +23,7 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    mem_limit: 512m
 
   redis:
     image: redis:7-alpine
@@ -35,6 +36,7 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    mem_limit: 128m
 
   api:
     build:
@@ -49,8 +51,9 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       API_PORT: 3001
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      CROSS_SITE_COOKIES: ${CROSS_SITE_COOKIES:-false}
     ports:
-      - '${API_PORT:-3001}:3001'
+      - '127.0.0.1:${API_PORT:-3001}:3001'
     volumes:
       - api_uploads:/app/apps/api/uploads
     depends_on:
@@ -59,6 +62,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    mem_limit: 768m
 
   web:
     build:
@@ -72,10 +76,11 @@ services:
       NODE_ENV: production
       PORT: 3000
     ports:
-      - '${WEB_PORT:-3000}:3000'
+      - '127.0.0.1:${WEB_PORT:-3000}:3000'
     depends_on:
       - api
     restart: unless-stopped
+    mem_limit: 512m
 
 volumes:
   postgres_data:

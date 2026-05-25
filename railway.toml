@@ -1,3 +1,4 @@
+# Optional — cloud API only. Primary deploy: docs/DEPLOY-VPS.md (Docker on VPS).
 # Railway — FleetOS API (monorepo root)
 # DATABASE_URL must be set at runtime (Postgres plugin → Variables).
 # Migrations run on start, not during build (no DB at build time).

@@ -98,32 +98,34 @@ pnpm dev        # Turbo: API + web (default ports 3001 / 3000)
 pnpm build
 ```
 
-## Production deploy (Vercel + Render, free tier)
+## Production deploy (VPS — recommended)
 
-Deploy frontend to **Vercel** and API to **Render** (no VPS). Step-by-step: [docs/DEPLOY-VERCEL-RENDER.md](docs/DEPLOY-VERCEL-RENDER.md).
+**IONOS Linux VPS** (or any Ubuntu server): Docker Compose + Nginx + Let's Encrypt.
 
-Configs: `render.yaml`, `apps/web/vercel.json`.
-
-## Production deploy (Docker Compose)
-
-Full stack: Postgres, Redis, API, and Web.
+Step-by-step: **[docs/DEPLOY-VPS.md](docs/DEPLOY-VPS.md)**
 
 ```bash
 cp infrastructure/.env.prod.example infrastructure/.env.prod
-# Required: POSTGRES_PASSWORD, JWT_ACCESS_SECRET & JWT_REFRESH_SECRET (32+ chars each),
-#            AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY (S3 or R2 for documents)
-# Keep SEED_DEMO=false
-
-pnpm docker:prod:up
+# Edit secrets, domain URLs, R2/S3 keys — then:
+sh scripts/vps/deploy.sh
+# Nginx: infrastructure/nginx/fleetos.conf.example
 ```
 
-- **Web:** `http://localhost:3000` — run first-time `/setup` (no demo seed in production).
-- **API health:** `curl http://localhost:3001/health` (for load balancers).
-- **Settlement PDFs** use local volume `api_uploads` inside the API container; **documents** require S3 in `staging` / `production`.
+- **2 GB RAM** is enough for a small team; add swap (see deploy guide).
+- **WordPress** stays on separate web hosting; point `panel.yourdomain.com` to the VPS.
+- **Settlement PDFs** run in the API container (Chromium included).
+- **Documents** need S3-compatible storage (e.g. Cloudflare R2) in production.
 
-Optional **Sentry:** set `SENTRY_DSN` in `.env.prod` and `NEXT_PUBLIC_SENTRY_DSN` before building the web image (rebuild if you change the web DSN).
+Stop: `pnpm docker:prod:down`
 
-Stop the stack: `pnpm docker:prod:down`
+## Production deploy (cloud — optional)
+
+Split hosting without a VPS:
+
+- [docs/DEPLOY-VERCEL-RENDER.md](docs/DEPLOY-VERCEL-RENDER.md) — `render.yaml`, `apps/web/vercel.json`
+- [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) — `railway.toml` (API only)
+
+These files do not affect the VPS Docker stack.
 
 ### Database backups
 
