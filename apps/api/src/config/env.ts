@@ -41,6 +41,11 @@ const envSchema = z
     AWS_SECRET_ACCESS_KEY: z.string().optional(),
     AWS_REGION: z.string().default('us-east-1'),
     S3_BUCKET_NAME: z.string().min(1).default('fleetos-documents'),
+    /** Optional S3-compatible endpoint URL (Cloudflare R2, MinIO, etc.). */
+    S3_ENDPOINT: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      httpOriginUrl.optional(),
+    ),
 
     RESEND_API_KEY: z.string().optional(),
     FROM_EMAIL: z.string().email().default('noreply@fleetos.app'),
