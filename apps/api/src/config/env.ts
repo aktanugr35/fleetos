@@ -14,9 +14,22 @@ const DEV_JWT_PLACEHOLDERS = new Set([
 const isProdLike = (nodeEnv: string) =>
   nodeEnv === 'production' || nodeEnv === 'staging';
 
+/** http(s) origins including IP:port (Zod .url() often rejects bare IPs). */
+const httpOriginUrl = z.string().refine(
+  (val) => {
+    try {
+      const u = new URL(val);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  },
+  { message: 'Must be a valid http(s) URL' },
+);
+
 const envSchema = z
   .object({
-    DATABASE_URL: z.string().url(),
+    DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().default('redis://localhost:6379'),
 
     JWT_ACCESS_SECRET: z.string().min(10),
@@ -37,7 +50,7 @@ const envSchema = z
       (v) => Number(process.env.PORT ?? process.env.API_PORT ?? v ?? 3001),
       z.number().int().positive(),
     ),
-    FRONTEND_URL: z.string().url().default('http://localhost:3000'),
+    FRONTEND_URL: httpOriginUrl.default('http://localhost:3000'),
     /** Comma-separated extra CORS origins (e.g. Vercel preview URLs). */
     CORS_ORIGINS: z.string().optional(),
 
