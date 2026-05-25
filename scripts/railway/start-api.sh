@@ -3,7 +3,7 @@ set -e
 cd "$(dirname "$0")/../.."
 
 echo "Applying database migrations..."
-pnpm --filter @fleetos/api exec prisma migrate deploy
+./node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma
 
 echo "Starting FleetOS API..."
 exec pnpm --filter @fleetos/api start

@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile \
   && pnpm --filter @fleetos/shared-types build \
-  && pnpm --filter @fleetos/api exec prisma generate \
+  && ./node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma \
   && pnpm --filter @fleetos/api build
 
 FROM node:20-bookworm-slim AS runner
