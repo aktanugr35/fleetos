@@ -43,17 +43,17 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'm
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-start sm:px-4 sm:pt-[10vh]"
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
 
       {/* Modal */}
-      <div className={`relative ${sizeClasses[size]} w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-2xl animate-fade-in`}>
+      <div className={`relative ${sizeClasses[size]} max-h-[92dvh] w-full rounded-t-3xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl animate-fade-in sm:rounded-xl`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
-          <div>
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] px-4 py-4 sm:px-6">
+          <div className="min-w-0">
             <h2 className="text-lg font-semibold text-gray-100">{title}</h2>
             {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
           </div>
@@ -66,7 +66,7 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'm
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 max-h-[65vh] overflow-y-auto">
+        <div className="max-h-[calc(92dvh-4.5rem)] overflow-y-auto px-4 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:max-h-[65vh] sm:px-6">
           {children}
         </div>
       </div>
@@ -80,7 +80,7 @@ interface ModalFooterProps {
 
 export function ModalFooter({ children }: ModalFooterProps) {
   return (
-    <div className="flex items-center justify-end gap-3 pt-5 mt-5 border-t border-[var(--border-color)]">
+    <div className="mt-5 flex flex-col-reverse gap-3 border-t border-[var(--border-color)] pt-5 sm:flex-row sm:items-center sm:justify-end">
       {children}
     </div>
   );

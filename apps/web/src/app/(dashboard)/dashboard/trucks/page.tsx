@@ -108,8 +108,8 @@ export default function TrucksPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
+          <div className="overflow-x-auto sm:overflow-visible">
+            <table className="data-table mobile-card-table">
               <thead>
                 <tr>
                   <th>Unit #</th>
@@ -125,24 +125,24 @@ export default function TrucksPage() {
               <tbody>
                 {trucks.map((truck) => (
                   <tr key={truck.id} className="cursor-pointer">
-                    <td className="font-medium text-blue-400">{truck.unitNumber}</td>
-                    <td>
+                    <td data-primary="true" className="font-medium text-blue-400">{truck.unitNumber}</td>
+                    <td data-label="Vehicle">
                       <p className="text-gray-200">{truck.make} {truck.model}</p>
                       <p className="text-xs text-gray-500">{truck.year}</p>
                     </td>
-                    <td className="text-xs text-gray-500 font-mono">{truck.vin}</td>
-                    <td>
+                    <td data-label="VIN" className="text-xs text-gray-500 font-mono">{truck.vin}</td>
+                    <td data-label="Plate">
                       <p className="text-sm">{truck.licensePlate}</p>
                       <p className="text-xs text-gray-500">{truck.plateState}</p>
                     </td>
-                    <td>
+                    <td data-label="Owner">
                       {truck.ownerDriver ? (
                         <span className="text-sm">{truck.ownerDriver.firstName} {truck.ownerDriver.lastName}</span>
                       ) : (
                         <span className="text-xs text-gray-500 bg-blue-500/10 px-2 py-0.5 rounded">Company</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Compliance">
                       <div className="flex items-center gap-1.5" title="DOT · IRP · HVUT · Insurance">
                         <ComplianceDot date={truck.dotInspectionExpiry} />
                         <ComplianceDot date={truck.irpExpiry} />
@@ -150,8 +150,8 @@ export default function TrucksPage() {
                         <ComplianceDot date={truck.insuranceExpiry} />
                       </div>
                     </td>
-                    <td className="text-gray-400">{truck._count.loads}</td>
-                    <td className="text-right">
+                    <td data-label="Loads" className="text-gray-400">{truck._count.loads}</td>
+                    <td data-actions="true" className="text-right">
                       {canManage ? (
                         <button
                           type="button"

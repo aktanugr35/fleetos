@@ -106,12 +106,12 @@ export default function LoadsPage() {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 sm:max-w-sm">
           <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input type="text" placeholder="Search loads..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-10" />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-auto">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input w-full sm:w-auto">
           <option value="">All Status</option>
           <option value="PENDING">Pending</option>
           <option value="IN_TRANSIT">In Transit</option>
@@ -143,8 +143,8 @@ export default function LoadsPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
+          <div className="overflow-x-auto sm:overflow-visible">
+            <table className="data-table mobile-card-table">
               <thead>
                 <tr>
                   <th>Load #</th>
@@ -162,19 +162,19 @@ export default function LoadsPage() {
               <tbody>
                 {loads.map((load) => (
                   <tr key={load.id}>
-                    <td className="font-medium text-blue-400">{load.loadNumber}</td>
-                    <td className="text-gray-300">{load.brokerName}</td>
-                    <td className="text-sm text-gray-400">
+                    <td data-primary="true" className="font-medium text-blue-400">{load.loadNumber}</td>
+                    <td data-label="Broker" className="text-gray-300">{load.brokerName}</td>
+                    <td data-label="Route" className="text-sm text-gray-400">
                       {load.pickupCity}, {load.pickupState} → {load.deliveryCity}, {load.deliveryState}
                     </td>
-                    <td className="text-gray-500 text-sm">{formatDate(load.pickupDate)}</td>
-                    <td className="text-gray-300">
+                    <td data-label="Pickup" className="text-gray-500 text-sm">{formatDate(load.pickupDate)}</td>
+                    <td data-label="Driver" className="text-gray-300">
                       {load.driver ? `${load.driver.firstName} ${load.driver.lastName}` : '—'}
                     </td>
-                    <td className="text-gray-400">{load.truck?.unitNumber || '—'}</td>
-                    <td className="text-gray-400">{load.miles.toLocaleString()}</td>
-                    <td className="font-medium text-gray-200">{formatCurrency(load.totalRevenueCents)}</td>
-                    <td>
+                    <td data-label="Truck" className="text-gray-400">{load.truck?.unitNumber || '—'}</td>
+                    <td data-label="Miles" className="text-gray-400">{load.miles.toLocaleString()}</td>
+                    <td data-label="Revenue" className="font-medium text-gray-200">{formatCurrency(load.totalRevenueCents)}</td>
+                    <td data-label="Status">
                       {!dispatchLoad || load.status === 'CANCELLED' ? (
                         <StatusBadge status={load.status} />
                       ) : (
@@ -191,7 +191,7 @@ export default function LoadsPage() {
                         </select>
                       )}
                     </td>
-                    <td className="text-right">
+                    <td data-actions="true" className="text-right">
                       {dispatchLoad ? (
                         <button
                           type="button"

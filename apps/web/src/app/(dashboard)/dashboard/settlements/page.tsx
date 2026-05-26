@@ -90,8 +90,8 @@ export default function SettlementsPage() {
               : 'No settlements to display.'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto sm:overflow-visible">
+            <table className="data-table mobile-card-table">
               <thead>
                 <tr className="border-b border-[var(--border-color)] text-left text-gray-500">
                   <th className="px-4 py-3 font-medium">Statement</th>
@@ -110,25 +110,25 @@ export default function SettlementsPage() {
                     className="border-b border-[var(--border-color)] last:border-0 hover:bg-white/5 cursor-pointer transition"
                     onClick={() => setDetailId(s.id)}
                   >
-                    <td className="px-4 py-3 font-medium text-blue-400">
+                    <td data-primary="true" className="px-4 py-3 font-medium text-blue-400">
                       {s.statementNumber || s.id.slice(0, 8)}
                     </td>
-                    <td className="px-4 py-3 text-gray-300">
+                    <td data-label="Driver" className="px-4 py-3 text-gray-300">
                       {s.driver.firstName} {s.driver.lastName}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td data-label="Period" className="px-4 py-3 text-gray-500 text-xs">
                       {formatDate(s.periodStart)} – {formatDate(s.periodEnd)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td data-label="Status" className="px-4 py-3">
                       <StatusBadge status={s.status} />
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-200">
+                    <td data-label="Net" className="px-4 py-3 text-right font-medium text-gray-200">
                       {formatCurrency(s.netAmount)}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-500">
+                    <td data-label="Loads" className="px-4 py-3 text-right text-gray-500">
                       {s._count?.lines ?? 0}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    <td data-label="PDF" className="px-4 py-3 text-xs text-gray-500">
                       {s.pdfUrl ? 'Yes' : '—'}
                     </td>
                   </tr>

@@ -224,8 +224,8 @@ export default function DashboardPage() {
           {recentLoads.length === 0 ? (
             <EmptyState title="No recent loads" description="Create a load to see it here." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="data-table">
+            <div className="overflow-x-auto sm:overflow-visible">
+              <table className="data-table mobile-card-table">
                 <thead>
                   <tr>
                     <th>Load #</th>
@@ -238,13 +238,13 @@ export default function DashboardPage() {
                 <tbody>
                   {recentLoads.map((load) => (
                     <tr key={load.id}>
-                      <td className="font-medium text-blue-400">{load.loadNumber}</td>
-                      <td>{load.driver ? `${load.driver.firstName} ${load.driver.lastName}` : '—'}</td>
-                      <td className="text-gray-500 truncate max-w-[200px]">
+                      <td data-primary="true" className="font-medium text-blue-400">{load.loadNumber}</td>
+                      <td data-label="Driver">{load.driver ? `${load.driver.firstName} ${load.driver.lastName}` : '—'}</td>
+                      <td data-label="Route" className="text-gray-500 truncate max-w-[200px]">
                         {load.pickupCity}, {load.pickupState} → {load.deliveryCity}, {load.deliveryState}
                       </td>
-                      <td><StatusBadge status={load.status} /></td>
-                      <td className="text-right font-medium">{formatCurrency(load.totalRevenueCents ?? 0)}</td>
+                      <td data-label="Status"><StatusBadge status={load.status} /></td>
+                      <td data-label="Amount" className="text-right font-medium">{formatCurrency(load.totalRevenueCents ?? 0)}</td>
                     </tr>
                   ))}
                 </tbody>

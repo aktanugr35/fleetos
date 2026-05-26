@@ -141,8 +141,8 @@ export default function DriversPage() {
 
       {/* Filters */}
       {role !== 'DRIVER' ? (
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 sm:max-w-sm">
           <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           <input
             type="text"
@@ -155,7 +155,7 @@ export default function DriversPage() {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="input w-auto"
+          className="input w-full sm:w-auto"
         >
           <option value="">All Types</option>
           <option value="OWNER_OPERATOR">Owner Operators</option>
@@ -186,8 +186,8 @@ export default function DriversPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
+          <div className="overflow-x-auto sm:overflow-visible">
+            <table className="data-table mobile-card-table">
               <thead>
                 <tr>
                   <th>Driver</th>
@@ -204,7 +204,7 @@ export default function DriversPage() {
               <tbody>
                 {drivers.map((driver) => (
                   <tr key={driver.id}>
-                    <td>
+                    <td data-primary="true">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-xs font-bold text-gray-300">
                           {driver.firstName[0]}{driver.lastName[0]}
@@ -217,30 +217,30 @@ export default function DriversPage() {
                         </div>
                       </div>
                     </td>
-                    <td><DriverTypeBadge type={driver.driverType} /></td>
-                    <td className="font-medium text-gray-300"><PayRateDisplay driver={driver} /></td>
-                    <td>
+                    <td data-label="Type"><DriverTypeBadge type={driver.driverType} /></td>
+                    <td data-label="Pay Rate" className="font-medium text-gray-300"><PayRateDisplay driver={driver} /></td>
+                    <td data-label="CDL">
                       <div>
                         <p className="text-xs text-gray-300">{driver.cdlNumber}</p>
                         <p className="text-xs text-gray-500">{driver.cdlState} · Exp: {formatDate(driver.cdlExpiryDate)}</p>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Truck">
                       {driver.truck ? (
                         <span className="text-sm text-gray-300">{driver.truck.unitNumber}</span>
                       ) : (
                         <span className="text-xs text-gray-600">—</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Compliance">
                       <div className="flex items-center gap-2">
                         <ComplianceDot date={driver.cdlExpiryDate} />
                         <ComplianceDot date={driver.medicalCardExpiry} />
                       </div>
                     </td>
-                    <td className="text-gray-400">{formatCurrency(driver.escrowBalance ?? 0)}</td>
-                    <td className="text-gray-400">{driver._count.loads}</td>
-                    <td className="text-right space-x-3">
+                    <td data-label="Deposit" className="text-gray-400">{formatCurrency(driver.escrowBalance ?? 0)}</td>
+                    <td data-label="Loads" className="text-gray-400">{driver._count.loads}</td>
+                    <td data-actions="true" className="text-right space-x-3">
                       <Link href={`/dashboard/drivers/${driver.id}`} className="text-xs text-gray-500 hover:text-blue-400 transition">
                         View
                       </Link>

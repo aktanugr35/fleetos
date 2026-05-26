@@ -41,7 +41,7 @@ export function Header() {
   const initials = user ? getInitials(user.firstName, user.lastName) : 'U';
 
   return (
-    <header className="h-16 border-b border-[var(--border-color)] bg-[var(--bg-secondary)] flex items-center justify-between gap-3 px-4 sm:px-6 sticky top-0 z-30">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]/95 px-3 backdrop-blur sm:h-16 sm:px-6">
       <button
         type="button"
         aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -69,8 +69,10 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        <TenantSwitcher />
+      <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
+        <div className="hidden sm:block">
+          <TenantSwitcher />
+        </div>
         <ThemeToggle />
         <NotificationBell />
 

@@ -136,6 +136,14 @@ const bottomNavigation: NavItem[] = [
   },
 ];
 
+const mobilePrimaryRoutes = new Set([
+  '/dashboard',
+  '/dashboard/loads',
+  '/dashboard/drivers',
+  '/dashboard/settlements',
+  '/dashboard/settings',
+]);
+
 export function Sidebar() {
   const pathname = usePathname();
   const { can } = usePermission();
@@ -212,5 +220,43 @@ export function Sidebar() {
         })}
       </div>
     </aside>
+  );
+}
+
+export function MobileBottomNav() {
+  const pathname = usePathname();
+  const { can } = usePermission();
+
+  const mobileNav = [...navigation, ...bottomNavigation]
+    .filter((item) => mobilePrimaryRoutes.has(item.href))
+    .filter((item) => can(item.permission));
+
+  if (mobileNav.length === 0) {
+    return null;
+  }
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-10px_30px_rgba(0,0,0,0.18)] backdrop-blur lg:hidden">
+      <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        {mobileNav.slice(0, 5).map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex min-h-12 flex-col items-center justify-center rounded-2xl px-1 text-[10px] font-medium transition',
+                isActive
+                  ? 'bg-blue-500/12 text-blue-400'
+                  : 'text-[var(--text-muted)] active:bg-white/[0.06]',
+              )}
+            >
+              <span className="mb-0.5 [&>svg]:h-5 [&>svg]:w-5">{item.icon}</span>
+              <span className="max-w-full truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

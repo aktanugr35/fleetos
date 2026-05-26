@@ -90,8 +90,8 @@ export default function TrailersPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="data-table">
+          <div className="overflow-x-auto sm:overflow-visible">
+            <table className="data-table mobile-card-table">
               <thead>
                 <tr>
                   <th>Unit #</th>
@@ -105,15 +105,15 @@ export default function TrailersPage() {
               <tbody>
                 {trailers.map((trailer) => (
                   <tr key={trailer.id}>
-                    <td className="font-medium text-blue-400">{trailer.unitNumber}</td>
-                    <td className="text-gray-300">{trailer.make || '—'} {trailer.model || ''}</td>
-                    <td className="text-gray-500">{trailer.year || '—'}</td>
-                    <td>
+                    <td data-primary="true" className="font-medium text-blue-400">{trailer.unitNumber}</td>
+                    <td data-label="Make / Model" className="text-gray-300">{trailer.make || '—'} {trailer.model || ''}</td>
+                    <td data-label="Year" className="text-gray-500">{trailer.year || '—'}</td>
+                    <td data-label="Plate">
                       <span className="text-sm">{trailer.licensePlate}</span>
                       <span className="text-xs text-gray-500 ml-1">({trailer.plateState})</span>
                     </td>
-                    <td className="text-gray-400">{trailer._count.loads}</td>
-                    <td className="text-right">
+                    <td data-label="Loads" className="text-gray-400">{trailer._count.loads}</td>
+                    <td data-actions="true" className="text-right">
                       {canManage ? (
                         <button
                           type="button"

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { MobileBottomNav, Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 
 interface SidebarContextValue {
@@ -26,7 +26,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider value={{ mobileOpen, setMobileOpen, closeMobile }}>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-dvh overflow-x-hidden">
         {mobileOpen ? (
           <button
             type="button"
@@ -38,7 +38,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex-1 ml-0 lg:ml-64 min-w-0 flex flex-col">
           <Header />
-          <main className="flex-1 p-4 sm:p-6 animate-fade-in">{children}</main>
+          <main className="flex-1 px-3 pb-24 pt-4 sm:p-6 animate-fade-in">{children}</main>
+          <MobileBottomNav />
         </div>
       </div>
     </SidebarContext.Provider>
