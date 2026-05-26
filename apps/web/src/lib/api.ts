@@ -8,6 +8,10 @@ import { useAuthStore } from '@/store/authStore';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+function isAuthEndpoint(url?: string): boolean {
+  return Boolean(url?.includes('/auth/'));
+}
+
 /**
  * Axios instance configured for FleetOS API
  */
@@ -52,8 +56,14 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and not already retrying, attempt token refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If 401 and not already retrying, attempt token refresh.
+    // Do not refresh auth endpoints themselves; it masks real login errors.
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true;
 
       try {
