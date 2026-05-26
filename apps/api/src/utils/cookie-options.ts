@@ -1,4 +1,4 @@
-import { env, isProdLikeEnv } from '../config/env';
+import { env } from '../config/env';
 
 /** Refresh token cookie options (Vercel + Render = cross-site). */
 export function refreshTokenCookieOptions() {
