@@ -6,7 +6,8 @@ export function refreshTokenCookieOptions() {
     process.env.CROSS_SITE_COOKIES === 'true' ||
     process.env.CROSS_SITE_COOKIES === '1';
 
-  const secure = isProdLikeEnv() || crossSite;
+  // Secure cookies only over HTTPS (http://VPS-IP needs secure=false or browser drops cookie)
+  const secure = crossSite || env.FRONTEND_URL.startsWith('https://');
 
   return {
     httpOnly: true,
