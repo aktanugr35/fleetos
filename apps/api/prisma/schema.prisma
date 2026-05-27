@@ -13,31 +13,35 @@ datasource db {
 
 // ─── TENANT ──────────────────────────────────────────
 model Company {
-  id                        String   @id @default(uuid())
-  name                      String
-  slug                      String   @unique
-  dotNumber                 String   @unique
-  mcNumber                  String   @unique
-  address                   String?
-  phone                     String?
-  email                     String?
-  logoUrl                   String?
-  defaultOOCommissionRate   Int      @default(1200) // %12 → 1200 (yüzde * 100)
-  weeklyCompanyFee          Int      @default(0)    // cent — auto-added to each settlement
-  isActive                  Boolean  @default(true)
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  name                    String
+  slug                    String   @unique
+  dotNumber               String   @unique
+  mcNumber                String   @unique
+  address                 String?
+  phone                   String?
+  email                   String?
+  logoUrl                 String?
+  defaultOOCommissionRate Int      @default(1200) // %12 → 1200 (yüzde * 100)
+  weeklyCompanyFee        Int      @default(0) // cent — auto-added to each settlement
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  users         User[]
-  drivers       Driver[]
-  trucks        Truck[]
-  trailers      Trailer[]
-  loads         Load[]
-  settlements   Settlement[]
-  deductions    Deduction[]
-  credits       Credit[]
-  notifications Notification[]
-  auditLogs     AuditLog[]
+  users            User[]
+  drivers          Driver[]
+  trucks           Truck[]
+  trailers         Trailer[]
+  loads            Load[]
+  settlements      Settlement[]
+  deductions       Deduction[]
+  credits          Credit[]
+  fuelCards        FuelCard[]
+  tollDevices      TollDevice[]
+  fuelTransactions FuelTransaction[]
+  tollTransactions TollTransaction[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
 
   @@map("companies")
 }
@@ -108,7 +112,7 @@ model Driver {
   email             String?
   driverType        DriverType
   payStructure      PayStructure
-  payRate           Int          // cent/mile VEYA yüzde*100 (örn: %88 → 8800)
+  payRate           Int // cent/mile VEYA yüzde*100 (örn: %88 → 8800)
   cdlNumber         String
   cdlState          String       @db.VarChar(2)
   cdlExpiryDate     DateTime
@@ -139,29 +143,33 @@ model Driver {
 
 // ─── TRUCK ────────────────────────────────────────────
 model Truck {
-  id                  String    @id @default(uuid())
+  id                  String   @id @default(uuid())
   companyId           String
-  ownerDriverId       String?   @unique
+  ownerDriverId       String?  @unique
   unitNumber          String
   make                String
   model               String
   year                Int
-  vin                 String    @unique
+  vin                 String   @unique
   licensePlate        String
-  plateState          String    @db.VarChar(2)
+  plateState          String   @db.VarChar(2)
   dotInspectionExpiry DateTime
   irpExpiry           DateTime
   hvutExpiry          DateTime
   insuranceExpiry     DateTime
-  isActive            Boolean   @default(true)
+  isActive            Boolean  @default(true)
   notes               String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  company     Company   @relation(fields: [companyId], references: [id])
-  ownerDriver Driver?   @relation(fields: [ownerDriverId], references: [id])
-  loads       Load[]
-  documents   Document[]
+  company          Company           @relation(fields: [companyId], references: [id])
+  ownerDriver      Driver?           @relation(fields: [ownerDriverId], references: [id])
+  loads            Load[]
+  documents        Document[]
+  fuelCards        FuelCard[]
+  tollDevices      TollDevice[]
+  fuelTransactions FuelTransaction[]
+  tollTransactions TollTransaction[]
 
   @@index([companyId])
   @@map("trucks")
@@ -207,7 +215,7 @@ model Load {
   driverId           String
   truckId            String
   trailerId          String?
-  externalTrailerRef String?    // Hook & drop / external trailer (not company fleet)
+  externalTrailerRef String? // Hook & drop / external trailer (not company fleet)
   loadNumber         String     @unique
   brokerName         String
   brokerMC           String?
@@ -220,21 +228,21 @@ model Load {
   deliveryLocation   String
   deliveryDate       DateTime?
   actualDeliveryDate DateTime?
-  loadedMiles        Int?       @default(0)
-  deadheadMiles      Int?       @default(0)
+  loadedMiles        Int?      @default(0)
+  deadheadMiles      Int?      @default(0)
   totalMiles         Int?
 
   // Ücret (cent cinsinden)
-  rateTotal          Int
-  rateMiles          Int?
-  fuelSurcharge      Int?       @default(0)
-  detentionPay       Int?       @default(0)
-  lumperFee          Int?       @default(0)
-  tonuAmount         Int?       @default(0)
+  rateTotal     Int
+  rateMiles     Int?
+  fuelSurcharge Int? @default(0)
+  detentionPay  Int? @default(0)
+  lumperFee     Int? @default(0)
+  tonuAmount    Int? @default(0)
 
-  notes              String?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   company         Company          @relation(fields: [companyId], references: [id])
   driver          Driver           @relation(fields: [driverId], references: [id])
@@ -257,32 +265,34 @@ enum SettlementStatus {
 }
 
 model Settlement {
-  id                String           @id @default(uuid())
-  companyId         String
-  driverId          String
-  periodStart       DateTime
-  periodEnd         DateTime
-  payrollId         String?          // e.g. "2026-17"
-  statementNumber   String?          // e.g. "96"
-  status            SettlementStatus @default(DRAFT)
-  pdfUrl            String?
+  id              String           @id @default(uuid())
+  companyId       String
+  driverId        String
+  periodStart     DateTime
+  periodEnd       DateTime
+  payrollId       String? // e.g. "2026-17"
+  statementNumber String? // e.g. "96"
+  status          SettlementStatus @default(DRAFT)
+  pdfUrl          String?
 
-  grossAmount       Int              // cent
-  deductionTotal    Int              // cent
-  creditTotal       Int              @default(0) // cent
-  netAmount         Int              // cent
-  companyCommission Int              // cent
+  grossAmount       Int // cent
+  deductionTotal    Int // cent
+  creditTotal       Int @default(0) // cent
+  netAmount         Int // cent
+  companyCommission Int // cent
 
-  notes             String?
-  finalizedAt       DateTime?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  notes       String?
+  finalizedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  company    Company              @relation(fields: [companyId], references: [id])
-  driver     Driver               @relation(fields: [driverId], references: [id])
-  lines      SettlementLine[]
-  deductions SettlementDeduction[]
-  credits    SettlementCredit[]
+  company          Company                     @relation(fields: [companyId], references: [id])
+  driver           Driver                      @relation(fields: [driverId], references: [id])
+  lines            SettlementLine[]
+  deductions       SettlementDeduction[]
+  credits          SettlementCredit[]
+  fuelTransactions SettlementFuelTransaction[]
+  tollTransactions SettlementTollTransaction[]
 
   @@index([companyId])
   @@index([driverId])
@@ -290,14 +300,14 @@ model Settlement {
 }
 
 model SettlementLine {
-  id               String     @id @default(uuid())
+  id               String @id @default(uuid())
   settlementId     String
   loadId           String
   description      String
-  grossAmount      Int        // cent
-  commissionRate   Int        // %*100
-  commissionAmount Int        // cent
-  netAmount        Int        // cent
+  grossAmount      Int // cent
+  commissionRate   Int // %*100
+  commissionAmount Int // cent
+  netAmount        Int // cent
 
   settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
   load       Load       @relation(fields: [loadId], references: [id])
@@ -324,11 +334,11 @@ model Deduction {
   driverId    String
   type        DeductionType
   description String
-  amount      Int           // cent
+  amount      Int // cent
   date        DateTime
   isRecurring Boolean       @default(false)
   receiptUrl  String?
-  metadata    Json?         // e.g. for Fuel: { merchant, gallons, discount }
+  metadata    Json? // e.g. for Fuel: { merchant, gallons, discount }
 
   company              Company               @relation(fields: [companyId], references: [id])
   driver               Driver                @relation(fields: [driverId], references: [id])
@@ -340,15 +350,145 @@ model Deduction {
 }
 
 model SettlementDeduction {
-  id           String     @id @default(uuid())
+  id           String @id @default(uuid())
   settlementId String
   deductionId  String
-  amount       Int        // cent
+  amount       Int // cent
 
   settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
   deduction  Deduction  @relation(fields: [deductionId], references: [id])
 
   @@map("settlement_deductions")
+}
+
+// ─── FUEL / TOLL TRANSACTIONS ─────────────────────────
+model FuelCard {
+  id          String   @id @default(uuid())
+  companyId   String
+  truckId     String
+  provider    String?
+  cardNumber  String
+  displayName String?
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company      Company           @relation(fields: [companyId], references: [id])
+  truck        Truck             @relation(fields: [truckId], references: [id])
+  transactions FuelTransaction[]
+
+  @@unique([companyId, cardNumber])
+  @@index([companyId])
+  @@index([truckId])
+  @@map("fuel_cards")
+}
+
+model TollDevice {
+  id           String   @id @default(uuid())
+  companyId    String
+  truckId      String
+  provider     String?
+  deviceNumber String
+  displayName  String?
+  isActive     Boolean  @default(true)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company      Company           @relation(fields: [companyId], references: [id])
+  truck        Truck             @relation(fields: [truckId], references: [id])
+  transactions TollTransaction[]
+
+  @@unique([companyId, deviceNumber])
+  @@index([companyId])
+  @@index([truckId])
+  @@map("toll_devices")
+}
+
+model FuelTransaction {
+  id          String   @id @default(uuid())
+  companyId   String
+  truckId     String
+  fuelCardId  String
+  date        DateTime
+  merchant    String?
+  gallons     Float?
+  grossAmount Int
+  discount    Int      @default(0)
+  netAmount   Int
+  reference   String?
+  receiptUrl  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company                    Company                     @relation(fields: [companyId], references: [id])
+  truck                      Truck                       @relation(fields: [truckId], references: [id])
+  fuelCard                   FuelCard                    @relation(fields: [fuelCardId], references: [id])
+  settlementFuelTransactions SettlementFuelTransaction[]
+
+  @@index([companyId])
+  @@index([truckId])
+  @@index([fuelCardId])
+  @@index([date])
+  @@map("fuel_transactions")
+}
+
+model TollTransaction {
+  id           String   @id @default(uuid())
+  companyId    String
+  truckId      String
+  tollDeviceId String
+  date         DateTime
+  agency       String?
+  location     String?
+  description  String?
+  amount       Int
+  reference    String?
+  receiptUrl   String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company                    Company                     @relation(fields: [companyId], references: [id])
+  truck                      Truck                       @relation(fields: [truckId], references: [id])
+  tollDevice                 TollDevice                  @relation(fields: [tollDeviceId], references: [id])
+  settlementTollTransactions SettlementTollTransaction[]
+
+  @@index([companyId])
+  @@index([truckId])
+  @@index([tollDeviceId])
+  @@index([date])
+  @@map("toll_transactions")
+}
+
+model SettlementFuelTransaction {
+  id                String @id @default(uuid())
+  settlementId      String
+  fuelTransactionId String
+  amount            Int
+
+  settlement      Settlement      @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  fuelTransaction FuelTransaction @relation(fields: [fuelTransactionId], references: [id])
+
+  @@unique([fuelTransactionId])
+  @@index([settlementId])
+  @@map("settlement_fuel_transactions")
+}
+
+model SettlementTollTransaction {
+  id                String @id @default(uuid())
+  settlementId      String
+  tollTransactionId String
+  amount            Int
+
+  settlement      Settlement      @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  tollTransaction TollTransaction @relation(fields: [tollTransactionId], references: [id])
+
+  @@unique([tollTransactionId])
+  @@index([settlementId])
+  @@map("settlement_toll_transactions")
 }
 
 // ─── CREDIT ───────────────────────────────────────────
@@ -359,19 +499,19 @@ enum CreditType {
 }
 
 model Credit {
-  id          String        @id @default(uuid())
+  id          String     @id @default(uuid())
   companyId   String
   driverId    String
   type        CreditType
   description String
-  amount      Int           // cent
+  amount      Int // cent
   date        DateTime
-  isRecurring Boolean       @default(false)
+  isRecurring Boolean    @default(false)
   metadata    Json?
 
-  company              Company               @relation(fields: [companyId], references: [id])
-  driver               Driver                @relation(fields: [driverId], references: [id])
-  settlementCredits    SettlementCredit[]
+  company           Company            @relation(fields: [companyId], references: [id])
+  driver            Driver             @relation(fields: [driverId], references: [id])
+  settlementCredits SettlementCredit[]
 
   @@index([companyId])
   @@index([driverId])
@@ -379,10 +519,10 @@ model Credit {
 }
 
 model SettlementCredit {
-  id           String     @id @default(uuid())
+  id           String @id @default(uuid())
   settlementId String
   creditId     String
-  amount       Int        // cent
+  amount       Int // cent
 
   settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
   credit     Credit     @relation(fields: [creditId], references: [id])

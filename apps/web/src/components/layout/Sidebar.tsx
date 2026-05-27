@@ -102,6 +102,18 @@ const navigation: NavItem[] = [
     ),
   },
   {
+    label: 'Fuel/Toll',
+    href: '/dashboard/fuel-toll',
+    permission: 'financial:list',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 22V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v17" />
+        <path d="M14 9h2a2 2 0 0 1 2 2v8a3 3 0 0 0 6 0v-7a2 2 0 0 0-.59-1.41L20 7" />
+        <path d="M7 7h3" />
+      </svg>
+    ),
+  },
+  {
     label: 'Credits',
     href: '/dashboard/credits',
     permission: 'financial:list',

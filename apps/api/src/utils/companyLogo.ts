@@ -44,9 +44,7 @@ export function buildCompanyLogoHtml(logoUrl: string | null, companyName: string
 }
 
 function buildLogoPlaceholder(companyName: string): string {
-  const first = companyName.split(' ')[0] || 'TMS';
-  const rest = companyName.substring(companyName.indexOf(' ') + 1) || 'INC';
-  return `<div class="logo-placeholder">${escapeHtml(first)}<span>${escapeHtml(rest)}</span></div>`;
+  return `<div class="logo-placeholder">${escapeHtml(companyName || 'Insert Logo')}</div>`;
 }
 
 function escapeHtml(value: string): string {

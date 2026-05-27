@@ -41,9 +41,16 @@ export class SettlementsService {
     const hasLoads = loadsToSettle.length > 0;
     const hasDeductions = eligibleData.deductions.length > 0;
     const hasCredits = eligibleData.credits.length > 0;
+    const fuelTransactions = eligibleData.fuelTransactions.filter((t) =>
+      loadsToSettle.some((load) => load.truckId === t.truckId)
+    );
+    const tollTransactions = eligibleData.tollTransactions.filter((t) =>
+      loadsToSettle.some((load) => load.truckId === t.truckId)
+    );
+    const hasFuelOrToll = fuelTransactions.length > 0 || tollTransactions.length > 0;
     const companyFeeCents = eligibleData.companyFeeCents;
 
-    if (!hasLoads && !hasDeductions && !hasCredits && companyFeeCents === 0) {
+    if (!hasLoads && !hasDeductions && !hasCredits && !hasFuelOrToll && companyFeeCents === 0) {
       throw new AppError(
         400,
         'NOTHING_TO_SETTLE',
@@ -121,8 +128,10 @@ export class SettlementsService {
       }
 
       const totalDeductionsCents = settlementDeductions.reduce((sum, d) => sum + d.amount, 0);
+      const fuelTotalCents = fuelTransactions.reduce((sum, f) => sum + f.netAmount, 0);
+      const tollTotalCents = tollTransactions.reduce((sum, t) => sum + t.amount, 0);
       const totalCreditsCents = credits.reduce((sum, c) => sum + c.amount, 0);
-      const netPayCents = totalGrossCents - totalDeductionsCents + totalCreditsCents;
+      const netPayCents = totalGrossCents - totalDeductionsCents - fuelTotalCents - tollTotalCents + totalCreditsCents;
 
       if (loadsToSettle.length > 0) {
         await tx.load.updateMany({
@@ -142,7 +151,7 @@ export class SettlementsService {
           periodStart,
           periodEnd,
           grossAmount: totalGrossCents,
-          deductionTotal: totalDeductionsCents,
+          deductionTotal: totalDeductionsCents + fuelTotalCents + tollTotalCents,
           creditTotal: totalCreditsCents,
           netAmount: netPayCents,
           companyCommission: companyCommissionTotal,
@@ -150,6 +159,18 @@ export class SettlementsService {
           notes: input.notes,
           lines: { create: lineItems },
           deductions: { create: settlementDeductions },
+          fuelTransactions: {
+            create: fuelTransactions.map((f) => ({
+              fuelTransactionId: f.id,
+              amount: f.netAmount,
+            })),
+          },
+          tollTransactions: {
+            create: tollTransactions.map((t) => ({
+              tollTransactionId: t.id,
+              amount: t.amount,
+            })),
+          },
           credits: {
             create: credits.map((c) => ({
               creditId: c.id,
@@ -162,6 +183,8 @@ export class SettlementsService {
           lines: true,
           deductions: true,
           credits: true,
+          fuelTransactions: true,
+          tollTransactions: true,
         },
       });
     });
@@ -214,6 +237,8 @@ export class SettlementsService {
         lines: true,
         deductions: { include: { deduction: true } },
         credits: { include: { credit: true } },
+        fuelTransactions: { include: { fuelTransaction: { include: { fuelCard: true, truck: true } } } },
+        tollTransactions: { include: { tollTransaction: { include: { tollDevice: true, truck: true } } } },
       },
     });
     if (!settlement) throw new AppError(404, 'SETTLEMENT_NOT_FOUND', 'Settlement not found');
@@ -331,7 +356,7 @@ export class SettlementsService {
     const unsettledLoads = rawLoads.filter((l) => !settledSet.has(l.id));
 
     const deductions = allDeductions.filter(
-      (d) => d.type !== 'COMPANY_FEE' && isWithinPeriod(d.date, start, end)
+      (d) => !['COMPANY_FEE', 'FUEL', 'TOLL'].includes(d.type) && isWithinPeriod(d.date, start, end)
     );
     const credits = allCredits.filter((c) => isWithinPeriod(c.date, start, end));
 
@@ -362,11 +387,38 @@ export class SettlementsService {
     });
 
     const companyFeeCents = company?.weeklyCompanyFee ?? 0;
+    const truckIds = [...new Set(loads.map((l) => l.truckId))];
+    const [fuelTransactions, tollTransactions] = truckIds.length > 0
+      ? await Promise.all([
+          prisma.fuelTransaction.findMany({
+            where: {
+              companyId: tenantId,
+              truckId: { in: truckIds },
+              date: { gte: start, lte: end },
+              settlementFuelTransactions: { none: {} },
+            },
+            include: { fuelCard: true, truck: true },
+            orderBy: { date: 'asc' },
+          }),
+          prisma.tollTransaction.findMany({
+            where: {
+              companyId: tenantId,
+              truckId: { in: truckIds },
+              date: { gte: start, lte: end },
+              settlementTollTransactions: { none: {} },
+            },
+            include: { tollDevice: true, truck: true },
+            orderBy: { date: 'asc' },
+          }),
+        ])
+      : [[], []];
 
     return {
       loads,
       deductions,
       credits,
+      fuelTransactions,
+      tollTransactions,
       companyFeeCents,
       summary: {
         periodStart: start.toISOString(),
@@ -374,6 +426,8 @@ export class SettlementsService {
         loadsInPeriod: loads.length,
         deductionsInPeriod: deductions.length,
         creditsInPeriod: credits.length,
+        fuelTransactionsInPeriod: fuelTransactions.length,
+        tollTransactionsInPeriod: tollTransactions.length,
       },
     };
   }

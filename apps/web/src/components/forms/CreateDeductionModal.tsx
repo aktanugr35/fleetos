@@ -17,12 +17,10 @@ interface CreateDeductionModalProps {
 }
 
 const DEDUCTION_TYPES = [
-  { value: 'FUEL', label: 'Fuel' },
   { value: 'CASH_ADVANCE', label: 'Cash Advance' },
   { value: 'INSURANCE_ESCROW', label: 'Insurance / Escrow' },
   { value: 'MAINTENANCE', label: 'Maintenance' },
   { value: 'LUMPER', label: 'Lumper' },
-  { value: 'TOLL', label: 'Toll' },
   { value: 'VIOLATION_FINE', label: 'Violation Fine' },
   { value: 'OTHER', label: 'Other' },
 ];
@@ -42,7 +40,7 @@ export function CreateDeductionModal({
 
   const [form, setForm] = useState({
     driverId: fixedDriverId || '',
-    type: 'FUEL',
+    type: 'CASH_ADVANCE',
     amount: '',
     grossAmount: '',
     discount: '',
@@ -84,7 +82,7 @@ export function CreateDeductionModal({
     } else {
       setForm({
         driverId: fixedDriverId || '',
-        type: 'FUEL',
+        type: 'CASH_ADVANCE',
         amount: '',
         grossAmount: '',
         discount: '',
@@ -233,6 +231,10 @@ export function CreateDeductionModal({
               />
             </FormField>
           )}
+        </div>
+
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-gray-400">
+          Fuel and toll charges are managed from the Fuel/Toll screen so they can be tied to trucks and applied to settlements automatically.
         </div>
 
         {isFuel && (

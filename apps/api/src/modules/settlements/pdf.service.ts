@@ -50,6 +50,8 @@ export class PdfService {
         lines: { include: { load: true } },
         deductions: { include: { deduction: true } },
         credits: { include: { credit: true } },
+        fuelTransactions: { include: { fuelTransaction: { include: { fuelCard: true, truck: true } } } },
+        tollTransactions: { include: { tollTransaction: { include: { tollDevice: true, truck: true } } } },
       }
     });
 
@@ -145,11 +147,40 @@ export class PdfService {
     const totalTripGross = settlement.lines.reduce((sum, l) => sum + l.grossAmount, 0);
     const earning = settlement.lines.reduce((sum, l) => sum + l.netAmount, 0);
 
-    // DEDUCTIONS -> Separate Fuel and Others
-    const fuels = settlement.deductions.filter(d => d.deduction.type === 'FUEL');
-    const otherDeductions = settlement.deductions.filter(d => d.deduction.type !== 'FUEL');
+    // DEDUCTIONS -> separate fuel, toll, company fee, and true deductions.
+    const legacyFuels = settlement.deductions.filter(d => d.deduction.type === 'FUEL');
+    const legacyTolls = settlement.deductions.filter(d => d.deduction.type === 'TOLL');
+    const companyFees = settlement.deductions.filter(d => d.deduction.type === 'COMPANY_FEE');
+    const trueDeductions = settlement.deductions.filter(d => !['FUEL', 'TOLL', 'COMPANY_FEE'].includes(d.deduction.type));
 
-    const fuelTransactionsHtml = fuels.map(f => {
+    const fuelTransactionsHtml = [
+      ...settlement.fuelTransactions.map(f => {
+        const tx = f.fuelTransaction;
+        const qty = tx.gallons || 0;
+        const gross = tx.grossAmount;
+        const discount = tx.discount;
+        const net = f.amount;
+        return `
+          <tr>
+              <td>Diesel</td>
+              <td>${tx.date.toLocaleDateString()}<br>${tx.date.toLocaleTimeString()}</td>
+              <td>
+                  ${tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card'}
+                  <div class="sub-text">Truck ${tx.truck.unitNumber}${tx.reference ? ` · ${tx.reference}` : ''}</div>
+              </td>
+              <td>${qty ? `${qty} gal` : '—'}</td>
+              <td>${fMoney(gross)}</td>
+              <td>0.00 gal</td>
+              <td>${fMoney(0)}</td>
+              <td>${fMoney(0)}</td>
+              <td class="text-red">${fMoney(0)}</td>
+              <td>${fMoney(gross)}</td>
+              <td class="text-green">${discount > 0 ? fMoney(discount) : fMoney(0)}</td>
+              <td class="text-right font-bold">${fMoney(net)}</td>
+          </tr>
+        `;
+      }),
+      ...legacyFuels.map(f => {
       const d = f.deduction;
       const metadata: Record<string, number | string | undefined> =
         (d.metadata as Record<string, number | string | undefined>) || {};
@@ -177,13 +208,48 @@ export class PdfService {
             <td class="text-right font-bold">${fMoney(net)}</td>
         </tr>
       `;
-    }).join('');
+      }),
+    ].join('');
 
-    const fuelTotal = fuels.reduce((sum, f) => sum + f.amount, 0);
-    const tollDeductions = otherDeductions.filter(d => d.deduction.type === 'TOLL');
-    const nonTollOtherDeductions = otherDeductions.filter(d => d.deduction.type !== 'TOLL');
-    const deductionsTotal = nonTollOtherDeductions.reduce((sum, d) => sum + d.amount, 0);
-    const tollTotal = tollDeductions.reduce((sum, d) => sum + d.amount, 0);
+    const tollTransactionsHtml = [
+      ...settlement.tollTransactions.map(t => {
+        const tx = t.tollTransaction;
+        return `
+          <tr>
+              <td>${tx.date.toLocaleDateString()}</td>
+              <td>${tx.agency || tx.tollDevice.provider || 'Toll'}</td>
+              <td>${tx.location || tx.description || '—'}<div class="sub-text">Truck ${tx.truck.unitNumber}${tx.reference ? ` · ${tx.reference}` : ''}</div></td>
+              <td class="text-right font-bold">${fMoney(t.amount)}</td>
+          </tr>
+        `;
+      }),
+      ...legacyTolls.map(t => `
+        <tr>
+            <td>${t.deduction.date.toLocaleDateString()}</td>
+            <td>Toll</td>
+            <td>${t.deduction.description}</td>
+            <td class="text-right font-bold">${fMoney(t.amount)}</td>
+        </tr>
+      `),
+    ].join('');
+
+    const deductionRowsHtml = trueDeductions.map(d => `
+      <tr>
+          <td>${d.deduction.type.replace('_', ' ')}</td>
+          <td>${d.deduction.description}</td>
+          <td>${d.deduction.date.toLocaleDateString()}</td>
+          <td class="text-right font-bold">${fMoney(d.amount)}</td>
+      </tr>
+    `).join('');
+
+    const fuelTotal =
+      settlement.fuelTransactions.reduce((sum, f) => sum + f.amount, 0) +
+      legacyFuels.reduce((sum, f) => sum + f.amount, 0);
+    const tollTotal =
+      settlement.tollTransactions.reduce((sum, t) => sum + t.amount, 0) +
+      legacyTolls.reduce((sum, d) => sum + d.amount, 0);
+    const companyFeeTotal = companyFees.reduce((sum, d) => sum + d.amount, 0);
+    const deductionsTotal = trueDeductions.reduce((sum, d) => sum + d.amount, 0);
     
     // CREDITS
     const reimbursementsHtml = settlement.credits.map(c => {
@@ -382,6 +448,10 @@ export class PdfService {
                     <span>${fMoney(tollTotal)}</span>
                 </div>
                 <div class="row-flex text-red">
+                    <span>Company Fee</span>
+                    <span>${fMoney(companyFeeTotal)}</span>
+                </div>
+                <div class="row-flex text-red">
                     <span>Deductions</span>
                     <span>${fMoney(deductionsTotal)}</span>
                 </div>
@@ -444,7 +514,7 @@ export class PdfService {
         </table>
         ` : ''}
 
-        ${fuels.length > 0 ? `
+        ${fuelTotal > 0 ? `
         <div class="section-title">Fuel Transaction</div>
         <table>
             <thead>
@@ -465,6 +535,52 @@ export class PdfService {
             </thead>
             <tbody>
                 ${fuelTransactionsHtml}
+            </tbody>
+        </table>
+        ` : ''}
+
+        ${tollTotal > 0 ? `
+        <div class="section-title">Toll Transactions</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Agency</th>
+                    <th>Location / Description</th>
+                    <th class="text-right">Pay Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${tollTransactionsHtml}
+                <tr class="totals-row">
+                    <td>Totals:</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right">${fMoney(tollTotal)}</td>
+                </tr>
+            </tbody>
+        </table>
+        ` : ''}
+
+        ${trueDeductions.length > 0 ? `
+        <div class="section-title">Deductions</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${deductionRowsHtml}
+                <tr class="totals-row">
+                    <td>Totals:</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right">${fMoney(deductionsTotal)}</td>
+                </tr>
             </tbody>
         </table>
         ` : ''}
