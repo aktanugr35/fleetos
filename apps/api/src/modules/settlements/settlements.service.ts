@@ -18,12 +18,8 @@ const loadInclude = {
   driver: { select: { payStructure: true, payRate: true } },
 } as const;
 
-/** Items on finalized/paid settlements are locked; DRAFT settlements can be regenerated. */
+/** Finalized/paid settlements lock items on approve — not while previewing new drafts. */
 const LOCKED_SETTLEMENT_STATUSES: SettlementStatus[] = ['FINALIZED', 'PAID'];
-
-const notOnLockedSettlement = {
-  settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
-};
 
 export class SettlementsService {
   /**
@@ -95,23 +91,6 @@ export class SettlementsService {
 
     const count = await prisma.settlement.count({ where: { companyId: tenantId } });
     const settlementNumber = `SET-${new Date().getFullYear()}-${(count + 1).toString().padStart(5, '0')}`;
-
-    if (loadsToSettle.length > 0) {
-      const lockedLoads = await prisma.settlementLine.findMany({
-        where: {
-          loadId: { in: loadsToSettle.map((l) => l.id) },
-          settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
-        },
-        select: { loadId: true },
-      });
-      if (lockedLoads.length > 0) {
-        throw new AppError(
-          409,
-          'LOAD_ALREADY_SETTLED',
-          'One or more selected loads are already on a finalized or paid settlement'
-        );
-      }
-    }
 
     const settlement = await prisma.$transaction(async (tx) => {
       const settlementDeductions = periodDeductions.map((d) => ({
@@ -361,37 +340,16 @@ export class SettlementsService {
       isWithinPeriod(getLoadWorkDate(load), start, end)
     );
 
-    const loadIds = rawLoads.map((l) => l.id);
-    const [lockedLoadIds, allDeductions, allCredits] = await Promise.all([
-      loadIds.length > 0
-        ? prisma.settlementLine.findMany({
-            where: {
-              loadId: { in: loadIds },
-              settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
-            },
-            select: { loadId: true },
-          })
-        : Promise.resolve([]),
+    const [allDeductions, allCredits] = await Promise.all([
       prisma.deduction.findMany({
-        where: {
-          companyId: tenantId,
-          driverId,
-          settlementDeductions: { none: notOnLockedSettlement },
-        },
+        where: { companyId: tenantId, driverId },
         orderBy: { date: 'asc' },
       }),
       prisma.credit.findMany({
-        where: {
-          companyId: tenantId,
-          driverId,
-          settlementCredits: { none: notOnLockedSettlement },
-        },
+        where: { companyId: tenantId, driverId },
         orderBy: { date: 'asc' },
       }),
     ]);
-
-    const lockedLoadSet = new Set(lockedLoadIds.map((r) => r.loadId));
-    const eligibleLoads = rawLoads.filter((l) => !lockedLoadSet.has(l.id));
 
     const deductions = allDeductions.filter(
       (d) => !['COMPANY_FEE', 'FUEL', 'TOLL'].includes(d.type) && isWithinPeriod(d.date, start, end)
@@ -401,7 +359,7 @@ export class SettlementsService {
     const company = await prisma.company.findUnique({ where: { id: tenantId } });
     const commissionRate = company?.defaultOOCommissionRate || 1200;
 
-    const loads = eligibleLoads.map((load) => {
+    const loads = rawLoads.map((load) => {
       const grossRev = grossRevenueFromLoad(load);
       const payStructure = load.driver?.payStructure ?? 'PERCENTAGE';
       const payRate = load.driver?.payRate ?? 0;
@@ -433,7 +391,6 @@ export class SettlementsService {
               companyId: tenantId,
               truckId: { in: truckIds },
               date: { gte: start, lte: end },
-              settlementFuelTransactions: { none: notOnLockedSettlement },
             },
             include: { fuelCard: true, truck: true },
             orderBy: { date: 'asc' },
@@ -443,7 +400,6 @@ export class SettlementsService {
               companyId: tenantId,
               truckId: { in: truckIds },
               date: { gte: start, lte: end },
-              settlementTollTransactions: { none: notOnLockedSettlement },
             },
             include: { tollDevice: true, truck: true },
             orderBy: { date: 'asc' },
