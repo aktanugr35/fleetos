@@ -472,8 +472,8 @@ model SettlementFuelTransaction {
   settlement      Settlement      @relation(fields: [settlementId], references: [id], onDelete: Cascade)
   fuelTransaction FuelTransaction @relation(fields: [fuelTransactionId], references: [id])
 
-  @@unique([fuelTransactionId])
   @@index([settlementId])
+  @@index([fuelTransactionId])
   @@map("settlement_fuel_transactions")
 }
 
@@ -486,8 +486,8 @@ model SettlementTollTransaction {
   settlement      Settlement      @relation(fields: [settlementId], references: [id], onDelete: Cascade)
   tollTransaction TollTransaction @relation(fields: [tollTransactionId], references: [id])
 
-  @@unique([tollTransactionId])
   @@index([settlementId])
+  @@index([tollTransactionId])
   @@map("settlement_toll_transactions")
 }
 

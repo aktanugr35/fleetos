@@ -1,4 +1,4 @@
-import { LoadStatus } from '@prisma/client';
+import { LoadStatus, SettlementStatus } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import type { CreateSettlementInput } from './settlements.schema';
@@ -17,6 +17,13 @@ const loadInclude = {
   truck: true,
   driver: { select: { payStructure: true, payRate: true } },
 } as const;
+
+/** Items on finalized/paid settlements are locked; DRAFT settlements can be regenerated. */
+const LOCKED_SETTLEMENT_STATUSES: SettlementStatus[] = ['FINALIZED', 'PAID'];
+
+const notOnLockedSettlement = {
+  settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
+};
 
 export class SettlementsService {
   /**
@@ -90,15 +97,18 @@ export class SettlementsService {
     const settlementNumber = `SET-${new Date().getFullYear()}-${(count + 1).toString().padStart(5, '0')}`;
 
     if (loadsToSettle.length > 0) {
-      const alreadySettled = await prisma.settlementLine.findMany({
-        where: { loadId: { in: loadsToSettle.map((l) => l.id) } },
+      const lockedLoads = await prisma.settlementLine.findMany({
+        where: {
+          loadId: { in: loadsToSettle.map((l) => l.id) },
+          settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
+        },
         select: { loadId: true },
       });
-      if (alreadySettled.length > 0) {
+      if (lockedLoads.length > 0) {
         throw new AppError(
           409,
           'LOAD_ALREADY_SETTLED',
-          'One or more selected loads are already on a settlement'
+          'One or more selected loads are already on a finalized or paid settlement'
         );
       }
     }
@@ -253,6 +263,31 @@ export class SettlementsService {
     if (!existing) throw new AppError(404, 'SETTLEMENT_NOT_FOUND', 'Settlement not found');
     if (existing.status !== 'DRAFT') throw new AppError(400, 'INVALID_STATUS', 'Settlement must be in DRAFT status');
 
+    const loadIds = (
+      await prisma.settlementLine.findMany({
+        where: { settlementId },
+        select: { loadId: true },
+      })
+    ).map((line) => line.loadId);
+
+    if (loadIds.length > 0) {
+      const conflict = await prisma.settlementLine.findFirst({
+        where: {
+          loadId: { in: loadIds },
+          settlementId: { not: settlementId },
+          settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
+        },
+        select: { loadId: true },
+      });
+      if (conflict) {
+        throw new AppError(
+          409,
+          'LOAD_ALREADY_SETTLED',
+          'One or more loads on this settlement are already on another finalized or paid statement'
+        );
+      }
+    }
+
     const updated = await prisma.settlement.update({
       where: { id: settlementId },
       data: { status: 'FINALIZED', finalizedAt: new Date() },
@@ -327,10 +362,13 @@ export class SettlementsService {
     );
 
     const loadIds = rawLoads.map((l) => l.id);
-    const [settledLoadIds, allDeductions, allCredits] = await Promise.all([
+    const [lockedLoadIds, allDeductions, allCredits] = await Promise.all([
       loadIds.length > 0
         ? prisma.settlementLine.findMany({
-            where: { loadId: { in: loadIds } },
+            where: {
+              loadId: { in: loadIds },
+              settlement: { status: { in: LOCKED_SETTLEMENT_STATUSES } },
+            },
             select: { loadId: true },
           })
         : Promise.resolve([]),
@@ -338,7 +376,7 @@ export class SettlementsService {
         where: {
           companyId: tenantId,
           driverId,
-          settlementDeductions: { none: {} },
+          settlementDeductions: { none: notOnLockedSettlement },
         },
         orderBy: { date: 'asc' },
       }),
@@ -346,14 +384,14 @@ export class SettlementsService {
         where: {
           companyId: tenantId,
           driverId,
-          settlementCredits: { none: {} },
+          settlementCredits: { none: notOnLockedSettlement },
         },
         orderBy: { date: 'asc' },
       }),
     ]);
 
-    const settledSet = new Set(settledLoadIds.map((r) => r.loadId));
-    const unsettledLoads = rawLoads.filter((l) => !settledSet.has(l.id));
+    const lockedLoadSet = new Set(lockedLoadIds.map((r) => r.loadId));
+    const eligibleLoads = rawLoads.filter((l) => !lockedLoadSet.has(l.id));
 
     const deductions = allDeductions.filter(
       (d) => !['COMPANY_FEE', 'FUEL', 'TOLL'].includes(d.type) && isWithinPeriod(d.date, start, end)
@@ -363,7 +401,7 @@ export class SettlementsService {
     const company = await prisma.company.findUnique({ where: { id: tenantId } });
     const commissionRate = company?.defaultOOCommissionRate || 1200;
 
-    const loads = unsettledLoads.map((load) => {
+    const loads = eligibleLoads.map((load) => {
       const grossRev = grossRevenueFromLoad(load);
       const payStructure = load.driver?.payStructure ?? 'PERCENTAGE';
       const payRate = load.driver?.payRate ?? 0;
@@ -387,7 +425,7 @@ export class SettlementsService {
     });
 
     const companyFeeCents = company?.weeklyCompanyFee ?? 0;
-    const truckIds = [...new Set(loads.map((l) => l.truckId))];
+    const truckIds = [...new Set(rawLoads.map((l) => l.truckId))];
     const [fuelTransactions, tollTransactions] = truckIds.length > 0
       ? await Promise.all([
           prisma.fuelTransaction.findMany({
@@ -395,7 +433,7 @@ export class SettlementsService {
               companyId: tenantId,
               truckId: { in: truckIds },
               date: { gte: start, lte: end },
-              settlementFuelTransactions: { none: {} },
+              settlementFuelTransactions: { none: notOnLockedSettlement },
             },
             include: { fuelCard: true, truck: true },
             orderBy: { date: 'asc' },
@@ -405,7 +443,7 @@ export class SettlementsService {
               companyId: tenantId,
               truckId: { in: truckIds },
               date: { gte: start, lte: end },
-              settlementTollTransactions: { none: {} },
+              settlementTollTransactions: { none: notOnLockedSettlement },
             },
             include: { tollDevice: true, truck: true },
             orderBy: { date: 'asc' },
