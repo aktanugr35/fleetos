@@ -334,6 +334,17 @@ export class SettlementsService {
     periodEnd: Date
   ) {
     const { start, end } = getPeriodBounds(periodStart, periodEnd);
+
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId },
+      select: {
+        id: true,
+        exemptFromCompanyFee: true,
+        exemptFromCompanyCommission: true,
+      },
+    });
+    if (!driver) throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
+
     const candidates = await this.fetchDriverLoadCandidates(tenantId, driverId);
 
     const rawLoads = candidates.filter((load) =>
@@ -357,7 +368,9 @@ export class SettlementsService {
     const credits = allCredits.filter((c) => isWithinPeriod(c.date, start, end));
 
     const company = await prisma.company.findUnique({ where: { id: tenantId } });
-    const commissionRate = company?.defaultOOCommissionRate || 1200;
+    const commissionRate = driver.exemptFromCompanyCommission
+      ? 0
+      : (company?.defaultOOCommissionRate || 1200);
 
     const loads = rawLoads.map((load) => {
       const grossRev = grossRevenueFromLoad(load);
@@ -382,7 +395,7 @@ export class SettlementsService {
       };
     });
 
-    const companyFeeCents = company?.weeklyCompanyFee ?? 0;
+    const companyFeeCents = driver.exemptFromCompanyFee ? 0 : (company?.weeklyCompanyFee ?? 0);
     const truckIds = [...new Set(rawLoads.map((l) => l.truckId))];
     const [fuelTransactions, tollTransactions] = truckIds.length > 0
       ? await Promise.all([

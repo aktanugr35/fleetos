@@ -37,6 +37,8 @@ const emptyForm = {
   city: '',
   state: 'TX',
   zip: '',
+  exemptFromCompanyFee: false,
+  exemptFromCompanyCommission: false,
 };
 
 function toDateInput(iso: string): string {
@@ -89,6 +91,8 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
           city: d.city || '',
           state: d.state || 'TX',
           zip: d.zip || '',
+          exemptFromCompanyFee: Boolean(d.exemptFromCompanyFee),
+          exemptFromCompanyCommission: Boolean(d.exemptFromCompanyCommission),
         });
       })
       .catch(() => {
@@ -97,7 +101,7 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
       .finally(() => setLoadingDriver(false));
   }, [isOpen, driverId]);
 
-  const set = (field: string, value: string) => {
+  const set = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: '' }));
   };
@@ -141,6 +145,8 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
       city: form.city.trim() || undefined,
       state: form.state || undefined,
       zip: form.zip.trim() || undefined,
+      exemptFromCompanyFee: form.exemptFromCompanyFee,
+      exemptFromCompanyCommission: form.exemptFromCompanyCommission,
     };
   };
 
@@ -288,6 +294,39 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
               Amount held on account — shown on settlement PDF under Deposit
             </p>
           </FormField>
+
+          <div className="mt-6 rounded-lg border border-[var(--border-color)] bg-gray-500/5 p-4 space-y-3">
+            <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold">
+              Settlement Exemptions
+            </h4>
+            <p className="text-xs text-gray-500">
+              Use for family drivers or special accounts where company fee and commission should not apply.
+            </p>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={form.exemptFromCompanyFee}
+                onChange={(e) => set('exemptFromCompanyFee', e.target.checked)}
+              />
+              <span>
+                <span className="text-sm text-gray-200 block">No company fee</span>
+                <span className="text-xs text-gray-500">Weekly company fee from Settings will not be added</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={form.exemptFromCompanyCommission}
+                onChange={(e) => set('exemptFromCompanyCommission', e.target.checked)}
+              />
+              <span>
+                <span className="text-sm text-gray-200 block">No company commission</span>
+                <span className="text-xs text-gray-500">Owner operator commission % from Settings will not be deducted</span>
+              </span>
+            </label>
+          </div>
 
           <div className="grid grid-cols-2 gap-4 mt-4">
             <FormField label="CDL Number" required error={errors.cdlNumber}>

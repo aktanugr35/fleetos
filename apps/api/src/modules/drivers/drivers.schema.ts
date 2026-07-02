@@ -23,6 +23,10 @@ export const createDriverSchema = z.object({
   zip: z.string().optional(),
   /** Driver deposit / escrow held by company (cents) */
   escrowBalance: z.number().int().min(0).optional().default(0),
+  /** Skip weekly company fee on settlements for this driver */
+  exemptFromCompanyFee: z.boolean().optional().default(false),
+  /** Skip owner-operator company commission on settlements for this driver */
+  exemptFromCompanyCommission: z.boolean().optional().default(false),
 });
 
 export const updateDriverSchema = createDriverSchema.partial();

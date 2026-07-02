@@ -103,30 +103,32 @@ enum PayStructure {
 }
 
 model Driver {
-  id                String       @id @default(uuid())
-  companyId         String
-  userId            String?      @unique
-  firstName         String
-  lastName          String
-  phone             String?
-  email             String?
-  driverType        DriverType
-  payStructure      PayStructure
-  payRate           Int // cent/mile VEYA yüzde*100 (örn: %88 → 8800)
-  cdlNumber         String
-  cdlState          String       @db.VarChar(2)
-  cdlExpiryDate     DateTime
-  medicalCardExpiry DateTime
-  isActive          Boolean      @default(true)
-  llcName           String?
-  address           String?
-  city              String?
-  state             String?      @db.VarChar(2)
-  zip               String?
-  escrowBalance     Int          @default(0) // cent
-  notes             String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                          String       @id @default(uuid())
+  companyId                   String
+  userId                      String?      @unique
+  firstName                   String
+  lastName                    String
+  phone                       String?
+  email                       String?
+  driverType                  DriverType
+  payStructure                PayStructure
+  payRate                     Int // cent/mile VEYA yüzde*100 (örn: %88 → 8800)
+  cdlNumber                   String
+  cdlState                    String       @db.VarChar(2)
+  cdlExpiryDate               DateTime
+  medicalCardExpiry           DateTime
+  isActive                    Boolean      @default(true)
+  llcName                     String?
+  address                     String?
+  city                        String?
+  state                       String?      @db.VarChar(2)
+  zip                         String?
+  escrowBalance               Int          @default(0) // cent
+  exemptFromCompanyFee        Boolean      @default(false)
+  exemptFromCompanyCommission Boolean      @default(false)
+  notes                       String?
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
 
   company     Company      @relation(fields: [companyId], references: [id])
   user        User?        @relation(fields: [userId], references: [id])

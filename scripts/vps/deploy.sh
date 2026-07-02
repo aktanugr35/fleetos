@@ -11,7 +11,10 @@ fi
 docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env.prod up --build -d
 
 echo ""
+echo "Waiting for services to start..."
+sleep 15
+
 echo "Health checks:"
-curl -sf "http://127.0.0.1:3001/health" && echo " API OK" || echo " API FAILED"
-curl -sf -o /dev/null "http://127.0.0.1:3000" && echo " Web OK" || echo " Web FAILED"
+curl -sf "http://127.0.0.1:3001/health" && echo " API OK" || echo " API FAILED (try: docker logs fleetos-prod-api --tail 30)"
+curl -sf -o /dev/null "http://127.0.0.1:3000" && echo " Web OK" || echo " Web FAILED (try: docker logs fleetos-prod-web --tail 30)"
 echo "Configure Nginx: infrastructure/nginx/fleetos.conf.example"
