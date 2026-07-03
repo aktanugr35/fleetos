@@ -1,6 +1,7 @@
 import { Prisma, type Load } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
+import { deleteStoredFile } from '../../services/storage.service';
 import type { CreateLoadInput, UpdateLoadInput, LoadQueryInput } from './loads.schema';
 import { calculateLoadTotalCents, inferInitialLoadStatus } from './loads.logic';
 
@@ -287,12 +288,40 @@ export class LoadsService {
   }
 
   async delete(tenantId: string, loadId: string) {
-    const existing = await prisma.load.findFirst({ where: { id: loadId, companyId: tenantId } });
+    const existing = await prisma.load.findFirst({
+      where: { id: loadId, companyId: tenantId },
+      include: {
+        settlementLines: {
+          include: { settlement: { select: { status: true } } },
+        },
+        documents: { select: { id: true, fileUrl: true } },
+      },
+    });
     if (!existing) throw new AppError(404, 'LOAD_NOT_FOUND', 'Load not found');
-    if (!['PENDING', 'IN_TRANSIT'].includes(existing.status)) {
-      throw new AppError(400, 'CANNOT_DELETE', 'Can only delete loads in PENDING or IN_TRANSIT status');
+
+    const onLockedSettlement = existing.settlementLines.some(
+      (line) => line.settlement.status === 'FINALIZED' || line.settlement.status === 'PAID',
+    );
+    if (onLockedSettlement) {
+      throw new AppError(
+        409,
+        'LOAD_ON_SETTLEMENT',
+        'Cannot delete a load that appears on a finalized or paid settlement',
+      );
     }
-    await prisma.load.update({ where: { id: loadId }, data: { status: 'CANCELLED' } });
+
+    await prisma.$transaction(async (tx) => {
+      if (existing.settlementLines.length > 0) {
+        await tx.settlementLine.deleteMany({ where: { loadId } });
+      }
+
+      for (const document of existing.documents) {
+        await deleteStoredFile(document.fileUrl);
+        await tx.document.delete({ where: { id: document.id } });
+      }
+
+      await tx.load.delete({ where: { id: loadId } });
+    });
   }
 
   /**

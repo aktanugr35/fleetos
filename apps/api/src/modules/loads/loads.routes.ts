@@ -23,6 +23,11 @@ router.patch(
   auditMiddleware('LOAD_UPDATE', 'Load', (req) => req.params.id as string),
   loadsController.update
 );
-router.delete('/:id', rbacMiddleware(['SUPER_ADMIN', 'COMPANY_ADMIN']), loadsController.delete);
+router.delete(
+  '/:id',
+  rbacMiddleware([...LOAD_WRITE_ROLES]),
+  auditMiddleware('LOAD_DELETE', 'Load', (req) => req.params.id as string),
+  loadsController.delete,
+);
 
 export default router;

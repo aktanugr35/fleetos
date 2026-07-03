@@ -51,7 +51,7 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'equipment:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'loads:list': [...STAFF_ROLES, UserRole.DRIVER],
   'loads:dispatch': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.DISPATCHER],
-  'loads:cancel': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
+  'loads:cancel': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.DISPATCHER],
   'loads:stats': STAFF_ROLES,
   'compliance:view': STAFF_ROLES,
   'reports:view': STAFF_ROLES,

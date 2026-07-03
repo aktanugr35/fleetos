@@ -20,6 +20,8 @@ const sizeClasses = {
 
 export function Modal({ isOpen, onClose, title, description, children, size = 'md' }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const mouseDownInsidePanel = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,17 +42,32 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'm
 
   if (!isOpen) return null;
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    mouseDownInsidePanel.current = panelRef.current?.contains(e.target as Node) ?? false;
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    const startedInsidePanel = mouseDownInsidePanel.current;
+    mouseDownInsidePanel.current = false;
+    // Ignore clicks that began inside the panel (e.g. drag-selecting text in an input).
+    if (startedInsidePanel) return;
+    if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      onClose();
+    }
+  };
+
   return (
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-end justify-center sm:items-start sm:px-4 sm:pt-[10vh]"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
     >
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
 
       {/* Modal */}
-      <div className={`relative ${sizeClasses[size]} max-h-[92dvh] w-full rounded-t-3xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl animate-fade-in sm:rounded-xl`}>
+      <div ref={panelRef} className={`relative ${sizeClasses[size]} max-h-[92dvh] w-full rounded-t-3xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl animate-fade-in sm:rounded-xl`}>
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] px-4 py-4 sm:px-6">
           <div className="min-w-0">

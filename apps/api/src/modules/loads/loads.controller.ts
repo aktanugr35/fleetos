@@ -50,7 +50,7 @@ export class LoadsController {
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
       await loadsService.delete(req.tenantId!, req.params.id as string);
-      res.json(successResponse({ message: 'Load cancelled' }));
+      res.json(successResponse({ message: 'Load deleted' }));
     } catch (error) { next(error); }
   }
 

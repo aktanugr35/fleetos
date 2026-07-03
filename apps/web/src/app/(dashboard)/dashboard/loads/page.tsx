@@ -7,6 +7,7 @@ import { CreateLoadModal } from '@/components/forms/CreateLoadModal';
 import { Toast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
@@ -45,6 +46,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function LoadsPage() {
   const { can } = usePermission();
   const dispatchLoad = can('loads:dispatch');
+  const canDeleteLoad = can('loads:dispatch');
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -54,6 +56,8 @@ export default function LoadsPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [loadToDelete, setLoadToDelete] = useState<Load | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchLoads = async () => {
     setLoading(true);
@@ -76,6 +80,21 @@ export default function LoadsPage() {
   useEffect(() => {
     fetchLoads();
   }, [statusFilter, search]);
+
+  const handleConfirmDelete = async () => {
+    if (!loadToDelete) return;
+    setDeletingId(loadToDelete.id);
+    try {
+      await api.delete(`/loads/${loadToDelete.id}`);
+      setLoadToDelete(null);
+      fetchLoads();
+      setToast({ type: 'success', message: 'Load deleted successfully' });
+    } catch (err) {
+      setToast({ type: 'error', message: getApiErrorMessage(err, 'Failed to delete load') });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleStatusChange = async (loadId: string, status: string) => {
     setUpdatingStatusId(loadId);
@@ -156,7 +175,7 @@ export default function LoadsPage() {
                   <th>Miles</th>
                   <th>Revenue</th>
                   <th>Status</th>
-                  <th className="w-20 text-right">Actions</th>
+                  <th className="w-28 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,17 +211,30 @@ export default function LoadsPage() {
                       )}
                     </td>
                     <td data-actions="true" className="text-right">
-                      {dispatchLoad ? (
-                        <button
-                          type="button"
-                          onClick={() => setEditingLoadId(load.id)}
-                          className="text-xs text-gray-500 hover:text-blue-400 transition"
-                        >
-                          Edit
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-600">—</span>
-                      )}
+                      <div className="flex items-center justify-end gap-3">
+                        {dispatchLoad ? (
+                          <button
+                            type="button"
+                            onClick={() => setEditingLoadId(load.id)}
+                            className="text-xs text-gray-500 hover:text-blue-400 transition"
+                          >
+                            Edit
+                          </button>
+                        ) : null}
+                        {canDeleteLoad ? (
+                          <button
+                            type="button"
+                            disabled={deletingId === load.id}
+                            onClick={() => setLoadToDelete(load)}
+                            className="text-xs text-gray-500 hover:text-red-400 transition disabled:opacity-50"
+                          >
+                            {deletingId === load.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        ) : null}
+                        {!dispatchLoad && !canDeleteLoad ? (
+                          <span className="text-xs text-gray-600">—</span>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -227,6 +259,21 @@ export default function LoadsPage() {
           setEditingLoadId(null);
           setToast({ type: 'success', message: 'Load updated successfully!' });
         }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(loadToDelete)}
+        title="Delete load?"
+        message={
+          loadToDelete
+            ? `Permanently delete load ${loadToDelete.loadNumber}? This cannot be undone. Loads on finalized or paid settlements cannot be deleted.`
+            : ''
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        loading={Boolean(deletingId)}
+        onCancel={() => !deletingId && setLoadToDelete(null)}
+        onConfirm={() => void handleConfirmDelete()}
       />
 
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
