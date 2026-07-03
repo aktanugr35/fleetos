@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
 import { LoadStatus } from '@fleetos/shared-types';
-import { calculateLoadTotalCents, inferInitialLoadStatus } from './loads.logic';
+import { calculateLoadTotalCents, inferInitialLoadStatus, nextLoadSequenceNumber } from './loads.logic';
 
 describe('inferInitialLoadStatus', () => {
   it('returns explicit status when provided', () => {
@@ -36,6 +36,29 @@ describe('inferInitialLoadStatus', () => {
     assert.equal(
       inferInitialLoadStatus({ deliveryDate: future }),
       LoadStatus.PENDING,
+    );
+  });
+});
+
+describe('nextLoadSequenceNumber', () => {
+  it('returns 1 when no loads exist for the year', () => {
+    assert.equal(nextLoadSequenceNumber([], 2026), 1);
+  });
+
+  it('uses highest existing sequence, not row count', () => {
+    assert.equal(
+      nextLoadSequenceNumber(
+        ['VT-2026-00001', 'VT-2026-00009', 'VT-2026-00017'],
+        2026,
+      ),
+      18,
+    );
+  });
+
+  it('ignores other years and prefixes', () => {
+    assert.equal(
+      nextLoadSequenceNumber(['VT-2025-00099', 'LD-2026-00004', 'VT-2026-00003'], 2026),
+      4,
     );
   });
 });

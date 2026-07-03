@@ -15,6 +15,22 @@ export function inferInitialLoadStatus(
   return LoadStatus.PENDING;
 }
 
+/** Next sequence for VT-YYYY-NNNNN after existing load numbers (survives deletions). */
+export function nextLoadSequenceNumber(
+  loadNumbers: string[],
+  year: number,
+  prefix = 'VT',
+): number {
+  const head = `${prefix}-${year}-`;
+  let max = 0;
+  for (const loadNumber of loadNumbers) {
+    if (!loadNumber.startsWith(head)) continue;
+    const seq = parseInt(loadNumber.slice(head.length), 10);
+    if (!Number.isNaN(seq) && seq > max) max = seq;
+  }
+  return max + 1;
+}
+
 /** Calculate total revenue for a load in cents. */
 export function calculateLoadTotalCents(
   input: Pick<

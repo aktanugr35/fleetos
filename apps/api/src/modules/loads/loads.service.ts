@@ -3,7 +3,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { deleteStoredFile } from '../../services/storage.service';
 import type { CreateLoadInput, UpdateLoadInput, LoadQueryInput } from './loads.schema';
-import { calculateLoadTotalCents, inferInitialLoadStatus } from './loads.logic';
+import { calculateLoadTotalCents, inferInitialLoadStatus, nextLoadSequenceNumber } from './loads.logic';
 
 /** Load row with optional relations from list/detail queries. */
 type LoadForMap = Load & {
@@ -19,11 +19,21 @@ export class LoadsService {
    */
   private async generateLoadNumber(tenantId: string): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await prisma.load.count({
-      where: { companyId: tenantId },
+    const prefix = `VT-${year}-`;
+    const existing = await prisma.load.findMany({
+      where: { loadNumber: { startsWith: prefix } },
+      select: { loadNumber: true },
     });
-    const num = (count + 1).toString().padStart(5, '0');
-    return `VT-${year}-${num}`;
+    let seq = nextLoadSequenceNumber(
+      existing.map((row) => row.loadNumber),
+      year,
+    );
+    let loadNumber = `${prefix}${seq.toString().padStart(5, '0')}`;
+    while (await prisma.load.findUnique({ where: { loadNumber } })) {
+      seq += 1;
+      loadNumber = `${prefix}${seq.toString().padStart(5, '0')}`;
+    }
+    return loadNumber;
   }
 
   private calculateTotalCents(input: CreateLoadInput): number {
