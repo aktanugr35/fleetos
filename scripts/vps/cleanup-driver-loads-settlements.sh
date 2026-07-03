@@ -123,9 +123,13 @@ WHERE first_norm = '$FIRST_NORM'
 SQL
 )
 
-if [ "$MATCHED" != "1" ]; then
-  echo "Abort: expected exactly 1 driver match, got $MATCHED"
+if [ "$MATCHED" = "0" ]; then
+  echo "Abort: no driver matched"
   exit 1
+fi
+
+if [ "$MATCHED" != "1" ]; then
+  echo "Warning: $MATCHED drivers matched (e.g. duplicates). All will be cleaned."
 fi
 
 echo ""
