@@ -1,21 +1,11 @@
 import { prisma } from '../../config/database';
 import type { LoadStatus } from '@prisma/client';
-
-function grossLineCents(load: {
-  rateTotal: number;
-  detentionPay: number | null;
-  lumperFee: number | null;
-  fuelSurcharge: number | null;
-  tonuAmount: number | null;
-}): number {
-  return (
-    load.rateTotal +
-    (load.detentionPay ?? 0) +
-    (load.lumperFee ?? 0) +
-    (load.fuelSurcharge ?? 0) +
-    (load.tonuAmount ?? 0)
-  );
-}
+import {
+  currentMonthDeliveredGrossCents,
+  grossLineCents,
+  monthLabelFromKey,
+  sumDeliveredGrossByDeliveryMonth,
+} from './reports.revenue';
 
 function milesForLoad(load: {
   totalMiles: number | null;
@@ -78,7 +68,8 @@ export interface OperationalAnalytics {
 export class ReportsService {
   async getDashboardSummary(tenantId: string) {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     const totalTrucks = await prisma.truck.count({ where: { companyId: tenantId, isActive: true } });
     const totalDrivers = await prisma.driver.count({ where: { companyId: tenantId, isActive: true } });
@@ -89,19 +80,27 @@ export class ReportsService {
       _count: { id: true },
     });
 
-    const thisMonthLoads = await prisma.load.aggregate({
+    const deliveredLoads = await prisma.load.findMany({
       where: {
         companyId: tenantId,
-        createdAt: { gte: firstDayOfMonth },
         status: 'DELIVERED',
+        OR: [
+          { actualDeliveryDate: { gte: monthStart, lt: nextMonthStart } },
+          { deliveryDate: { gte: monthStart, lt: nextMonthStart } },
+        ],
       },
-      _sum: { rateTotal: true, detentionPay: true, lumperFee: true },
+      select: {
+        rateTotal: true,
+        detentionPay: true,
+        lumperFee: true,
+        fuelSurcharge: true,
+        tonuAmount: true,
+        deliveryDate: true,
+        actualDeliveryDate: true,
+      },
     });
 
-    const grossRevenue =
-      (thisMonthLoads._sum.rateTotal || 0) +
-      (thisMonthLoads._sum.detentionPay || 0) +
-      (thisMonthLoads._sum.lumperFee || 0);
+    const monthlyRevenue = currentMonthDeliveredGrossCents(deliveredLoads, now);
 
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -139,7 +138,7 @@ export class ReportsService {
         complianceWarnings: expiringDrivers + expiringTrucks,
       },
       financial: {
-        monthlyRevenue: grossRevenue,
+        monthlyRevenue,
       },
     };
   }
@@ -154,25 +153,25 @@ export class ReportsService {
         status: 'DELIVERED',
         OR: [{ deliveryDate: { gte: startDate } }, { actualDeliveryDate: { gte: startDate } }],
       },
-      select: { deliveryDate: true, actualDeliveryDate: true, rateTotal: true },
+      select: {
+        deliveryDate: true,
+        actualDeliveryDate: true,
+        rateTotal: true,
+        detentionPay: true,
+        lumperFee: true,
+        fuelSurcharge: true,
+        tonuAmount: true,
+      },
     });
 
-    const grouped = new Map<string, number>();
-    for (const load of loads) {
-      const d = load.actualDeliveryDate ?? load.deliveryDate;
-      if (!d || d < startDate) continue;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      grouped.set(key, (grouped.get(key) || 0) + load.rateTotal);
-    }
+    const grouped = sumDeliveredGrossByDeliveryMonth(loads, { from: startDate });
 
     return Array.from(grouped.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, revenue]) => {
-        const [y, m] = key.split('-').map(Number);
-        const date = new Date(y, m - 1, 1);
-        const month = date.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-        return { month, revenue };
-      });
+      .map(([key, revenue]) => ({
+        month: monthLabelFromKey(key),
+        revenue,
+      }));
   }
 
   async getBrokerSummary(tenantId: string, limit = 12) {
