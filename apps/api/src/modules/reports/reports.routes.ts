@@ -11,7 +11,6 @@ router.use(authMiddleware, tenantMiddleware);
 
 router.get('/dashboard', rbacMiddleware(STAFF_ROLES), reportsController.getDashboard);
 router.get('/revenue-chart', rbacMiddleware(STAFF_ROLES), reportsController.getRevenueChart);
-router.get('/state-heatmap', rbacMiddleware(STAFF_ROLES), reportsController.getStateHeatmap);
 router.get('/brokers', rbacMiddleware(STAFF_ROLES), reportsController.getBrokerSummary);
 router.get('/operational-analytics', rbacMiddleware(STAFF_ROLES), reportsController.getOperationalAnalytics);
 

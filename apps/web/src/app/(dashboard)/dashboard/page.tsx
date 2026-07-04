@@ -15,16 +15,11 @@ import {
   IconRevenue,
   IconTrucks,
 } from '@/components/dashboard/DashboardIcons';
-import { StateHeatMap } from '@/components/dashboard/StateHeatMap';
+import { RevenueTrendChart } from '@/components/dashboard/RevenueTrendChart';
 import { formatCurrency } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
-import type {
-  DashboardLoadRow,
-  DashboardSummary,
-  HeatmapGranularity,
-  StateHeatmapResponse,
-} from '@/lib/dashboard-types';
+import type { DashboardLoadRow, DashboardSummary, RevenueChartPoint } from '@/lib/dashboard-types';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 
@@ -133,10 +128,8 @@ export default function DashboardPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [compliance, setCompliance] = useState<ComplianceSummary>({ expired: 0, warning: 0, valid: 0 });
-  const [heatmap, setHeatmap] = useState<StateHeatmapResponse | null>(null);
+  const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
   const [recentLoads, setRecentLoads] = useState<DashboardLoadRow[]>([]);
-  const [heatmapGranularity, setHeatmapGranularity] = useState<HeatmapGranularity>('month');
-  const [heatmapPeriod, setHeatmapPeriod] = useState<string>('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const todayLabel = useMemo(
@@ -161,17 +154,14 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setFetchError(null);
-      const heatmapParams = new URLSearchParams({ granularity: heatmapGranularity });
-      if (heatmapPeriod) heatmapParams.set('period', heatmapPeriod);
-
-      const [summaryRes, heatmapRes, loadsRes, complianceRes] = await Promise.all([
+      const [summaryRes, chartRes, loadsRes, complianceRes] = await Promise.all([
         api.get('/reports/dashboard'),
-        api.get(`/reports/state-heatmap?${heatmapParams.toString()}`),
+        api.get('/reports/revenue-chart?months=6'),
         api.get('/loads?limit=5'),
         api.get('/compliance/overview'),
       ]);
       setSummary(summaryRes.data.data);
-      setHeatmap(heatmapRes.data.data);
+      setChartData(chartRes.data.data);
       setRecentLoads(loadsRes.data.data || []);
       const s = complianceRes.data.data.summary;
       setCompliance({ expired: s.expired, warning: s.warning, valid: s.valid });
@@ -189,7 +179,7 @@ export default function DashboardPage() {
     if (!userRole) return;
     if (userRole === 'DRIVER') return;
     void fetchDashboardData();
-  }, [userRole, heatmapGranularity, heatmapPeriod]);
+  }, [userRole]);
 
   if (userRole == null || loading) {
     return <DashboardSkeleton />;
@@ -283,31 +273,15 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="card lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="dashboard-section-title">Pickup state heat map</h3>
-            <span className="text-xs text-gray-500">Composite: loads + revenue + wait</span>
-          </div>
-          <StateHeatMap
-            data={heatmap}
-            granularity={heatmapGranularity}
-            onGranularityChange={(value) => {
-              setHeatmapGranularity(value);
-              setHeatmapPeriod('');
-            }}
-            onPeriodChange={setHeatmapPeriod}
-          />
-        </div>
-
-        <div className="card dashboard-compliance-compact">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h3 className="dashboard-section-title">Compliance</h3>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="card">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h3 className="dashboard-section-title">Compliance status</h3>
             <Link href="/dashboard/compliance" className="text-xs font-medium text-blue-400 hover:text-blue-300 transition">
               View all
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[
               { label: 'Expired', count: compliance.expired, color: 'var(--status-red)', width: complianceTotal ? (compliance.expired / complianceTotal) * 100 : 0 },
               { label: 'Warning', count: compliance.warning, color: 'var(--status-yellow)', width: complianceTotal ? (compliance.warning / complianceTotal) * 100 : 0 },
@@ -325,10 +299,18 @@ export default function DashboardPage() {
             ))}
           </div>
           {compliance.expired > 0 ? (
-            <p className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
-              {compliance.expired} item{compliance.expired === 1 ? '' : 's'} need immediate action.
+            <p className="mt-4 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+              {compliance.expired} item{compliance.expired === 1 ? '' : 's'} require immediate attention.
             </p>
           ) : null}
+        </div>
+
+        <div className="card">
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <h3 className="dashboard-section-title">Revenue trend</h3>
+            <span className="text-xs text-gray-500">Last 6 months</span>
+          </div>
+          <RevenueTrendChart data={chartData} />
         </div>
       </div>
 
