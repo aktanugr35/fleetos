@@ -369,6 +369,64 @@ html[data-theme="light"] .dashboard-hero {
   transform-origin: bottom;
 }
 
+.revenue-trend-chart-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--fleetos-primary) 4%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.revenue-trend-grid-line {
+  stroke: color-mix(in srgb, var(--border-color) 85%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.revenue-trend-axis-line {
+  stroke: var(--border-color);
+  stroke-width: 1;
+}
+
+.revenue-trend-axis-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.revenue-trend-month-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.revenue-trend-month-label.is-active {
+  fill: var(--fleetos-primary);
+  font-weight: 700;
+}
+
+.revenue-trend-dot {
+  fill: var(--bg-card);
+  stroke: var(--fleetos-primary);
+  stroke-width: 2;
+  transition: r 0.15s ease;
+}
+
+.revenue-trend-dot.is-active {
+  fill: var(--fleetos-primary);
+  stroke: #93c5fd;
+  stroke-width: 2;
+}
+
+.revenue-trend-bar {
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.revenue-trend-bar.is-active {
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.45));
+}
+
+.revenue-trend-month {
+  cursor: pointer;
+}
+
 .dashboard-compliance-bar {
   height: 6px;
   border-radius: 999px;

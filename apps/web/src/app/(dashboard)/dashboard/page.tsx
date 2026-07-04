@@ -15,6 +15,7 @@ import {
   IconRevenue,
   IconTrucks,
 } from '@/components/dashboard/DashboardIcons';
+import { RevenueTrendChart } from '@/components/dashboard/RevenueTrendChart';
 import { formatCurrency } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
@@ -200,7 +201,6 @@ export default function DashboardPage() {
 
   const loadsByStatus = summary?.operational?.loads || {};
   const activeLoadsCount = (loadsByStatus.PENDING || 0) + (loadsByStatus.IN_TRANSIT || 0);
-  const maxRevenue = Math.max(...(chartData.length ? chartData.map((w) => w.revenue) : [1]));
   const complianceTotal = compliance.expired + compliance.warning + compliance.valid;
   const greetingName = user?.firstName?.trim() || 'there';
 
@@ -306,33 +306,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="mb-1 flex items-center justify-between gap-3">
             <h3 className="dashboard-section-title">Revenue trend</h3>
             <span className="text-xs text-gray-500">Last 6 months</span>
           </div>
-          {chartData.length === 0 ? (
-            <EmptyState title="No revenue data yet" description="Delivered loads will appear here." className="py-8" />
-          ) : (
-            <div className="flex h-44 items-end gap-2 border-b border-[var(--border-color)] pb-1">
-              {chartData.map((data, i) => {
-                const height = (data.revenue / maxRevenue) * 100;
-                const isLast = i === chartData.length - 1;
-                return (
-                  <div key={data.month} className="group/bar flex flex-1 flex-col items-center gap-2">
-                    <div className="text-[10px] font-medium text-gray-400 opacity-0 transition group-hover/bar:opacity-100">
-                      {formatCurrency(data.revenue)}
-                    </div>
-                    <div
-                      className={`dashboard-chart-bar w-full ${isLast ? '' : 'is-muted'}`}
-                      style={{ height: `${Math.max(4, height)}%` }}
-                      title={formatCurrency(data.revenue)}
-                    />
-                    <div className="max-w-full truncate px-0.5 text-[10px] font-medium text-gray-500">{data.month}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <RevenueTrendChart data={chartData} />
         </div>
       </div>
 
