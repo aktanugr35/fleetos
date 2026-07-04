@@ -26,3 +26,33 @@ export interface DashboardLoadRow {
   totalRevenueCents?: number;
   driver?: { firstName: string; lastName: string } | null;
 }
+
+export type HeatBucket = 'hot' | 'warm' | 'cool' | 'cold';
+export type HeatmapGranularity = 'month' | 'week';
+
+export interface StateHeatRow {
+  stateCode: string;
+  loadCount: number;
+  revenueCents: number;
+  avgWaitDays: number;
+  score: number;
+  bucket: HeatBucket;
+}
+
+export interface StateHeatmapResponse {
+  granularity: HeatmapGranularity;
+  selectedPeriod: {
+    key: string;
+    label: string;
+    start: string;
+    endExclusive: string;
+  };
+  availablePeriods: Array<{ key: string; label: string }>;
+  summary: {
+    totalLoads: number;
+    totalRevenueCents: number;
+    statesWithLoads: number;
+    averageWaitDays: number;
+  };
+  states: StateHeatRow[];
+}

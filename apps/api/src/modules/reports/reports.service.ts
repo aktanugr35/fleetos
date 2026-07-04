@@ -1,6 +1,14 @@
 import { prisma } from '../../config/database';
 import type { LoadStatus } from '@prisma/client';
 import {
+  buildHeatmapAvailablePeriods,
+  parsePickupStateCode,
+  resolveHeatmapPeriod,
+  scoreHeatmapRows,
+  type HeatmapMetricRow,
+  type HeatmapScoredRow,
+} from './reports.heatmap';
+import {
   currentMonthDeliveredGrossCents,
   grossLineCents,
   monthLabelFromKey,
@@ -63,6 +71,24 @@ export interface OperationalAnalytics {
     loadedMiles: number;
     deadheadMiles: number;
   }[];
+}
+
+export interface StateHeatmapResult {
+  granularity: 'month' | 'week';
+  selectedPeriod: {
+    key: string;
+    label: string;
+    start: string;
+    endExclusive: string;
+  };
+  availablePeriods: Array<{ key: string; label: string }>;
+  summary: {
+    totalLoads: number;
+    totalRevenueCents: number;
+    statesWithLoads: number;
+    averageWaitDays: number;
+  };
+  states: HeatmapScoredRow[];
 }
 
 export class ReportsService {
@@ -189,6 +215,94 @@ export class ReportsService {
       loadCount: r._count.id,
       revenueCents: r._sum.rateTotal || 0,
     }));
+  }
+
+  async getStateHeatmap(
+    tenantId: string,
+    options?: { granularity?: 'month' | 'week'; periodKey?: string }
+  ): Promise<StateHeatmapResult> {
+    const granularity = options?.granularity ?? 'month';
+    const selectedPeriod = resolveHeatmapPeriod(granularity, options?.periodKey);
+
+    const loads = await prisma.load.findMany({
+      where: {
+        companyId: tenantId,
+        pickupDate: {
+          gte: selectedPeriod.start,
+          lt: selectedPeriod.endExclusive,
+        },
+      },
+      select: {
+        pickupLocation: true,
+        pickupDate: true,
+        deliveryDate: true,
+        actualDeliveryDate: true,
+        rateTotal: true,
+        detentionPay: true,
+        lumperFee: true,
+        fuelSurcharge: true,
+        tonuAmount: true,
+      },
+    });
+
+    const byState = new Map<
+      string,
+      { loadCount: number; revenueCents: number; waitDaysSum: number; waitSamples: number }
+    >();
+
+    for (const load of loads) {
+      const stateCode = parsePickupStateCode(load.pickupLocation);
+      if (!stateCode) continue;
+
+      let current = byState.get(stateCode);
+      if (!current) {
+        current = { loadCount: 0, revenueCents: 0, waitDaysSum: 0, waitSamples: 0 };
+        byState.set(stateCode, current);
+      }
+
+      current.loadCount += 1;
+      current.revenueCents += grossLineCents(load);
+
+      const deliveredAt = load.actualDeliveryDate ?? load.deliveryDate;
+      if (deliveredAt) {
+        const waitDays = Math.max(
+          0,
+          (deliveredAt.getTime() - load.pickupDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        current.waitDaysSum += waitDays;
+        current.waitSamples += 1;
+      }
+    }
+
+    const rows: HeatmapMetricRow[] = Array.from(byState.entries()).map(([stateCode, agg]) => ({
+      stateCode,
+      loadCount: agg.loadCount,
+      revenueCents: agg.revenueCents,
+      avgWaitDays: agg.waitSamples > 0 ? Number((agg.waitDaysSum / agg.waitSamples).toFixed(2)) : 0,
+    }));
+
+    const scored = scoreHeatmapRows(rows).sort((a, b) => b.score - a.score || b.loadCount - a.loadCount);
+    const totalRevenueCents = rows.reduce((sum, row) => sum + row.revenueCents, 0);
+    const totalLoads = rows.reduce((sum, row) => sum + row.loadCount, 0);
+    const weightedWait = rows.reduce((sum, row) => sum + row.avgWaitDays * row.loadCount, 0);
+
+    return {
+      granularity,
+      selectedPeriod: {
+        key: selectedPeriod.key,
+        label: selectedPeriod.label,
+        start: selectedPeriod.start.toISOString(),
+        endExclusive: selectedPeriod.endExclusive.toISOString(),
+      },
+      availablePeriods: buildHeatmapAvailablePeriods(granularity, 12),
+      summary: {
+        totalLoads,
+        totalRevenueCents,
+        statesWithLoads: rows.length,
+        averageWaitDays: totalLoads > 0 ? Number((weightedWait / totalLoads).toFixed(2)) : 0,
+      },
+      states: scored,
+    };
   }
 
   /**

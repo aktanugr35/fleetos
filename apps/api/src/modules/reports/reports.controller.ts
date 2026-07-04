@@ -23,6 +23,17 @@ export class ReportsController {
     }
   }
 
+  async getStateHeatmap(req: Request, res: Response, next: NextFunction) {
+    try {
+      const granularity = req.query.granularity === 'week' ? 'week' : 'month';
+      const periodKey = typeof req.query.period === 'string' ? req.query.period : undefined;
+      const data = await reportsService.getStateHeatmap(req.tenantId!, { granularity, periodKey });
+      res.json(successResponse(data));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getBrokerSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 12;
