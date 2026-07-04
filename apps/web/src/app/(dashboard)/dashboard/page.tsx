@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -8,6 +8,13 @@ import { Toast } from '@/components/ui/Toast';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock, LoadingCard } from '@/components/ui/LoadingBlock';
+import {
+  IconChevronRight,
+  IconDrivers,
+  IconLoads,
+  IconRevenue,
+  IconTrucks,
+} from '@/components/dashboard/DashboardIcons';
 import { formatCurrency } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
@@ -36,9 +43,85 @@ interface ComplianceSummary {
   valid: number;
 }
 
+interface StatCardProps {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  accentColor: string;
+}
+
+function StatCard({ label, value, icon, accentColor }: StatCardProps) {
+  return (
+    <div
+      className="card dashboard-stat-card"
+      style={{ '--stat-accent-color': accentColor, '--stat-accent': accentColor } as React.CSSProperties}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="dashboard-stat-icon">{icon}</div>
+      </div>
+      <div className="mt-4 text-2xl font-bold tracking-tight text-gray-100">{value}</div>
+      <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="dashboard-page space-y-6">
+      <PageHeader title="Dashboard" description="Overview of your fleet operations" />
+      <LoadingCard className="h-24" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <LoadingCard key={i} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <LoadingCard className="h-56" />
+        <LoadingCard className="h-56" />
+      </div>
+      <LoadingBlock rows={6} />
+    </div>
+  );
+}
+
+const QUICK_LINKS = [
+  {
+    href: '/dashboard/loads',
+    label: 'Create or manage loads',
+    description: 'Dispatch and track freight',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/settlements',
+    label: 'Generate settlement PDF',
+    description: 'Weekly driver statements',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/compliance',
+    label: 'Review compliance',
+    description: 'DOT, insurance, registrations',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+] as const;
+
 export default function DashboardPage() {
   const router = useRouter();
-  const userRole = useAuthStore((s) => s.user?.role);
+  const user = useAuthStore((s) => s.user);
+  const userRole = user?.role;
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -47,6 +130,17 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
   const [recentLoads, setRecentLoads] = useState<DashboardLoadRow[]>([]);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const todayLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(new Date()),
+    [],
+  );
 
   useEffect(() => {
     if (userRole === 'DRIVER') {
@@ -86,45 +180,17 @@ export default function DashboardPage() {
     void fetchDashboardData();
   }, [userRole]);
 
-  if (userRole == null) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Dashboard" description="Overview of your fleet operations" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <LoadingCard key={i} />
-          ))}
-        </div>
-        <LoadingBlock rows={6} />
-      </div>
-    );
+  if (userRole == null || loading) {
+    return <DashboardSkeleton />;
   }
 
   if (userRole === 'DRIVER') {
     return null;
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <PageHeader title="Dashboard" description="Overview of your fleet operations" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <LoadingCard key={i} />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <LoadingCard className="h-48" />
-          <LoadingCard className="h-48" />
-        </div>
-        <LoadingBlock rows={6} />
-      </div>
-    );
-  }
-
   if (fetchError && !summary) {
     return (
-      <div>
+      <div className="dashboard-page">
         <PageHeader title="Dashboard" description="Overview of your fleet operations" />
         <ErrorState message={fetchError} onRetry={() => void fetchDashboardData()} />
         {toast ? <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} /> : null}
@@ -135,78 +201,133 @@ export default function DashboardPage() {
   const loadsByStatus = summary?.operational?.loads || {};
   const activeLoadsCount = (loadsByStatus.PENDING || 0) + (loadsByStatus.IN_TRANSIT || 0);
   const maxRevenue = Math.max(...(chartData.length ? chartData.map((w) => w.revenue) : [1]));
+  const complianceTotal = compliance.expired + compliance.warning + compliance.valid;
+  const greetingName = user?.firstName?.trim() || 'there';
 
-  const stats = [
-    { label: 'Monthly Revenue', value: summary?.financial?.monthlyRevenue || 0, format: 'currency' as const, icon: '💰' },
-    { label: 'Active Loads', value: activeLoadsCount, format: 'number' as const, icon: '📦' },
-    { label: 'Active Drivers', value: summary?.operational?.activeDrivers || 0, format: 'number' as const, icon: '👤' },
-    { label: 'Active Trucks', value: summary?.operational?.activeTrucks || 0, format: 'number' as const, icon: '🚛' },
+  const pipeline = [
+    { key: 'PENDING', label: 'Pending', count: loadsByStatus.PENDING || 0, color: 'var(--status-yellow)' },
+    { key: 'IN_TRANSIT', label: 'In transit', count: loadsByStatus.IN_TRANSIT || 0, color: 'var(--fleetos-primary)' },
+    { key: 'DELIVERED', label: 'Delivered', count: loadsByStatus.DELIVERED || 0, color: 'var(--status-green)' },
   ];
 
   return (
-    <div>
-      <PageHeader title="Dashboard" description="Overview of your fleet operations" />
+    <div className="dashboard-page space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your fleet operations"
+        actions={
+          <Link href="/dashboard/loads" className="btn btn-primary text-sm">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Load
+          </Link>
+        }
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map((stat, i) => (
-          <div key={i} className="card group">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-2xl">{stat.icon}</span>
+      <div className="dashboard-hero flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-blue-400/90">Fleet overview</p>
+          <h2 className="mt-1 text-lg font-semibold text-gray-100 sm:text-xl">
+            Welcome back, {greetingName}
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">{todayLabel}</p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          {pipeline.map((item) => (
+            <div key={item.key} className="dashboard-pipeline-pill min-w-[6.5rem]">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</span>
+              <span className="text-lg font-bold text-gray-100" style={{ color: item.count > 0 ? item.color : undefined }}>
+                {item.count}
+              </span>
             </div>
-            <div className="text-2xl font-bold text-gray-100">
-              {stat.format === 'currency' ? formatCurrency(stat.value) : stat.value}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">{stat.label}</div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Monthly revenue"
+          value={formatCurrency(summary?.financial?.monthlyRevenue || 0)}
+          icon={<IconRevenue />}
+          accentColor="var(--fleetos-primary)"
+        />
+        <StatCard
+          label="Active loads"
+          value={String(activeLoadsCount)}
+          icon={<IconLoads />}
+          accentColor="var(--fleetos-accent)"
+        />
+        <StatCard
+          label="Active drivers"
+          value={String(summary?.operational?.activeDrivers || 0)}
+          icon={<IconDrivers />}
+          accentColor="var(--fleetos-secondary)"
+        />
+        <StatCard
+          label="Active trucks"
+          value={String(summary?.operational?.activeTrucks || 0)}
+          icon={<IconTrucks />}
+          accentColor="#38bdf8"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="card">
-          <h3 className="font-semibold text-gray-200 mb-4">Compliance Status</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center p-4 rounded-lg bg-red-500/5 border border-red-500/10">
-              <div className="text-3xl font-bold text-red-400">{compliance.expired}</div>
-              <div className="text-xs text-gray-500 mt-1">Expired</div>
-              {compliance.expired > 0 && <div className="w-2 h-2 rounded-full bg-red-500 mx-auto mt-2 animate-pulse" />}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-yellow-500/5 border border-yellow-500/10">
-              <div className="text-3xl font-bold text-yellow-400">{compliance.warning}</div>
-              <div className="text-xs text-gray-500 mt-1">Warning</div>
-              <div className="w-2 h-2 rounded-full bg-yellow-500 mx-auto mt-2" />
-            </div>
-            <div className="text-center p-4 rounded-lg bg-green-500/5 border border-green-500/10">
-              <div className="text-3xl font-bold text-green-400">{compliance.valid}</div>
-              <div className="text-xs text-gray-500 mt-1">Valid</div>
-              <div className="w-2 h-2 rounded-full bg-green-500 mx-auto mt-2" />
-            </div>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h3 className="dashboard-section-title">Compliance status</h3>
+            <Link href="/dashboard/compliance" className="text-xs font-medium text-blue-400 hover:text-blue-300 transition">
+              View all
+            </Link>
           </div>
-          <Link href="/dashboard/compliance" className="btn btn-secondary w-full mt-4 text-xs block text-center">
-            View All Compliance Items →
-          </Link>
+          <div className="space-y-4">
+            {[
+              { label: 'Expired', count: compliance.expired, color: 'var(--status-red)', width: complianceTotal ? (compliance.expired / complianceTotal) * 100 : 0 },
+              { label: 'Warning', count: compliance.warning, color: 'var(--status-yellow)', width: complianceTotal ? (compliance.warning / complianceTotal) * 100 : 0 },
+              { label: 'Valid', count: compliance.valid, color: 'var(--status-green)', width: complianceTotal ? (compliance.valid / complianceTotal) * 100 : 0 },
+            ].map((row) => (
+              <div key={row.label}>
+                <div className="mb-1.5 flex items-center justify-between text-sm">
+                  <span className="text-gray-400">{row.label}</span>
+                  <span className="font-semibold text-gray-200">{row.count}</span>
+                </div>
+                <div className="dashboard-compliance-bar">
+                  <span style={{ width: `${row.width}%`, background: row.color }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {compliance.expired > 0 ? (
+            <p className="mt-4 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">
+              {compliance.expired} item{compliance.expired === 1 ? '' : 's'} require immediate attention.
+            </p>
+          ) : null}
         </div>
 
         <div className="card">
-          <h3 className="font-semibold text-gray-200 mb-4">Monthly Revenue</h3>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h3 className="dashboard-section-title">Revenue trend</h3>
+            <span className="text-xs text-gray-500">Last 6 months</span>
+          </div>
           {chartData.length === 0 ? (
             <EmptyState title="No revenue data yet" description="Delivered loads will appear here." className="py-8" />
           ) : (
-            <div className="flex items-end gap-2 h-40">
+            <div className="flex h-44 items-end gap-2 border-b border-[var(--border-color)] pb-1">
               {chartData.map((data, i) => {
                 const height = (data.revenue / maxRevenue) * 100;
                 const isLast = i === chartData.length - 1;
                 return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1 group/bar">
-                    <div className="text-[10px] text-gray-500 opacity-0 group-hover/bar:opacity-100 transition">
+                  <div key={data.month} className="group/bar flex flex-1 flex-col items-center gap-2">
+                    <div className="text-[10px] font-medium text-gray-400 opacity-0 transition group-hover/bar:opacity-100">
                       {formatCurrency(data.revenue)}
                     </div>
                     <div
-                      className={`w-full rounded-t-sm transition-all duration-300 group-hover/bar:opacity-80 ${
-                        isLast ? 'bg-gradient-to-t from-blue-600 to-blue-400' : 'bg-gradient-to-t from-blue-600/40 to-blue-400/40'
-                      }`}
-                      style={{ height: `${Math.max(2, height)}%` }}
+                      className={`dashboard-chart-bar w-full ${isLast ? '' : 'is-muted'}`}
+                      style={{ height: `${Math.max(4, height)}%` }}
+                      title={formatCurrency(data.revenue)}
                     />
-                    <div className="text-[10px] text-gray-600 truncate max-w-full px-1">{data.month}</div>
+                    <div className="max-w-full truncate px-0.5 text-[10px] font-medium text-gray-500">{data.month}</div>
                   </div>
                 );
               })}
@@ -215,11 +336,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-200">Recent Loads</h3>
-            <Link href="/dashboard/loads" className="text-xs text-blue-400 hover:text-blue-300 transition">View all →</Link>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="card lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="dashboard-section-title">Recent loads</h3>
+            <Link href="/dashboard/loads" className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition">
+              View all
+              <IconChevronRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
           {recentLoads.length === 0 ? (
             <EmptyState title="No recent loads" description="Create a load to see it here." />
@@ -237,14 +361,18 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {recentLoads.map((load) => (
-                    <tr key={load.id}>
+                    <tr key={load.id} className="hover:bg-white/[0.02]">
                       <td data-primary="true" className="font-medium text-blue-400">{load.loadNumber}</td>
-                      <td data-label="Driver">{load.driver ? `${load.driver.firstName} ${load.driver.lastName}` : '—'}</td>
-                      <td data-label="Route" className="text-gray-500 truncate max-w-[200px]">
+                      <td data-label="Driver" className="text-gray-300">
+                        {load.driver ? `${load.driver.firstName} ${load.driver.lastName}` : '—'}
+                      </td>
+                      <td data-label="Route" className="max-w-[200px] truncate text-gray-500">
                         {load.pickupCity}, {load.pickupState} → {load.deliveryCity}, {load.deliveryState}
                       </td>
                       <td data-label="Status"><StatusBadge status={load.status} /></td>
-                      <td data-label="Amount" className="text-right font-medium">{formatCurrency(load.totalRevenueCents ?? 0)}</td>
+                      <td data-label="Amount" className="text-right font-semibold text-gray-200">
+                        {formatCurrency(load.totalRevenueCents ?? 0)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -254,11 +382,18 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h3 className="font-semibold text-gray-200 mb-4">Quick Links</h3>
-          <div className="space-y-2 text-sm">
-            <Link href="/dashboard/loads" className="block text-blue-400 hover:text-blue-300">Create or manage loads</Link>
-            <Link href="/dashboard/settlements" className="block text-blue-400 hover:text-blue-300">Generate settlement PDF</Link>
-            <Link href="/dashboard/compliance" className="block text-blue-400 hover:text-blue-300">Review compliance</Link>
+          <h3 className="dashboard-section-title mb-4">Quick actions</h3>
+          <div className="space-y-2">
+            {QUICK_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="dashboard-quick-link group">
+                <span className="dashboard-quick-link-icon">{link.icon}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-gray-200">{link.label}</span>
+                  <span className="block text-xs text-gray-500">{link.description}</span>
+                </span>
+                <IconChevronRight className="w-4 h-4 shrink-0 text-gray-600 transition group-hover:text-blue-400" />
+              </Link>
+            ))}
           </div>
         </div>
       </div>

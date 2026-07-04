@@ -241,6 +241,148 @@ textarea {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
+/* ─── Dashboard ──────────────────────────────────────── */
+.dashboard-page {
+  position: relative;
+}
+
+.dashboard-hero {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--fleetos-primary) 12%, var(--bg-card)),
+    var(--bg-card)
+  );
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+}
+
+html[data-theme="light"] .dashboard-hero {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), var(--bg-card));
+}
+
+.dashboard-stat-card {
+  position: relative;
+  overflow: hidden;
+  padding: 1.25rem 1.5rem;
+}
+
+.dashboard-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--stat-accent, linear-gradient(90deg, var(--fleetos-primary), var(--fleetos-accent)));
+  opacity: 0.85;
+}
+
+.dashboard-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--stat-accent-color, var(--fleetos-primary)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stat-accent-color, var(--fleetos-primary)) 22%, transparent);
+  color: var(--stat-accent-color, var(--fleetos-primary));
+}
+
+.dashboard-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.dashboard-section-title::before {
+  content: '';
+  width: 3px;
+  height: 1rem;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--fleetos-primary), var(--fleetos-accent));
+}
+
+.dashboard-pipeline-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  min-width: 0;
+}
+
+.dashboard-quick-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-quick-link:hover {
+  border-color: color-mix(in srgb, var(--fleetos-primary) 40%, var(--border-color));
+  background: color-mix(in srgb, var(--fleetos-primary) 6%, var(--bg-secondary));
+  transform: translateX(2px);
+}
+
+.dashboard-quick-link-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--fleetos-primary) 12%, transparent);
+  color: var(--fleetos-primary);
+}
+
+.dashboard-chart-bar {
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fleetos-primary) 70%, white), var(--fleetos-primary));
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-chart-bar.is-muted {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fleetos-primary) 35%, transparent),
+    color-mix(in srgb, var(--fleetos-primary) 18%, transparent)
+  );
+}
+
+.dashboard-chart-bar:hover {
+  opacity: 0.92;
+  transform: scaleY(1.02);
+  transform-origin: bottom;
+}
+
+.dashboard-compliance-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.dashboard-compliance-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
 /* ─── Status Badge Styles ────────────────────────────── */
 .badge-green {
   background: rgba(34, 197, 94, 0.15);
