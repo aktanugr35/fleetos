@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import { monthKeyFromChartPoint } from '@/lib/revenue-chart';
 import type { RevenueChartPoint } from '@/lib/dashboard-types';
 
 interface MonthPoint {
@@ -14,9 +15,8 @@ interface MonthPoint {
 function buildMonthlySeries(points: RevenueChartPoint[], monthCount = 6): MonthPoint[] {
   const revenueByKey = new Map<string, number>();
   for (const point of points) {
-    const parsed = new Date(point.month);
-    if (Number.isNaN(parsed.getTime())) continue;
-    const key = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
+    const key = monthKeyFromChartPoint(point.month);
+    if (!key) continue;
     revenueByKey.set(key, point.revenue);
   }
 
@@ -48,6 +48,7 @@ interface RevenueTrendChartProps {
 }
 
 export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartProps) {
+  const chartId = useId().replace(/:/g, '');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const series = useMemo(() => buildMonthlySeries(data, monthCount), [data, monthCount]);
@@ -62,7 +63,10 @@ export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartPro
     [series],
   );
 
-  const hasDeliveredRevenue = data.length > 0 && totalRevenue > 0;
+  const hasDeliveredRevenue = useMemo(
+    () => data.some((point) => point.revenue > 0),
+    [data],
+  );
 
   const yTicks = useMemo(() => {
     const steps = 4;
@@ -106,27 +110,32 @@ export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartPro
             <p className="text-sm font-semibold text-blue-400">{formatCurrency(active.revenue)}</p>
           </div>
         ) : (
-          <p className="text-xs text-gray-500">Hover a month for details</p>
+          <>
+            <p className="hidden text-xs text-gray-500 sm:block">Hover a month for details</p>
+            <p className="text-xs text-gray-500 sm:hidden">Tap a month for details</p>
+          </>
         )}
       </div>
 
       <div className="revenue-trend-chart-panel rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 sm:p-4">
+        <div className="revenue-trend-chart-canvas">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="h-auto w-full"
+          preserveAspectRatio="xMidYMid meet"
+          className="revenue-trend-svg"
           role="img"
           aria-label="Monthly revenue trend chart"
         >
           <defs>
-            <linearGradient id="revenueAreaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--fleetos-primary)" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="var(--fleetos-primary)" stopOpacity="0.02" />
+            <linearGradient id={`${chartId}-area`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
             </linearGradient>
-            <linearGradient id="revenueBarGradient" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`${chartId}-bar`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#60a5fa" />
-              <stop offset="100%" stopColor="var(--fleetos-primary)" />
+              <stop offset="100%" stopColor="#3b82f6" />
             </linearGradient>
-            <linearGradient id="revenueBarMuted" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`${chartId}-bar-muted`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(59,130,246,0.45)" />
               <stop offset="100%" stopColor="rgba(59,130,246,0.18)" />
             </linearGradient>
@@ -158,11 +167,11 @@ export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartPro
             className="revenue-trend-axis-line"
           />
 
-          <path d={areaPath} fill="url(#revenueAreaGradient)" />
+          <path d={areaPath} fill={`url(#${chartId}-area)`} />
           <path
             d={linePath}
             fill="none"
-            stroke="var(--fleetos-primary)"
+            stroke="#3b82f6"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -181,6 +190,8 @@ export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartPro
                 key={point.key}
                 onMouseEnter={() => setActiveIndex(point.index)}
                 onMouseLeave={() => setActiveIndex(null)}
+                onTouchStart={() => setActiveIndex(point.index)}
+                onClick={() => setActiveIndex(point.index)}
                 className="revenue-trend-month"
               >
                 <rect
@@ -196,7 +207,7 @@ export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartPro
                   width={barW}
                   height={barH}
                   rx={6}
-                  fill={isLatest ? 'url(#revenueBarGradient)' : 'url(#revenueBarMuted)'}
+                  fill={isLatest ? `url(#${chartId}-bar)` : `url(#${chartId}-bar-muted)`}
                   className={isActive ? 'revenue-trend-bar is-active' : 'revenue-trend-bar'}
                 />
                 <circle
@@ -217,6 +228,7 @@ export function RevenueTrendChart({ data, monthCount = 6 }: RevenueTrendChartPro
             );
           })}
         </svg>
+        </div>
       </div>
     </div>
   );

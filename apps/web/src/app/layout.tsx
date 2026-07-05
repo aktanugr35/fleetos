@@ -1,18 +1,33 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
+import { PreventMobileZoom } from "@/components/layout/PreventMobileZoom";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "FleetOS — Fleet Management System",
   description: "Comprehensive logistics and fleet management platform for US trucking companies",
   keywords: ["fleet management", "TMS", "trucking", "logistics", "dispatch"],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FleetOS",
+  },
 };
 
 export default function RootLayout({
@@ -32,6 +47,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Script src="/theme-init.js" strategy="beforeInteractive" />
+        <PreventMobileZoom />
         <Providers>{children}</Providers>
       </body>
     </html>

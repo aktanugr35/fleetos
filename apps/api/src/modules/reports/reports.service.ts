@@ -3,7 +3,6 @@ import type { LoadStatus } from '@prisma/client';
 import {
   currentMonthDeliveredGrossCents,
   grossLineCents,
-  monthLabelFromKey,
   sumDeliveredGrossByDeliveryMonth,
 } from './reports.revenue';
 
@@ -169,7 +168,7 @@ export class ReportsService {
     return Array.from(grouped.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, revenue]) => ({
-        month: monthLabelFromKey(key),
+        month: key,
         revenue,
       }));
   }
