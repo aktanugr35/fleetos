@@ -114,32 +114,38 @@ export class PdfService {
         : '0.000';
 
       return `
-        <tr>
-            <td>
-                ${load.loadNumber}
-                <div class="sub-text">${load.referenceNumber || 'N/A'}</div>
+        <tr class="trip-row">
+            <td colspan="7" class="trip-row-cell">
+                <table class="trip-inner-table">
+                    <tr>
+                        <td>
+                            ${load.loadNumber}
+                            <div class="sub-text">${load.referenceNumber || 'N/A'}</div>
+                        </td>
+                        <td>
+                            ${load.pickupLocation}
+                            <div class="sub-text">${fDateTime(load.pickupDate)}</div>
+                        </td>
+                        <td>
+                            ${load.deliveryLocation}
+                            <div class="sub-text">${load.deliveryDate ? fDateTime(load.deliveryDate) : 'N/A'}</div>
+                        </td>
+                        <td>
+                            ${totalMiles.toFixed(2)} mi
+                            <div class="sub-text">DHD: ${deadheadMiles.toFixed(2)} mi<br>LDD: ${loadedMiles.toFixed(2)} mi</div>
+                        </td>
+                        <td>
+                            <span class="font-bold">${fMoney(line.grossAmount)}</span>
+                            <div class="sub-text">$${ratePerMile} /mi</div>
+                        </td>
+                        <td>
+                            ${formatCommissionLabel(line.commissionRate)}
+                            <div class="sub-text">${company.name}</div>
+                        </td>
+                        <td class="text-right font-bold">${fMoney(line.netAmount)}</td>
+                    </tr>
+                </table>
             </td>
-            <td>
-                ${load.pickupLocation}
-                <div class="sub-text">${fDateTime(load.pickupDate)}</div>
-            </td>
-            <td>
-                ${load.deliveryLocation}
-                <div class="sub-text">${load.deliveryDate ? fDateTime(load.deliveryDate) : 'N/A'}</div>
-            </td>
-            <td>
-                ${totalMiles.toFixed(2)} mi
-                <div class="sub-text">DHD: ${deadheadMiles.toFixed(2)} mi<br>LDD: ${loadedMiles.toFixed(2)} mi</div>
-            </td>
-            <td>
-                <span class="font-bold">${fMoney(line.grossAmount)}</span>
-                <div class="sub-text">$${ratePerMile} /mi</div>
-            </td>
-            <td>
-                ${formatCommissionLabel(line.commissionRate)}
-                <div class="sub-text">${company.name}</div>
-            </td>
-            <td class="text-right font-bold">${fMoney(line.netAmount)}</td>
         </tr>
       `;
     }).join('');
@@ -352,9 +358,31 @@ export class PdfService {
             
             .section-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; margin-top: 25px; }
             
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 10px; page-break-inside: auto; }
+            thead { display: table-header-group; }
+            tfoot { display: table-row-group; }
             th { border-bottom: 2px solid #94a3b8; color: #0284c7; font-weight: 500; text-align: left; padding: 8px 4px; }
-            td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; }
+            td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; break-inside: avoid; page-break-inside: avoid; }
+            .trips-table { table-layout: fixed; }
+            .trip-row-cell { padding: 0; border-bottom: none; vertical-align: top; }
+            .trip-inner-table {
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+            .trip-inner-table td { border-bottom: 1px solid #e2e8f0; }
+            tbody tr, tfoot tr, .trip-row {
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+            @media print {
+                tbody tr, tfoot tr, .trip-row, .trip-inner-table {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+            }
             .text-right { text-align: right; }
             .sub-text { color: #64748b; font-size: 9px; margin-top: 2px; line-height: 1.2; }
             
@@ -463,7 +491,16 @@ export class PdfService {
         </div>
 
         <div class="section-title">Trips & Credits</div>
-        <table>
+        <table class="trips-table">
+            <colgroup>
+                <col style="width:12%">
+                <col style="width:17%">
+                <col style="width:17%">
+                <col style="width:14%">
+                <col style="width:14%">
+                <col style="width:14%">
+                <col style="width:12%">
+            </colgroup>
             <thead>
                 <tr>
                     <th>Trips</th>
@@ -477,6 +514,8 @@ export class PdfService {
             </thead>
             <tbody>
                 ${tripsHtml}
+            </tbody>
+            <tfoot>
                 <tr class="totals-row">
                     <td>Totals:</td>
                     <td></td>
@@ -489,7 +528,7 @@ export class PdfService {
                     <td></td>
                     <td class="text-right">${fMoney(earning)}</td>
                 </tr>
-            </tbody>
+            </tfoot>
         </table>
 
         ${settlement.credits.length > 0 ? `
