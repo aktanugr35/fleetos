@@ -131,19 +131,19 @@ export function CreateTrailerModal({ isOpen, trailerId, onClose, onSuccess }: Cr
         <>
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Unit Number" required error={errors.unitNumber}>
-              <FormInput value={form.unitNumber} onChange={(e) => set('unitNumber', e.target.value)} placeholder="TR-201" error={!!errors.unitNumber} />
+              <FormInput value={form.unitNumber} onChange={(e) => set('unitNumber', e.target.value)} placeholder="Unit number" error={!!errors.unitNumber} />
             </FormField>
             <FormField label="Make">
-              <FormInput value={form.make} onChange={(e) => set('make', e.target.value)} placeholder="Great Dane" />
+              <FormInput value={form.make} onChange={(e) => set('make', e.target.value)} placeholder="Make" />
             </FormField>
             <FormField label="Model">
-              <FormInput value={form.model} onChange={(e) => set('model', e.target.value)} placeholder="Flatbed" />
+              <FormInput value={form.model} onChange={(e) => set('model', e.target.value)} placeholder="Model" />
             </FormField>
           </div>
 
           <div className="grid grid-cols-3 gap-4 mt-4">
             <FormField label="Year">
-              <FormInput type="number" value={form.year} onChange={(e) => set('year', e.target.value)} placeholder="2020" />
+              <FormInput type="number" value={form.year} onChange={(e) => set('year', e.target.value)} placeholder="Year" />
             </FormField>
             <FormField label="VIN">
               <FormInput value={form.vin} onChange={(e) => set('vin', e.target.value.toUpperCase())} placeholder="Optional" maxLength={17} />

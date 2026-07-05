@@ -183,7 +183,7 @@ export function CreateCreditModal({
         <FormField label="Description" required>
           <FormTextarea
             rows={2}
-            placeholder="e.g. Toll reimbursement — I-80"
+            placeholder="Description"
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
           />

@@ -180,15 +180,15 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm text-gray-400 mb-1">Company Name</label>
-              <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Valley Transportation Inc." />
+              <input className="input" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Company name" />
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Address</label>
-              <input className="input" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="636 N Irwin St, Dayton, OH 45403" />
+              <input className="input" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="Address" />
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Phone</label>
-              <input className="input" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="(513) 594-0602" />
+              <input className="input" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="Phone number" />
             </div>
           </div>
 
@@ -204,7 +204,7 @@ export default function SettingsPage() {
                 className="input pl-7 text-right"
                 value={companyFee}
                 onChange={(e) => setCompanyFee(e.target.value)}
-                placeholder="550.00"
+                placeholder="0.00"
               />
             </div>
           </div>

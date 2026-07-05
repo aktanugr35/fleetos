@@ -328,7 +328,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
             <FormInput
               value={form.externalTrailerRef}
               onChange={(e) => set('externalTrailerRef', e.target.value)}
-              placeholder="e.g. ABC Leasing #4421 or Drop trailer — Chicago yard"
+              placeholder="Trailer ID or description"
               error={!!errors.externalTrailerRef}
             />
           </FormField>
@@ -339,13 +339,13 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mt-6 mb-3">Broker Information</h4>
       <div className="grid grid-cols-3 gap-4">
         <FormField label="Broker Name" required error={errors.brokerName}>
-          <FormInput value={form.brokerName} onChange={(e) => set('brokerName', e.target.value)} placeholder="XYZ Logistics" error={!!errors.brokerName} />
+          <FormInput value={form.brokerName} onChange={(e) => set('brokerName', e.target.value)} placeholder="Broker name" error={!!errors.brokerName} />
         </FormField>
         <FormField label="MC Number">
-          <FormInput value={form.brokerMC} onChange={(e) => set('brokerMC', e.target.value)} placeholder="MC-123456" />
+          <FormInput value={form.brokerMC} onChange={(e) => set('brokerMC', e.target.value)} placeholder="MC number" />
         </FormField>
         <FormField label="Contact">
-          <FormInput value={form.brokerContact} onChange={(e) => set('brokerContact', e.target.value)} placeholder="John Doe" />
+          <FormInput value={form.brokerContact} onChange={(e) => set('brokerContact', e.target.value)} placeholder="Contact name" />
         </FormField>
       </div>
 
@@ -357,7 +357,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
             <span className="w-2 h-2 rounded-full bg-green-500" /> <span className="text-xs text-green-400 font-medium">PICKUP</span>
           </div>
           <FormField label="City" required error={errors.pickupCity}>
-            <FormInput value={form.pickupCity} onChange={(e) => set('pickupCity', e.target.value)} placeholder="Dallas" error={!!errors.pickupCity} />
+            <FormInput value={form.pickupCity} onChange={(e) => set('pickupCity', e.target.value)} placeholder="City" error={!!errors.pickupCity} />
           </FormField>
           <FormField label="State" required>
             <FormSelect value={form.pickupState} onChange={(e) => set('pickupState', e.target.value)} options={US_STATES} />
@@ -374,7 +374,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
             <span className="w-2 h-2 rounded-full bg-red-500" /> <span className="text-xs text-red-400 font-medium">DELIVERY</span>
           </div>
           <FormField label="City" required error={errors.deliveryCity}>
-            <FormInput value={form.deliveryCity} onChange={(e) => set('deliveryCity', e.target.value)} placeholder="Chicago" error={!!errors.deliveryCity} />
+            <FormInput value={form.deliveryCity} onChange={(e) => set('deliveryCity', e.target.value)} placeholder="City" error={!!errors.deliveryCity} />
           </FormField>
           <FormField label="State" required>
             <FormSelect value={form.deliveryState} onChange={(e) => set('deliveryState', e.target.value)} options={US_STATES} />
@@ -405,17 +405,17 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mt-6 mb-3">Rate & Charges</h4>
       <div className="grid grid-cols-4 gap-4">
         <FormField label="Loaded Miles" required error={errors.loadedMiles}>
-          <FormInput type="number" value={form.loadedMiles} onChange={(e) => set('loadedMiles', e.target.value)} placeholder="800" error={!!errors.loadedMiles} />
+          <FormInput type="number" value={form.loadedMiles} onChange={(e) => set('loadedMiles', e.target.value)} placeholder="Loaded miles" error={!!errors.loadedMiles} />
         </FormField>
         <FormField label="Deadhead Miles">
-          <FormInput type="number" value={form.deadheadMiles} onChange={(e) => set('deadheadMiles', e.target.value)} placeholder="150" />
+          <FormInput type="number" value={form.deadheadMiles} onChange={(e) => set('deadheadMiles', e.target.value)} placeholder="Deadhead miles" />
         </FormField>
         <div className="flex flex-col justify-end pb-2">
           <span className="text-xs text-gray-400">Total: <strong className="text-white">{(parseInt(form.loadedMiles) || 0) + (parseInt(form.deadheadMiles) || 0)}</strong> mi</span>
         </div>
         <FormField label="Gross Rate ($)" required error={errors.rateCents}>
           <FormInput type="number" step="0.01" value={form.rateCents} onChange={(e) => set('rateCents', e.target.value)}
-            placeholder="3500.00" error={!!errors.rateCents} />
+            placeholder="0.00" error={!!errors.rateCents} />
         </FormField>
         <div className="flex items-end gap-2 col-span-2">
           <div className="card py-2 px-3 text-center w-full bg-blue-500/5 border border-blue-500/10">
@@ -436,12 +436,12 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           <FormInput type="number" step="0.01" value={form.lumperCents} onChange={(e) => set('lumperCents', e.target.value)} />
         </FormField>
         <FormField label="Commodity">
-          <FormInput value={form.commodity} onChange={(e) => set('commodity', e.target.value)} placeholder="Dry goods" />
+          <FormInput value={form.commodity} onChange={(e) => set('commodity', e.target.value)} placeholder="Commodity" />
         </FormField>
       </div>
 
       <FormField label="Notes" className="mt-4">
-        <FormTextarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Additional notes..." />
+        <FormTextarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Notes" />
       </FormField>
 
       <div className="mt-4">

@@ -144,7 +144,7 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
         <>
           <div className="grid grid-cols-3 gap-4">
             <FormField label="Unit Number" required error={errors.unitNumber}>
-              <FormInput value={form.unitNumber} onChange={(e) => set('unitNumber', e.target.value)} placeholder="T-103" error={!!errors.unitNumber} />
+              <FormInput value={form.unitNumber} onChange={(e) => set('unitNumber', e.target.value)} placeholder="Unit number" error={!!errors.unitNumber} />
             </FormField>
             <FormField label="Make" required error={errors.make}>
               <FormSelect value={form.make} onChange={(e) => set('make', e.target.value)} error={!!errors.make}
@@ -156,7 +156,7 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
                 ]} />
             </FormField>
             <FormField label="Model" required error={errors.model}>
-              <FormInput value={form.model} onChange={(e) => set('model', e.target.value)} placeholder="579" error={!!errors.model} />
+              <FormInput value={form.model} onChange={(e) => set('model', e.target.value)} placeholder="Model" error={!!errors.model} />
             </FormField>
           </div>
 
@@ -165,17 +165,17 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
               <FormInput type="number" value={form.year} onChange={(e) => set('year', e.target.value)} />
             </FormField>
             <FormField label="VIN" required={!isEdit} error={errors.vin}>
-              <FormInput value={form.vin} onChange={(e) => set('vin', e.target.value.toUpperCase())} placeholder="1XPWD49X1GD123456" error={!!errors.vin} maxLength={17} disabled={isEdit} />
+              <FormInput value={form.vin} onChange={(e) => set('vin', e.target.value.toUpperCase())} placeholder="VIN" error={!!errors.vin} maxLength={17} disabled={isEdit} />
             </FormField>
             <FormField label="Owner Driver">
               <FormSelect value={form.ownerDriverId} onChange={(e) => set('ownerDriverId', e.target.value)}
-                placeholder="Company Truck" options={drivers.map(d => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))} />
+                placeholder="Select driver" options={drivers.map(d => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))} />
             </FormField>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-4">
             <FormField label="License Plate" required error={errors.licensePlate}>
-              <FormInput value={form.licensePlate} onChange={(e) => set('licensePlate', e.target.value.toUpperCase())} placeholder="TX-AB1234" error={!!errors.licensePlate} />
+              <FormInput value={form.licensePlate} onChange={(e) => set('licensePlate', e.target.value.toUpperCase())} placeholder="License plate" error={!!errors.licensePlate} />
             </FormField>
             <FormField label="Plate State" required>
               <FormSelect value={form.plateState} onChange={(e) => set('plateState', e.target.value)} options={US_STATES} />

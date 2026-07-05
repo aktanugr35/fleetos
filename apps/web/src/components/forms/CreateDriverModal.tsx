@@ -198,7 +198,7 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
               <FormInput
                 value={form.firstName}
                 onChange={(e) => set('firstName', e.target.value)}
-                placeholder="Carlos"
+                placeholder="First name"
                 error={!!errors.firstName}
               />
             </FormField>
@@ -206,7 +206,7 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
               <FormInput
                 value={form.lastName}
                 onChange={(e) => set('lastName', e.target.value)}
-                placeholder="Rodriguez"
+                placeholder="Last name"
                 error={!!errors.lastName}
               />
             </FormField>
@@ -215,14 +215,14 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
                 type="email"
                 value={form.email}
                 onChange={(e) => set('email', e.target.value)}
-                placeholder="carlos@example.com"
+                placeholder="Email address"
               />
             </FormField>
             <FormField label="Phone">
               <FormInput
                 value={form.phone}
                 onChange={(e) => set('phone', e.target.value)}
-                placeholder="+1 (214) 555-0100"
+                placeholder="Phone number"
               />
             </FormField>
           </div>
@@ -267,10 +267,10 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
                 onChange={(e) => set('payRate', e.target.value)}
                 placeholder={
                   form.payStructure === 'PERCENTAGE'
-                    ? '88'
+                    ? 'Percentage rate'
                     : form.payStructure === 'PER_MILE'
-                      ? '0.60'
-                      : '1200'
+                      ? 'Per mile rate'
+                      : 'Salary amount'
                 }
                 error={!!errors.payRate}
               />
@@ -333,7 +333,7 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
               <FormInput
                 value={form.cdlNumber}
                 onChange={(e) => set('cdlNumber', e.target.value)}
-                placeholder="CDL-TX-12345678"
+                placeholder="CDL number"
                 error={!!errors.cdlNumber}
               />
             </FormField>
@@ -368,25 +368,25 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
                   <FormInput
                     value={form.llcName}
                     onChange={(e) => set('llcName', e.target.value)}
-                    placeholder="AKTAN LLC"
+                    placeholder="Company name"
                   />
                 </FormField>
                 <FormField label="Street Address">
                   <FormInput
                     value={form.address}
                     onChange={(e) => set('address', e.target.value)}
-                    placeholder="6509 Broadway Apt 1"
+                    placeholder="Street address"
                   />
                 </FormField>
                 <FormField label="City">
-                  <FormInput value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="West New York" />
+                  <FormInput value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="City" />
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="State">
                     <FormSelect value={form.state} onChange={(e) => set('state', e.target.value)} options={US_STATES} />
                   </FormField>
                   <FormField label="ZIP">
-                    <FormInput value={form.zip} onChange={(e) => set('zip', e.target.value)} placeholder="07093" />
+                    <FormInput value={form.zip} onChange={(e) => set('zip', e.target.value)} placeholder="ZIP code" />
                   </FormField>
                 </div>
               </div>

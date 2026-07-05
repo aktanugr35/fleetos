@@ -224,13 +224,13 @@ export default function FuelTollPage() {
               <FormSelect value={fuelCardForm.truckId} placeholder="Select truck" options={truckOptions} onChange={(e) => setFuelCardForm((p) => ({ ...p, truckId: e.target.value }))} />
             </FormField>
             <FormField label="Card number / last 4" required>
-              <FormInput value={fuelCardForm.cardNumber} onChange={(e) => setFuelCardForm((p) => ({ ...p, cardNumber: e.target.value }))} placeholder="1234" />
+              <FormInput value={fuelCardForm.cardNumber} onChange={(e) => setFuelCardForm((p) => ({ ...p, cardNumber: e.target.value }))} placeholder="Card number" />
             </FormField>
             <FormField label="Provider">
-              <FormInput value={fuelCardForm.provider} onChange={(e) => setFuelCardForm((p) => ({ ...p, provider: e.target.value }))} placeholder="WEX, EFS..." />
+              <FormInput value={fuelCardForm.provider} onChange={(e) => setFuelCardForm((p) => ({ ...p, provider: e.target.value }))} placeholder="Provider" />
             </FormField>
             <FormField label="Display name">
-              <FormInput value={fuelCardForm.displayName} onChange={(e) => setFuelCardForm((p) => ({ ...p, displayName: e.target.value }))} placeholder="Truck 12 Fuel" />
+              <FormInput value={fuelCardForm.displayName} onChange={(e) => setFuelCardForm((p) => ({ ...p, displayName: e.target.value }))} placeholder="Display name" />
             </FormField>
           </div>
           <button type="button" className="btn btn-primary w-full mt-4 sm:w-auto" disabled={saving === 'fuel-card'} onClick={() => void submitFuelCard()}>
@@ -245,13 +245,13 @@ export default function FuelTollPage() {
               <FormSelect value={tollDeviceForm.truckId} placeholder="Select truck" options={truckOptions} onChange={(e) => setTollDeviceForm((p) => ({ ...p, truckId: e.target.value }))} />
             </FormField>
             <FormField label="Device / tag number" required>
-              <FormInput value={tollDeviceForm.deviceNumber} onChange={(e) => setTollDeviceForm((p) => ({ ...p, deviceNumber: e.target.value }))} placeholder="EZPASS-123" />
+              <FormInput value={tollDeviceForm.deviceNumber} onChange={(e) => setTollDeviceForm((p) => ({ ...p, deviceNumber: e.target.value }))} placeholder="Device number" />
             </FormField>
             <FormField label="Provider">
-              <FormInput value={tollDeviceForm.provider} onChange={(e) => setTollDeviceForm((p) => ({ ...p, provider: e.target.value }))} placeholder="EZPass, Bestpass..." />
+              <FormInput value={tollDeviceForm.provider} onChange={(e) => setTollDeviceForm((p) => ({ ...p, provider: e.target.value }))} placeholder="Provider" />
             </FormField>
             <FormField label="Display name">
-              <FormInput value={tollDeviceForm.displayName} onChange={(e) => setTollDeviceForm((p) => ({ ...p, displayName: e.target.value }))} placeholder="Truck 12 Toll" />
+              <FormInput value={tollDeviceForm.displayName} onChange={(e) => setTollDeviceForm((p) => ({ ...p, displayName: e.target.value }))} placeholder="Display name" />
             </FormField>
           </div>
           <button type="button" className="btn btn-primary w-full mt-4 sm:w-auto" disabled={saving === 'toll-device'} onClick={() => void submitTollDevice()}>
@@ -269,7 +269,7 @@ export default function FuelTollPage() {
               <FormInput type="date" value={fuelTxForm.date} onChange={(e) => setFuelTxForm((p) => ({ ...p, date: e.target.value }))} />
             </FormField>
             <FormField label="Merchant">
-              <FormInput value={fuelTxForm.merchant} onChange={(e) => setFuelTxForm((p) => ({ ...p, merchant: e.target.value }))} placeholder="Pilot, Love's..." />
+              <FormInput value={fuelTxForm.merchant} onChange={(e) => setFuelTxForm((p) => ({ ...p, merchant: e.target.value }))} placeholder="Merchant" />
             </FormField>
             <FormField label="Gross amount ($)" required>
               <FormInput type="number" step="0.01" value={fuelTxForm.grossAmount} onChange={(e) => setFuelTxForm((p) => ({ ...p, grossAmount: e.target.value }))} />
@@ -296,16 +296,16 @@ export default function FuelTollPage() {
               <FormInput type="date" value={tollTxForm.date} onChange={(e) => setTollTxForm((p) => ({ ...p, date: e.target.value }))} />
             </FormField>
             <FormField label="Agency">
-              <FormInput value={tollTxForm.agency} onChange={(e) => setTollTxForm((p) => ({ ...p, agency: e.target.value }))} placeholder="EZPass" />
+              <FormInput value={tollTxForm.agency} onChange={(e) => setTollTxForm((p) => ({ ...p, agency: e.target.value }))} placeholder="Agency" />
             </FormField>
             <FormField label="Location">
-              <FormInput value={tollTxForm.location} onChange={(e) => setTollTxForm((p) => ({ ...p, location: e.target.value }))} />
+              <FormInput value={tollTxForm.location} onChange={(e) => setTollTxForm((p) => ({ ...p, location: e.target.value }))} placeholder="Location" />
             </FormField>
             <FormField label="Amount ($)" required>
               <FormInput type="number" step="0.01" value={tollTxForm.amount} onChange={(e) => setTollTxForm((p) => ({ ...p, amount: e.target.value }))} />
             </FormField>
             <FormField label="Description" className="sm:col-span-2">
-              <FormInput value={tollTxForm.description} onChange={(e) => setTollTxForm((p) => ({ ...p, description: e.target.value }))} placeholder="Toll charge" />
+              <FormInput value={tollTxForm.description} onChange={(e) => setTollTxForm((p) => ({ ...p, description: e.target.value }))} placeholder="Description" />
             </FormField>
           </div>
           <button type="button" className="btn btn-primary w-full mt-4 sm:w-auto" disabled={saving === 'toll-tx'} onClick={() => void submitTollTransaction()}>

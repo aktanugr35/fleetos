@@ -246,7 +246,7 @@ export function CreateDeductionModal({
                   type="number"
                   step="0.01"
                   min="0.01"
-                  placeholder="700.00"
+                  placeholder="0.00"
                   value={form.grossAmount}
                   onChange={(e) => set('grossAmount', e.target.value)}
                 />
@@ -256,7 +256,7 @@ export function CreateDeductionModal({
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="100.00"
+                  placeholder="0.00"
                   value={form.discount}
                   onChange={(e) => set('discount', e.target.value)}
                 />
@@ -268,7 +268,7 @@ export function CreateDeductionModal({
                   type="number"
                   step="0.1"
                   min="0"
-                  placeholder="150"
+                  placeholder="Gallons"
                   value={form.gallons}
                   onChange={(e) => set('gallons', e.target.value)}
                 />
@@ -277,7 +277,7 @@ export function CreateDeductionModal({
                 <FormInput
                   value={form.merchant}
                   onChange={(e) => set('merchant', e.target.value)}
-                  placeholder="Pilot #1234"
+                  placeholder="Merchant or location"
                 />
               </FormField>
             </div>
@@ -299,7 +299,7 @@ export function CreateDeductionModal({
         <FormField label="Description" required>
           <FormTextarea
             rows={2}
-            placeholder={isFuel ? 'e.g. Diesel fill — I-80' : 'e.g. Cash advance'}
+            placeholder="Description"
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
           />
