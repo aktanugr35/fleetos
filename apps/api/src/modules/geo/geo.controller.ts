@@ -5,7 +5,9 @@ import { successResponse } from '../../utils/pagination';
 export const geoController = {
   async lookupZip(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await lookupUsZip(req.params.zip);
+      const rawZip = req.params.zip;
+      const zip = Array.isArray(rawZip) ? rawZip[0] : rawZip;
+      const result = await lookupUsZip(zip);
       res.json(successResponse(result));
     } catch (err) {
       next(err);
