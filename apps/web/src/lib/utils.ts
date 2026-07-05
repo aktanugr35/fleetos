@@ -21,6 +21,8 @@ export function formatDate(date: string | Date): string {
   }).format(new Date(date));
 }
 
+export { formatDateTimeAmPm, formatTimeAmPm, US_DISPLAY_TIME_ZONE } from './us-time';
+
 export { toDateInputValue } from '@fleetos/shared-types';
 
 /**

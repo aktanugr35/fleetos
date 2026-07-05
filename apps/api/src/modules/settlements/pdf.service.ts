@@ -72,7 +72,16 @@ export class PdfService {
 
     const fMoney = formatMoneyCents;
     const fDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const fDateTime = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+    const fDateTime = (date: Date) =>
+      date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'America/New_York',
+      });
 
     const statementNo = settlement.statementNumber || 'N/A';
     const payrollId = settlement.payrollId || 'N/A';

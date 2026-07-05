@@ -29,6 +29,7 @@ import reportRoutes from './modules/reports/reports.routes';
 import notificationRoutes from './modules/notifications/notifications.routes';
 import setupRoutes from './modules/setup/setup.routes';
 import fuelTollRoutes from './modules/fuel-toll/fuel-toll.routes';
+import geoRoutes from './modules/geo/geo.routes';
 
 // ─── Express App ────────────────────────────────────────
 const app = express();
@@ -121,6 +122,7 @@ app.use('/api/v1/credits', creditRoutes);
 app.use('/api/v1/compliance', complianceRoutes);
 app.use('/api/v1/documents', documentsRoutes);
 app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/geo', geoRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1', fuelTollRoutes);
 

@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateDriverModal } from '@/components/forms/CreateDriverModal';
 import { Toast } from '@/components/ui/Toast';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTimeAmPm } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { usePermission } from '@/hooks/usePermission';
 import api from '@/lib/api';
@@ -247,7 +247,7 @@ export default function DriverDetailPage() {
                     <td className="text-sm text-gray-400">
                       {load.pickupCity}, {load.pickupState} → {load.deliveryCity}, {load.deliveryState}
                     </td>
-                    <td className="text-gray-500 text-sm">{formatDate(load.pickupDate)}</td>
+                    <td className="text-gray-500 text-sm">{formatDateTimeAmPm(load.pickupDate)}</td>
                     <td className="text-gray-400 text-xs">{load.status.replace('_', ' ')}</td>
                     <td className="text-right font-medium">{formatCurrency(load.totalRevenueCents)}</td>
                   </tr>

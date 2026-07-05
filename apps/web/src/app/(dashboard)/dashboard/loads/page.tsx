@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDateTimeAmPm } from '@/lib/utils';
 import { CreateLoadModal } from '@/components/forms/CreateLoadModal';
 import { Toast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-errors';
@@ -186,7 +186,7 @@ export default function LoadsPage() {
                     <td data-label="Route" className="text-sm text-gray-400">
                       {load.pickupCity}, {load.pickupState} → {load.deliveryCity}, {load.deliveryState}
                     </td>
-                    <td data-label="Pickup" className="text-gray-500 text-sm">{formatDate(load.pickupDate)}</td>
+                    <td data-label="Pickup" className="text-gray-500 text-sm">{formatDateTimeAmPm(load.pickupDate)}</td>
                     <td data-label="Driver" className="text-gray-300">
                       {load.driver ? `${load.driver.firstName} ${load.driver.lastName}` : '—'}
                     </td>

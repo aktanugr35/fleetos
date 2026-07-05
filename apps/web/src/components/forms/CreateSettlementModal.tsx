@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/FormElements';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTimeAmPm } from '@/lib/utils';
 import { getCategoryLabel } from '@/lib/deductions';
 import api from '@/lib/api';
 import { downloadSettlementPdf } from '@/lib/settlements';
@@ -380,7 +380,7 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
                             </div>
                           </div>
                           <div className="text-xs text-gray-500 mt-1 flex gap-4">
-                            <span>Delivered: {formatDate(load.deliveryDate)}</span>
+                            <span>Delivered: {formatDateTimeAmPm(load.deliveryDate)}</span>
                             <span>{load.miles} miles</span>
                             {load.companyCommissionCents > 0 && (
                               <span className="text-yellow-500">Commission: {formatCurrency(load.companyCommissionCents)}</span>

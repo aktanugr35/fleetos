@@ -3,34 +3,22 @@
 import { useState, useEffect } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { FormField, FormInput, FormSelect, FormTextarea } from '@/components/ui/FormElements';
+import { FormTimeInput } from '@/components/ui/FormTimeInput';
 import { formatCurrency } from '@/lib/utils';
+import { combineDateAndTime24, splitIsoToDateAndTime24 } from '@/lib/us-time';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-errors';
 
-function combineDateTime(date: string, time: string): string {
-  if (!date) return '';
-  const t = time || '08:00';
-  return new Date(`${date}T${t}:00`).toISOString();
-}
-
 function splitDateTime(iso: string | Date | null | undefined) {
-  if (!iso) return { date: '', time: '08:00' };
-  const d = new Date(iso);
-  const date = [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-');
-  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  return { date, time };
+  return splitIsoToDateAndTime24(iso);
 }
 
 const EMPTY_FORM = {
   driverId: '', truckId: '', trailerId: '', trailerMode: 'company' as 'company' | 'hook_drop',
   externalTrailerRef: '',
   brokerName: '', brokerMC: '', brokerContact: '',
-  pickupAddress: '', pickupCity: '', pickupState: 'TX', pickupDate: '', pickupTime: '08:00',
-  deliveryAddress: '', deliveryCity: '', deliveryState: 'IL', deliveryDate: '', deliveryTime: '17:00',
+  pickupZip: '', pickupAddress: '', pickupCity: '', pickupState: 'TX', pickupDate: '', pickupTime: '08:00',
+  deliveryZip: '', deliveryAddress: '', deliveryCity: '', deliveryState: 'IL', deliveryDate: '', deliveryTime: '17:00',
   commodity: '', weight: '', loadedMiles: '', deadheadMiles: '',
   rateCents: '', detentionCents: '0', lumperCents: '0',
   status: 'PENDING',
@@ -76,6 +64,10 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const [form, setForm] = useState(EMPTY_FORM);
 
   const [rateConfirmationFile, setRateConfirmationFile] = useState<File | null>(null);
+  const [zipLookup, setZipLookup] = useState<{ pickup: boolean; delivery: boolean }>({
+    pickup: false,
+    delivery: false,
+  });
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,16 +108,18 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           brokerName: load.brokerName || '',
           brokerMC: load.brokerMC || '',
           brokerContact: load.referenceNumber || '',
+          pickupZip: '',
           pickupAddress: load.pickupLocation || '',
           pickupCity: load.pickupCity || '',
           pickupState: load.pickupState || 'TX',
           pickupDate: pickup.date,
-          pickupTime: pickup.time,
+          pickupTime: pickup.time24,
+          deliveryZip: '',
           deliveryAddress: load.deliveryLocation || '',
           deliveryCity: load.deliveryCity || '',
           deliveryState: load.deliveryState || 'IL',
           deliveryDate: delivery.date,
-          deliveryTime: delivery.time,
+          deliveryTime: delivery.time24,
           commodity: '',
           weight: '',
           loadedMiles: String(load.loadedMiles ?? 0),
@@ -146,6 +140,49 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const set = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const lookupZip = async (kind: 'pickup' | 'delivery') => {
+    const zip = form[kind === 'pickup' ? 'pickupZip' : 'deliveryZip'].replace(/\D/g, '').slice(0, 5);
+    if (zip.length !== 5) {
+      setErrors(prev => ({
+        ...prev,
+        [kind === 'pickup' ? 'pickupZip' : 'deliveryZip']: 'Enter a 5-digit ZIP code',
+      }));
+      return;
+    }
+
+    setZipLookup(prev => ({ ...prev, [kind]: true }));
+    try {
+      const res = await api.get(`/geo/zip/${zip}`);
+      const { city, state } = res.data.data as { city: string; state: string };
+      if (kind === 'pickup') {
+        setForm(prev => ({
+          ...prev,
+          pickupZip: zip,
+          pickupCity: city,
+          pickupState: state,
+          pickupAddress: `${city}, ${state} ${zip}`,
+        }));
+        setErrors(prev => ({ ...prev, pickupZip: '', pickupCity: '' }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          deliveryZip: zip,
+          deliveryCity: city,
+          deliveryState: state,
+          deliveryAddress: `${city}, ${state} ${zip}`,
+        }));
+        setErrors(prev => ({ ...prev, deliveryZip: '', deliveryCity: '' }));
+      }
+    } catch (err) {
+      setErrors(prev => ({
+        ...prev,
+        [kind === 'pickup' ? 'pickupZip' : 'deliveryZip']: getApiErrorMessage(err, 'ZIP code not found'),
+      }));
+    } finally {
+      setZipLookup(prev => ({ ...prev, [kind]: false }));
+    }
   };
 
   const setDeliveryDate = (value: string) => {
@@ -212,8 +249,8 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
         documentId = uploadRes.data.data.id;
       }
 
-      const pickupIso = combineDateTime(form.pickupDate, form.pickupTime);
-      const deliveryIso = combineDateTime(form.deliveryDate, form.deliveryTime);
+      const pickupIso = combineDateAndTime24(form.pickupDate, form.pickupTime);
+      const deliveryIso = combineDateAndTime24(form.deliveryDate, form.deliveryTime);
 
       const payload = {
         driverId: form.driverId,
@@ -356,34 +393,98 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-green-500" /> <span className="text-xs text-green-400 font-medium">PICKUP</span>
           </div>
+          <FormField label="ZIP Code">
+            <div className="flex gap-2">
+              <FormInput
+                value={form.pickupZip}
+                onChange={(e) => set('pickupZip', e.target.value.replace(/\D/g, '').slice(0, 5))}
+                onBlur={() => {
+                  if (form.pickupZip.replace(/\D/g, '').length === 5) {
+                    void lookupZip('pickup');
+                  }
+                }}
+                placeholder="ZIP code"
+                inputMode="numeric"
+                error={!!errors.pickupZip}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary shrink-0 px-3"
+                disabled={zipLookup.pickup}
+                onClick={() => void lookupZip('pickup')}
+              >
+                {zipLookup.pickup ? '...' : 'Lookup'}
+              </button>
+            </div>
+            {errors.pickupZip ? <p className="text-xs text-red-400 mt-1">{errors.pickupZip}</p> : null}
+          </FormField>
           <FormField label="City" required error={errors.pickupCity}>
             <FormInput value={form.pickupCity} onChange={(e) => set('pickupCity', e.target.value)} placeholder="City" error={!!errors.pickupCity} />
           </FormField>
           <FormField label="State" required>
             <FormSelect value={form.pickupState} onChange={(e) => set('pickupState', e.target.value)} options={US_STATES} />
           </FormField>
+          <FormField label="Street / facility (optional)">
+            <FormInput
+              value={form.pickupAddress}
+              onChange={(e) => set('pickupAddress', e.target.value)}
+              placeholder="Street address or facility name"
+            />
+          </FormField>
           <FormField label="Date" required error={errors.pickupDate}>
             <FormInput type="date" value={form.pickupDate} onChange={(e) => set('pickupDate', e.target.value)} error={!!errors.pickupDate} />
           </FormField>
-          <FormField label="Time">
-            <FormInput type="time" value={form.pickupTime} onChange={(e) => set('pickupTime', e.target.value)} />
+          <FormField label="Time (ET)">
+            <FormTimeInput value={form.pickupTime} onChange={(value) => set('pickupTime', value)} />
           </FormField>
         </div>
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-red-500" /> <span className="text-xs text-red-400 font-medium">DELIVERY</span>
           </div>
+          <FormField label="ZIP Code">
+            <div className="flex gap-2">
+              <FormInput
+                value={form.deliveryZip}
+                onChange={(e) => set('deliveryZip', e.target.value.replace(/\D/g, '').slice(0, 5))}
+                onBlur={() => {
+                  if (form.deliveryZip.replace(/\D/g, '').length === 5) {
+                    void lookupZip('delivery');
+                  }
+                }}
+                placeholder="ZIP code"
+                inputMode="numeric"
+                error={!!errors.deliveryZip}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary shrink-0 px-3"
+                disabled={zipLookup.delivery}
+                onClick={() => void lookupZip('delivery')}
+              >
+                {zipLookup.delivery ? '...' : 'Lookup'}
+              </button>
+            </div>
+            {errors.deliveryZip ? <p className="text-xs text-red-400 mt-1">{errors.deliveryZip}</p> : null}
+          </FormField>
           <FormField label="City" required error={errors.deliveryCity}>
             <FormInput value={form.deliveryCity} onChange={(e) => set('deliveryCity', e.target.value)} placeholder="City" error={!!errors.deliveryCity} />
           </FormField>
           <FormField label="State" required>
             <FormSelect value={form.deliveryState} onChange={(e) => set('deliveryState', e.target.value)} options={US_STATES} />
           </FormField>
+          <FormField label="Street / facility (optional)">
+            <FormInput
+              value={form.deliveryAddress}
+              onChange={(e) => set('deliveryAddress', e.target.value)}
+              placeholder="Street address or facility name"
+            />
+          </FormField>
           <FormField label="Date" required error={errors.deliveryDate}>
             <FormInput type="date" value={form.deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} error={!!errors.deliveryDate} />
           </FormField>
-          <FormField label="Time">
-            <FormInput type="time" value={form.deliveryTime} onChange={(e) => set('deliveryTime', e.target.value)} />
+          <FormField label="Time (ET)">
+            <FormTimeInput value={form.deliveryTime} onChange={(value) => set('deliveryTime', value)} />
           </FormField>
         </div>
       </div>
