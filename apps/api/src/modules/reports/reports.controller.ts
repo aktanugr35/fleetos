@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { reportsService } from './reports.service';
 import { successResponse } from '../../utils/pagination';
 import { resolveReportDateRange } from './reports.range';
+import { AppError } from '../../middleware/errorHandler.middleware';
 
 export class ReportsController {
   async getDashboard(req: Request, res: Response, next: NextFunction) {
@@ -39,6 +40,18 @@ export class ReportsController {
       const { from, to, preset } = resolveReportDateRange(req);
       const data = await reportsService.getOperationalAnalytics(req.tenantId!, from, to);
       res.json(successResponse({ ...data, preset: preset ?? null }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDriverEarningsDashboard(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.linkedDriverId) {
+        throw new AppError(403, 'NO_DRIVER_PROFILE', 'No active driver profile is linked to this account');
+      }
+      const data = await reportsService.getDriverEarningsDashboard(req.tenantId!, req.linkedDriverId);
+      res.json(successResponse(data));
     } catch (error) {
       next(error);
     }

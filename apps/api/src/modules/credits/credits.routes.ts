@@ -9,7 +9,7 @@ import { STAFF_ROLES } from '../../middleware/rbac.middleware';
 const router = Router();
 router.use(authMiddleware, tenantMiddleware, linkedDriverMiddleware);
 
-router.get('/', rbacMiddleware([...STAFF_ROLES, 'DRIVER']), creditsController.list);
+router.get('/', rbacMiddleware([...STAFF_ROLES]), creditsController.list);
 router.post('/', rbacMiddleware(['SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTING']), creditsController.create);
 router.patch('/:id', rbacMiddleware(['SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTING']), creditsController.update);
 router.delete('/:id', rbacMiddleware(['SUPER_ADMIN', 'COMPANY_ADMIN']), creditsController.delete);

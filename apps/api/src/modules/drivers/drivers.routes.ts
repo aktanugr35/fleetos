@@ -11,7 +11,7 @@ const router = Router();
 
 router.use(authMiddleware, tenantMiddleware, linkedDriverMiddleware);
 
-const DRIVER_READ_ROLES = [...STAFF_ROLES, 'DRIVER'] as const;
+const DRIVER_READ_ROLES = [...STAFF_ROLES] as const;
 
 router.get('/', rbacMiddleware([...DRIVER_READ_ROLES]), driversController.list);
 router.get('/:id', rbacMiddleware([...DRIVER_READ_ROLES]), driversController.getById);

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Toast } from '@/components/ui/Toast';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -16,7 +15,7 @@ import {
   IconTrucks,
 } from '@/components/dashboard/DashboardIcons';
 import { RevenueTrendChart } from '@/components/dashboard/RevenueTrendChart';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
 import type { DashboardLoadRow, DashboardSummary, RevenueChartPoint } from '@/lib/dashboard-types';
@@ -29,6 +28,8 @@ function StatusBadge({ status }: { status: string }) {
     IN_TRANSIT: { label: 'In Transit', class: 'bg-blue-500/15 text-blue-400 border border-blue-500/30' },
     DELIVERED: { label: 'Delivered', class: 'badge-green' },
     CANCELLED: { label: 'Cancelled', class: 'badge-red' },
+    FINALIZED: { label: 'Finalized', class: 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30' },
+    PAID: { label: 'Paid', class: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' },
   };
   const c = config[status] || config.PENDING;
   return (
@@ -42,6 +43,23 @@ interface ComplianceSummary {
   expired: number;
   warning: number;
   valid: number;
+}
+
+interface DriverEarningsDashboard {
+  driver: { id: string; firstName: string; lastName: string };
+  totals: {
+    last4WeeksCents: number;
+    ytdCents: number;
+    allTimeCents: number;
+  };
+  weeklyEarnings: Array<{
+    settlementId: string;
+    statementNumber: string | null;
+    periodStart: string;
+    periodEnd: string;
+    status: string;
+    netAmountCents: number;
+  }>;
 }
 
 interface StatCardProps {
@@ -120,7 +138,6 @@ const QUICK_LINKS = [
 ] as const;
 
 export default function DashboardPage() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const userRole = user?.role;
 
@@ -130,6 +147,7 @@ export default function DashboardPage() {
   const [compliance, setCompliance] = useState<ComplianceSummary>({ expired: 0, warning: 0, valid: 0 });
   const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
   const [recentLoads, setRecentLoads] = useState<DashboardLoadRow[]>([]);
+  const [driverDashboard, setDriverDashboard] = useState<DriverEarningsDashboard | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const todayLabel = useMemo(
@@ -142,12 +160,6 @@ export default function DashboardPage() {
       }).format(new Date()),
     [],
   );
-
-  useEffect(() => {
-    if (userRole === 'DRIVER') {
-      router.replace('/dashboard/loads');
-    }
-  }, [userRole, router]);
 
   const fetchDashboardData = async () => {
     if (!userRole || userRole === 'DRIVER') return;
@@ -175,9 +187,29 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchDriverDashboard = async () => {
+    if (userRole !== 'DRIVER') return;
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const res = await api.get('/reports/driver-earnings');
+      setDriverDashboard(res.data.data);
+    } catch (err) {
+      logErrorDev('driver-dashboard', err);
+      const message = getApiErrorMessage(err, 'Failed to load earnings dashboard');
+      setFetchError(message);
+      setToast({ type: 'error', message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!userRole) return;
-    if (userRole === 'DRIVER') return;
+    if (userRole === 'DRIVER') {
+      void fetchDriverDashboard();
+      return;
+    }
     void fetchDashboardData();
   }, [userRole]);
 
@@ -186,7 +218,85 @@ export default function DashboardPage() {
   }
 
   if (userRole === 'DRIVER') {
-    return null;
+    if (fetchError && !driverDashboard) {
+      return (
+        <div className="dashboard-page">
+          <PageHeader title="My Earnings" description="Your weekly payout history" />
+          <ErrorState message={fetchError} onRetry={() => void fetchDriverDashboard()} />
+          {toast ? <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} /> : null}
+        </div>
+      );
+    }
+
+    const weeks = driverDashboard?.weeklyEarnings || [];
+    return (
+      <div className="dashboard-page space-y-6">
+        <PageHeader
+          title="My Earnings"
+          description={`Weekly payouts for ${driverDashboard?.driver.firstName || user?.firstName || 'Driver'} ${driverDashboard?.driver.lastName || ''}`.trim()}
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <StatCard
+            label="Last 4 Weeks"
+            value={formatCurrency(driverDashboard?.totals.last4WeeksCents || 0)}
+            icon={<IconRevenue />}
+            accentColor="var(--fleetos-primary)"
+          />
+          <StatCard
+            label="Year To Date"
+            value={formatCurrency(driverDashboard?.totals.ytdCents || 0)}
+            icon={<IconRevenue />}
+            accentColor="var(--fleetos-accent)"
+          />
+          <StatCard
+            label="All Time"
+            value={formatCurrency(driverDashboard?.totals.allTimeCents || 0)}
+            icon={<IconRevenue />}
+            accentColor="var(--fleetos-secondary)"
+          />
+        </div>
+
+        <div className="card">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="dashboard-section-title">Recent weekly earnings</h3>
+            <span className="text-xs text-gray-500">Finalized and paid statements</span>
+          </div>
+          {weeks.length === 0 ? (
+            <EmptyState title="No earnings yet" description="Your weekly settlements will appear here once finalized." />
+          ) : (
+            <div className="overflow-x-auto sm:overflow-visible">
+              <table className="data-table mobile-card-table">
+                <thead>
+                  <tr>
+                    <th>Statement #</th>
+                    <th>Week</th>
+                    <th>Status</th>
+                    <th className="text-right">Net Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeks.map((item) => (
+                    <tr key={item.settlementId}>
+                      <td data-primary="true" className="font-medium text-blue-400">{item.statementNumber || '—'}</td>
+                      <td data-label="Week" className="text-gray-400">
+                        {formatDate(item.periodStart)} — {formatDate(item.periodEnd)}
+                      </td>
+                      <td data-label="Status">
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td data-label="Net Amount" className="text-right font-semibold text-gray-200">
+                        {formatCurrency(item.netAmountCents)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        {toast ? <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} /> : null}
+      </div>
+    );
   }
 
   if (fetchError && !summary) {

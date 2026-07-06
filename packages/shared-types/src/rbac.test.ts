@@ -14,9 +14,9 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.DISPATCHER, 'settlements:finalize'), false);
   });
 
-  it('DISPATCHER can dispatch loads but not cancel', () => {
+  it('DISPATCHER can dispatch and cancel loads', () => {
     assert.equal(roleHasPermission(UserRole.DISPATCHER, 'loads:dispatch'), true);
-    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'loads:cancel'), false);
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'loads:cancel'), true);
   });
 
   it('ACCOUNTING can finalize settlements but not dispatch loads', () => {
@@ -24,9 +24,11 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'loads:dispatch'), false);
   });
 
-  it('DRIVER has read-only fleet permissions', () => {
-    assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:list'), true);
+  it('DRIVER can only access driver dashboard', () => {
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'fleet:dashboard'), true);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:dispatch'), false);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:create'), false);
   });
 });

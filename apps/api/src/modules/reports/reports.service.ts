@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database';
 import type { LoadStatus } from '@prisma/client';
+import { AppError } from '../../middleware/errorHandler.middleware';
 import {
   currentMonthDeliveredGrossCents,
   grossLineCents,
@@ -62,6 +63,23 @@ export interface OperationalAnalytics {
     loadedMiles: number;
     deadheadMiles: number;
   }[];
+}
+
+export interface DriverEarningsDashboard {
+  driver: { id: string; firstName: string; lastName: string };
+  totals: {
+    last4WeeksCents: number;
+    ytdCents: number;
+    allTimeCents: number;
+  };
+  weeklyEarnings: Array<{
+    settlementId: string;
+    statementNumber: string | null;
+    periodStart: Date;
+    periodEnd: Date;
+    status: string;
+    netAmountCents: number;
+  }>;
 }
 
 export class ReportsService {
@@ -188,6 +206,69 @@ export class ReportsService {
       loadCount: r._count.id,
       revenueCents: r._sum.rateTotal || 0,
     }));
+  }
+
+  async getDriverEarningsDashboard(tenantId: string, driverId: string): Promise<DriverEarningsDashboard> {
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId, isActive: true },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!driver) {
+      throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
+    }
+
+    const settlements = await prisma.settlement.findMany({
+      where: {
+        companyId: tenantId,
+        driverId,
+        status: { in: ['FINALIZED', 'PAID'] },
+      },
+      select: {
+        id: true,
+        statementNumber: true,
+        periodStart: true,
+        periodEnd: true,
+        status: true,
+        netAmount: true,
+      },
+      orderBy: { periodStart: 'desc' },
+      take: 16,
+    });
+
+    const now = new Date();
+    const ytdStart = new Date(now.getFullYear(), 0, 1);
+
+    let last4WeeksCents = 0;
+    let ytdCents = 0;
+    let allTimeCents = 0;
+
+    settlements.forEach((settlement, index) => {
+      const amount = settlement.netAmount || 0;
+      allTimeCents += amount;
+      if (settlement.periodEnd >= ytdStart) {
+        ytdCents += amount;
+      }
+      if (index < 4) {
+        last4WeeksCents += amount;
+      }
+    });
+
+    return {
+      driver,
+      totals: {
+        last4WeeksCents,
+        ytdCents,
+        allTimeCents,
+      },
+      weeklyEarnings: settlements.map((settlement) => ({
+        settlementId: settlement.id,
+        statementNumber: settlement.statementNumber,
+        periodStart: settlement.periodStart,
+        periodEnd: settlement.periodEnd,
+        status: settlement.status,
+        netAmountCents: settlement.netAmount,
+      })),
+    };
   }
 
   /**

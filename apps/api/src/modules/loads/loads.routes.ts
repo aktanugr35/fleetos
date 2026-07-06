@@ -11,7 +11,7 @@ const LOAD_WRITE_ROLES = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER'] as const
 const router = Router();
 router.use(authMiddleware, tenantMiddleware, linkedDriverMiddleware);
 
-const READ_ROLES = [...STAFF_ROLES, 'DRIVER'] as const;
+const READ_ROLES = [...STAFF_ROLES] as const;
 
 router.get('/', rbacMiddleware([...READ_ROLES]), loadsController.list);
 router.get('/stats', rbacMiddleware([...STAFF_ROLES]), loadsController.getStats);

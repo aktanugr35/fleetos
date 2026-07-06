@@ -6,13 +6,12 @@ import { rbacMiddleware } from '../../middleware/rbac.middleware';
 import { linkedDriverMiddleware } from '../../middleware/linkedDriver.middleware';
 import { auditMiddleware } from '../../middleware/audit.middleware';
 
-/** Read-only settlement access incl. fleet staff + DRIVER (own settlements only via controller scope) */
+/** Read-only settlement access for office/fleet staff only */
 const SETTLEMENT_READ_ROLES = [
   'SUPER_ADMIN',
   'COMPANY_ADMIN',
   'DISPATCHER',
   'ACCOUNTING',
-  'DRIVER',
 ] as const;
 
 const SETTLEMENT_WRITE_ROLES = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'ACCOUNTING'] as const;
