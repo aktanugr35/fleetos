@@ -39,7 +39,17 @@ const US_STATES = [
 ].map(s => ({ value: s, label: s }));
 
 interface Driver { id: string; firstName: string; lastName: string; }
-interface Truck { id: string; unitNumber: string; }
+interface Truck {
+  id: string;
+  unitNumber: string;
+  ownerDriverId?: string | null;
+}
+interface TruckApiResponse {
+  id: string;
+  unitNumber: string;
+  ownerDriver?: { id?: string | null } | null;
+  ownerDriverId?: string | null;
+}
 interface Trailer { id: string; unitNumber: string; }
 
 const STATUS_OPTIONS = [
@@ -64,6 +74,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const [form, setForm] = useState(EMPTY_FORM);
 
   const [rateConfirmationFile, setRateConfirmationFile] = useState<File | null>(null);
+  const [autoTruckId, setAutoTruckId] = useState<string | null>(null);
   const [zipLookup, setZipLookup] = useState<{ pickup: boolean; delivery: boolean }>({
     pickup: false,
     delivery: false,
@@ -75,17 +86,23 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       setLoadNumber('');
       setOnSettlement(false);
       setRateConfirmationFile(null);
+      setAutoTruckId(null);
       setErrors({});
       return;
     }
 
     Promise.all([
       api.get(loadId ? '/drivers?status=all&limit=200' : '/drivers?status=active&limit=200'),
-      api.get('/trucks'),
+      api.get('/trucks?status=active&limit=200'),
       api.get('/trailers'),
     ]).then(([d, t, tr]) => {
       setDrivers(d.data.data);
-      setTrucks(t.data.data);
+      const normalizedTrucks: Truck[] = ((t.data.data || []) as TruckApiResponse[]).map((truck) => ({
+        id: truck.id,
+        unitNumber: truck.unitNumber,
+        ownerDriverId: truck.ownerDriver?.id ?? truck.ownerDriverId ?? null,
+      }));
+      setTrucks(normalizedTrucks);
       setTrailers(tr.data.data);
     }).catch(() => {});
 
@@ -99,6 +116,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
         const delivery = splitDateTime(load.deliveryDate);
         setLoadNumber(load.loadNumber || '');
         setOnSettlement((load.settlementLineCount ?? 0) > 0);
+        setAutoTruckId(null);
         setForm({
           driverId: load.driverId || load.driver?.id || '',
           truckId: load.truckId || load.truck?.id || '',
@@ -140,6 +158,26 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const set = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
     setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const findAssignedTruck = (driverId: string) =>
+    trucks.find((truck) => truck.ownerDriverId === driverId) || null;
+
+  const handleDriverChange = (driverId: string) => {
+    const assigned = findAssignedTruck(driverId);
+    setForm((prev) => {
+      const nextTruckId = assigned?.id ?? (
+        autoTruckId && prev.truckId === autoTruckId ? '' : prev.truckId
+      );
+      return { ...prev, driverId, truckId: nextTruckId };
+    });
+    setAutoTruckId(assigned?.id ?? null);
+    setErrors((prev) => ({ ...prev, driverId: '', truckId: '' }));
+  };
+
+  const handleTruckChange = (truckId: string) => {
+    setAutoTruckId(null); // manual override should stay as selected
+    set('truckId', truckId);
   };
 
   const lookupZip = async (kind: 'pickup' | 'delivery') => {
@@ -332,11 +370,11 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">Assignment</h4>
       <div className="grid grid-cols-3 gap-4">
         <FormField label="Driver" required error={errors.driverId}>
-          <FormSelect value={form.driverId} onChange={(e) => set('driverId', e.target.value)} error={!!errors.driverId}
+          <FormSelect value={form.driverId} onChange={(e) => handleDriverChange(e.target.value)} error={!!errors.driverId}
             placeholder="Select driver" options={drivers.map(d => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))} />
         </FormField>
         <FormField label="Truck" required error={errors.truckId}>
-          <FormSelect value={form.truckId} onChange={(e) => set('truckId', e.target.value)} error={!!errors.truckId}
+          <FormSelect value={form.truckId} onChange={(e) => handleTruckChange(e.target.value)} error={!!errors.truckId}
             placeholder="Select truck" options={trucks.map(t => ({ value: t.id, label: t.unitNumber }))} />
         </FormField>
         <FormField label="Trailer">

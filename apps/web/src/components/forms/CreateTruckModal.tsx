@@ -47,7 +47,7 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
 
   useEffect(() => {
     if (!isOpen) return;
-    api.get('/drivers?type=OWNER_OPERATOR').then(r => setDrivers(r.data.data)).catch(() => {});
+    api.get('/drivers?status=active&limit=200').then(r => setDrivers(r.data.data)).catch(() => {});
   }, [isOpen]);
 
   useEffect(() => {
@@ -169,7 +169,8 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
             </FormField>
             <FormField label="Owner Driver">
               <FormSelect value={form.ownerDriverId} onChange={(e) => set('ownerDriverId', e.target.value)}
-                placeholder="Select driver" options={drivers.map(d => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))} />
+                placeholder="Unassigned (remove driver assignment)"
+                options={drivers.map(d => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))} />
             </FormField>
           </div>
 
