@@ -26,8 +26,10 @@ while [ $# -gt 0 ]; do
 done
 
 S_WHERE=""
+S_FILTER=""
 if [ -n "$COMPANY_ID" ]; then
   S_WHERE="WHERE s.\"companyId\" = '$COMPANY_ID'"
+  S_FILTER="AND s.\"companyId\" = '$COMPANY_ID'"
   echo "Company filter: $COMPANY_ID"
 else
   echo "Company filter: all companies in database"
@@ -59,12 +61,12 @@ echo "Counts:"
 psql_exec <<SQL
 SELECT
   (SELECT COUNT(*) FROM settlements s $S_WHERE) AS settlements,
-  (SELECT COUNT(*) FROM settlements s $S_WHERE AND s.status = 'DRAFT') AS draft,
-  (SELECT COUNT(*) FROM settlements s $S_WHERE AND s.status = 'FINALIZED') AS finalized,
-  (SELECT COUNT(*) FROM settlements s $S_WHERE AND s.status = 'PAID') AS paid,
+  (SELECT COUNT(*) FROM settlements s WHERE s.status = 'DRAFT' $S_FILTER) AS draft,
+  (SELECT COUNT(*) FROM settlements s WHERE s.status = 'FINALIZED' $S_FILTER) AS finalized,
+  (SELECT COUNT(*) FROM settlements s WHERE s.status = 'PAID' $S_FILTER) AS paid,
   (SELECT COUNT(*) FROM settlement_lines sl
    JOIN settlements s ON s.id = sl."settlementId"
-   $S_WHERE) AS settlement_lines,
+   WHERE TRUE $S_FILTER) AS settlement_lines,
   (SELECT COUNT(*) FROM loads) AS loads_kept;
 SQL
 
