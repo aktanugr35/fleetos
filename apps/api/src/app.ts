@@ -30,6 +30,7 @@ import notificationRoutes from './modules/notifications/notifications.routes';
 import setupRoutes from './modules/setup/setup.routes';
 import fuelTollRoutes from './modules/fuel-toll/fuel-toll.routes';
 import geoRoutes from './modules/geo/geo.routes';
+import usersRoutes from './modules/users/users.routes';
 
 // ─── Express App ────────────────────────────────────────
 const app = express();
@@ -123,6 +124,7 @@ app.use('/api/v1/compliance', complianceRoutes);
 app.use('/api/v1/documents', documentsRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/geo', geoRoutes);
+app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1', fuelTollRoutes);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAuthStore } from '@/store/authStore';
 import { Toast } from '@/components/ui/Toast';
@@ -124,6 +125,21 @@ export default function SettingsPage() {
 
       <div className={`grid gap-6 ${canEditCompany ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 max-w-xl mx-auto lg:mx-0'}`}>
         {/* Company Settings */}
+        {canEditCompany ? (
+        <div className="card">
+          <h3 className="font-semibold text-gray-200 mb-1 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Team Members
+          </h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Create dispatcher, accounting, driver, and admin login accounts for your company.
+          </p>
+          <Link href="/dashboard/settings/team" className="btn btn-secondary text-sm">
+            Manage Team Accounts
+          </Link>
+        </div>
+        ) : null}
+
         {canEditCompany ? (
         <div className="card">
           <h3 className="font-semibold text-gray-200 mb-1 flex items-center gap-2">
