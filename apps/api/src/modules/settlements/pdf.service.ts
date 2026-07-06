@@ -8,6 +8,7 @@ import { logger } from '../../utils/logger';
 import { buildCompanyLogoHtml } from '../../utils/companyLogo';
 import { SETTLEMENTS_DIR, resolveUploadUrl } from '../../config/paths';
 import { getLoadMiles, sumSettlementLineMiles } from './pdf.miles';
+import { wrapPdfTableRow } from './pdf.layout';
 
 export class PdfService {
   resolvePdfFilePath(pdfUrl: string): string {
@@ -122,8 +123,7 @@ export class PdfService {
         ? (line.grossAmount / rpmBaseMiles / 100).toFixed(3)
         : '0.000';
 
-      return `
-        <tr>
+      return wrapPdfTableRow(`
             <td>
                 ${load.loadNumber}
                 <div class="sub-text">${load.referenceNumber || 'N/A'}</div>
@@ -149,8 +149,7 @@ export class PdfService {
                 <div class="sub-text">${company.name}</div>
             </td>
             <td class="text-right font-bold">${fMoney(line.netAmount)}</td>
-        </tr>
-      `;
+      `, 7);
     }).join('');
 
     const totalTripGross = settlement.lines.reduce((sum, l) => sum + l.grossAmount, 0);
@@ -169,8 +168,7 @@ export class PdfService {
         const gross = tx.grossAmount;
         const discount = tx.discount;
         const net = f.amount;
-        return `
-          <tr>
+        return wrapPdfTableRow(`
               <td>Diesel</td>
               <td>${tx.date.toLocaleDateString()}<br>${tx.date.toLocaleTimeString()}</td>
               <td>
@@ -186,8 +184,7 @@ export class PdfService {
               <td>${fMoney(gross)}</td>
               <td class="text-green">${discount > 0 ? fMoney(discount) : fMoney(0)}</td>
               <td class="text-right font-bold">${fMoney(net)}</td>
-          </tr>
-        `;
+        `, 12);
       }),
       ...legacyFuels.map(f => {
       const d = f.deduction;
@@ -198,8 +195,7 @@ export class PdfService {
       const gross = Number(metadata.grossAmount) || f.amount + discount;
       const net = f.amount;
 
-      return `
-        <tr>
+      return wrapPdfTableRow(`
             <td>Diesel</td>
             <td>${d.date.toLocaleDateString()}<br>${d.date.toLocaleTimeString()}</td>
             <td>
@@ -215,41 +211,34 @@ export class PdfService {
             <td>${fMoney(gross)}</td>
             <td class="text-green">${discount > 0 ? fMoney(discount) : fMoney(0)}</td>
             <td class="text-right font-bold">${fMoney(net)}</td>
-        </tr>
-      `;
+      `, 12);
       }),
     ].join('');
 
     const tollTransactionsHtml = [
       ...settlement.tollTransactions.map(t => {
         const tx = t.tollTransaction;
-        return `
-          <tr>
+        return wrapPdfTableRow(`
               <td>${tx.date.toLocaleDateString()}</td>
               <td>${tx.agency || tx.tollDevice.provider || 'Toll'}</td>
               <td>${tx.location || tx.description || '—'}<div class="sub-text">Truck ${tx.truck.unitNumber}${tx.reference ? ` · ${tx.reference}` : ''}</div></td>
               <td class="text-right font-bold">${fMoney(t.amount)}</td>
-          </tr>
-        `;
+        `, 4);
       }),
-      ...legacyTolls.map(t => `
-        <tr>
+      ...legacyTolls.map(t => wrapPdfTableRow(`
             <td>${t.deduction.date.toLocaleDateString()}</td>
             <td>Toll</td>
             <td>${t.deduction.description}</td>
             <td class="text-right font-bold">${fMoney(t.amount)}</td>
-        </tr>
-      `),
+      `, 4)),
     ].join('');
 
-    const deductionRowsHtml = trueDeductions.map(d => `
-      <tr>
+    const deductionRowsHtml = trueDeductions.map(d => wrapPdfTableRow(`
           <td>${d.deduction.type.replace('_', ' ')}</td>
           <td>${d.deduction.description}</td>
           <td>${d.deduction.date.toLocaleDateString()}</td>
           <td class="text-right font-bold">${fMoney(d.amount)}</td>
-      </tr>
-    `).join('');
+    `, 4)).join('');
 
     const fuelTotal =
       settlement.fuelTransactions.reduce((sum, f) => sum + f.amount, 0) +
@@ -261,16 +250,12 @@ export class PdfService {
     const deductionsTotal = trueDeductions.reduce((sum, d) => sum + d.amount, 0);
     
     // CREDITS
-    const reimbursementsHtml = settlement.credits.map(c => {
-        return `
-            <tr>
+    const reimbursementsHtml = settlement.credits.map(c => wrapPdfTableRow(`
                 <td>${c.credit.description || c.credit.type}</td>
                 <td><span class="badge-green">Reimbursement</span></td>
                 <td>${c.credit.date.toLocaleDateString()}</td>
                 <td class="text-right font-bold">${fMoney(c.amount)}</td>
-            </tr>
-        `;
-    }).join('');
+    `, 4)).join('');
 
     const reimbursementTotal = settlement.credits.reduce((sum, c) => sum + c.amount, 0);
 
@@ -359,18 +344,54 @@ export class PdfService {
             .font-bold { font-weight: bold; }
             .font-large { font-size: 14px; font-weight: bold; }
             
-            .section-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; margin-top: 25px; }
+            .section-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; margin-top: 25px; break-after: avoid-page; page-break-after: avoid; }
             
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 10px; table-layout: fixed; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
             th { border-bottom: 2px solid #94a3b8; color: #0284c7; font-weight: 500; text-align: left; padding: 8px 4px; }
             td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; }
             .text-right { text-align: right; }
             .sub-text { color: #64748b; font-size: 9px; margin-top: 2px; line-height: 1.2; }
+
+            .pdf-row,
+            .pdf-row-table,
+            .totals-row {
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+            .pdf-row-wrap {
+                padding: 0;
+                border-bottom: none;
+                vertical-align: top;
+            }
+            .pdf-row-table {
+                width: 100%;
+                table-layout: fixed;
+                border-collapse: collapse;
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+            .pdf-row-table td {
+                border-bottom: 1px solid #e2e8f0;
+                padding: 8px 4px;
+                vertical-align: top;
+            }
             
             .totals-row { background: #e2e8f0; font-weight: bold; }
             .totals-row td { border-bottom: none; }
+            .totals-row .pdf-row-table td { background: #e2e8f0; border-bottom: none; }
             
             .badge-green { background: #4ade80; color: white; padding: 2px 10px; border-radius: 12px; font-size: 9px; }
+
+            @media print {
+                .pdf-row,
+                .pdf-row-table,
+                .totals-row {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+            }
         </style>
     </head>
     <body>
@@ -486,7 +507,9 @@ export class PdfService {
             </thead>
             <tbody>
                 ${tripsHtml}
-                <tr class="totals-row">
+            </tbody>
+            <tfoot>
+                ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
@@ -497,8 +520,8 @@ export class PdfService {
                     <td>${fMoney(totalTripGross)}</td>
                     <td></td>
                     <td class="text-right">${fMoney(earning)}</td>
-                </tr>
-            </tbody>
+                `, 7, 'totals-row')}
+            </tfoot>
         </table>
 
         ${settlement.credits.length > 0 ? `
@@ -513,13 +536,15 @@ export class PdfService {
             </thead>
             <tbody>
                 ${reimbursementsHtml}
-                <tr class="totals-row">
+            </tbody>
+            <tfoot>
+                ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
                     <td class="text-right">${fMoney(reimbursementTotal)}</td>
-                </tr>
-            </tbody>
+                `, 4, 'totals-row')}
+            </tfoot>
         </table>
         ` : ''}
 
@@ -561,13 +586,15 @@ export class PdfService {
             </thead>
             <tbody>
                 ${tollTransactionsHtml}
-                <tr class="totals-row">
+            </tbody>
+            <tfoot>
+                ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
                     <td class="text-right">${fMoney(tollTotal)}</td>
-                </tr>
-            </tbody>
+                `, 4, 'totals-row')}
+            </tfoot>
         </table>
         ` : ''}
 
@@ -584,13 +611,15 @@ export class PdfService {
             </thead>
             <tbody>
                 ${deductionRowsHtml}
-                <tr class="totals-row">
+            </tbody>
+            <tfoot>
+                ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
                     <td class="text-right">${fMoney(deductionsTotal)}</td>
-                </tr>
-            </tbody>
+                `, 4, 'totals-row')}
+            </tfoot>
         </table>
         ` : ''}
 
@@ -633,6 +662,7 @@ export class PdfService {
     try {
       const page = await browser.newPage();
       page.setDefaultTimeout(PDF_PAGE_TIMEOUT_MS);
+      await page.emulateMediaType('print');
       await page.setContent(htmlContent, { waitUntil: 'load', timeout: PDF_PAGE_TIMEOUT_MS });
       const pdfBuffer = await page.pdf({
         format: 'A4',
