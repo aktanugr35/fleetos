@@ -8,7 +8,7 @@ import { logger } from '../../utils/logger';
 import { buildCompanyLogoHtml } from '../../utils/companyLogo';
 import { SETTLEMENTS_DIR, resolveUploadUrl } from '../../config/paths';
 import { getLoadMiles, sumSettlementLineMiles } from './pdf.miles';
-import { wrapPdfTableRow } from './pdf.layout';
+import { pdfSection, wrapPdfTableRow } from './pdf.layout';
 
 export class PdfService {
   resolvePdfFilePath(pdfUrl: string): string {
@@ -344,11 +344,11 @@ export class PdfService {
             .font-bold { font-weight: bold; }
             .font-large { font-size: 14px; font-weight: bold; }
             
-            .section-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; margin-top: 25px; break-after: avoid-page; page-break-after: avoid; }
+            .pdf-section { margin-bottom: 28px; }
+            .section-title { font-size: 14px; font-weight: bold; margin: 0 0 10px 0; break-after: avoid-page; page-break-after: avoid; }
             
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 10px; table-layout: fixed; }
-            thead { display: table-header-group; }
-            tfoot { display: table-footer-group; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 0; font-size: 10px; table-layout: fixed; }
+            thead { display: table-header-group; break-after: avoid; page-break-after: avoid; }
             th { border-bottom: 2px solid #94a3b8; color: #0284c7; font-weight: 500; text-align: left; padding: 8px 4px; }
             td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; }
             .text-right { text-align: right; }
@@ -356,11 +356,16 @@ export class PdfService {
 
             .pdf-row,
             .pdf-row-table,
-            .totals-row {
+            .totals-row,
+            .section-total-row {
                 break-inside: avoid-page;
                 page-break-inside: avoid;
             }
-            .pdf-row-wrap {
+            .section-total-row {
+                break-before: avoid-page;
+                page-break-before: avoid;
+            }
+            .pdf-row-cell {
                 padding: 0;
                 border-bottom: none;
                 vertical-align: top;
@@ -384,12 +389,38 @@ export class PdfService {
             
             .badge-green { background: #4ade80; color: white; padding: 2px 10px; border-radius: 12px; font-size: 9px; }
 
+            .statement-footer {
+                margin-top: 40px;
+                padding-top: 15px;
+                border-top: 2px solid #cbd5e1;
+                text-align: center;
+                font-size: 10px;
+                color: #64748b;
+                break-inside: avoid-page;
+                page-break-inside: avoid;
+            }
+            .statement-footer .status-badge {
+                display: inline-block;
+                background: #16a34a;
+                color: white;
+                padding: 3px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 11px;
+                margin-right: 8px;
+            }
+
             @media print {
                 .pdf-row,
                 .pdf-row-table,
-                .totals-row {
+                .totals-row,
+                .section-total-row {
                     break-inside: avoid-page !important;
                     page-break-inside: avoid !important;
+                }
+                .section-total-row {
+                    break-before: avoid-page !important;
+                    page-break-before: avoid !important;
                 }
             }
         </style>
@@ -492,7 +523,7 @@ export class PdfService {
             </div>
         </div>
 
-        <div class="section-title">Trips & Credits</div>
+        ${pdfSection('Trips', `
         <table>
             <thead>
                 <tr>
@@ -507,8 +538,6 @@ export class PdfService {
             </thead>
             <tbody>
                 ${tripsHtml}
-            </tbody>
-            <tfoot>
                 ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
@@ -520,11 +549,12 @@ export class PdfService {
                     <td>${fMoney(totalTripGross)}</td>
                     <td></td>
                     <td class="text-right">${fMoney(earning)}</td>
-                `, 7, 'totals-row')}
-            </tfoot>
+                `, 7, 'totals-row section-total-row')}
+            </tbody>
         </table>
+        `)}
 
-        ${settlement.credits.length > 0 ? `
+        ${settlement.credits.length > 0 ? pdfSection('Credits & Reimbursements', `
         <table>
             <thead>
                 <tr>
@@ -536,20 +566,17 @@ export class PdfService {
             </thead>
             <tbody>
                 ${reimbursementsHtml}
-            </tbody>
-            <tfoot>
                 ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
                     <td class="text-right">${fMoney(reimbursementTotal)}</td>
-                `, 4, 'totals-row')}
-            </tfoot>
+                `, 4, 'totals-row section-total-row')}
+            </tbody>
         </table>
-        ` : ''}
+        `) : ''}
 
-        ${fuelTotal > 0 ? `
-        <div class="section-title">Fuel Transaction</div>
+        ${fuelTotal > 0 ? pdfSection('Fuel Transactions', `
         <table>
             <thead>
                 <tr>
@@ -569,12 +596,25 @@ export class PdfService {
             </thead>
             <tbody>
                 ${fuelTransactionsHtml}
+                ${wrapPdfTableRow(`
+                    <td>Totals:</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right">${fMoney(fuelTotal)}</td>
+                `, 12, 'totals-row section-total-row')}
             </tbody>
         </table>
-        ` : ''}
+        `) : ''}
 
-        ${tollTotal > 0 ? `
-        <div class="section-title">Toll Transactions</div>
+        ${tollTotal > 0 ? pdfSection('Toll Transactions', `
         <table>
             <thead>
                 <tr>
@@ -586,20 +626,17 @@ export class PdfService {
             </thead>
             <tbody>
                 ${tollTransactionsHtml}
-            </tbody>
-            <tfoot>
                 ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
                     <td class="text-right">${fMoney(tollTotal)}</td>
-                `, 4, 'totals-row')}
-            </tfoot>
+                `, 4, 'totals-row section-total-row')}
+            </tbody>
         </table>
-        ` : ''}
+        `) : ''}
 
-        ${trueDeductions.length > 0 ? `
-        <div class="section-title">Deductions</div>
+        ${trueDeductions.length > 0 ? pdfSection('Deductions', `
         <table>
             <thead>
                 <tr>
@@ -611,16 +648,21 @@ export class PdfService {
             </thead>
             <tbody>
                 ${deductionRowsHtml}
-            </tbody>
-            <tfoot>
                 ${wrapPdfTableRow(`
                     <td>Totals:</td>
                     <td></td>
                     <td></td>
                     <td class="text-right">${fMoney(deductionsTotal)}</td>
-                `, 4, 'totals-row')}
-            </tfoot>
+                `, 4, 'totals-row section-total-row')}
+            </tbody>
         </table>
+        `) : ''}
+
+        ${settlement.status === 'FINALIZED' || settlement.status === 'PAID' ? `
+        <div class="statement-footer">
+            <span class="status-badge">${settlement.status}</span>
+            Statement ${settlement.status === 'PAID' ? 'paid' : 'finalized'}${settlement.finalizedAt ? ` on ${fDate(settlement.finalizedAt)}` : ''}
+        </div>
         ` : ''}
 
     </body>

@@ -12,7 +12,7 @@ describe('wrapPdfTableRow', () => {
   });
 
   it('supports totals row class', () => {
-    const html = wrapPdfTableRow('<td>Totals</td>', 4, 'totals-row');
-    assert.match(html, /class="totals-row"/);
+    const html = wrapPdfTableRow('<td>Totals</td>', 4, 'totals-row section-total-row');
+    assert.match(html, /class="totals-row section-total-row"/);
   });
 });
