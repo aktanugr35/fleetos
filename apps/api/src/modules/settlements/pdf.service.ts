@@ -83,6 +83,10 @@ export class PdfService {
         hour12: true,
         timeZone: 'America/New_York',
       });
+    const fFuelDate = (date: Date) =>
+      date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
+
+    const FUEL_COLS = 7;
 
     const statementNo = settlement.statementNumber || 'N/A';
     const payrollId = settlement.payrollId || 'N/A';
@@ -170,21 +174,16 @@ export class PdfService {
         const net = f.amount;
         return wrapPdfTableRow(`
               <td>Diesel</td>
-              <td>${tx.date.toLocaleDateString()}<br>${tx.date.toLocaleTimeString()}</td>
-              <td>
+              <td>${fFuelDate(tx.date)}</td>
+              <td class="fuel-merchant">
                   ${tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card'}
                   <div class="sub-text">Truck ${tx.truck.unitNumber}${tx.reference ? ` · ${tx.reference}` : ''}</div>
               </td>
-              <td>${qty ? `${qty} gal` : '—'}</td>
-              <td>${fMoney(gross)}</td>
-              <td>0.00 gal</td>
-              <td>${fMoney(0)}</td>
-              <td>${fMoney(0)}</td>
-              <td class="text-red">${fMoney(0)}</td>
+              <td class="fuel-qty">${qty ? `${qty} gal` : '—'}</td>
               <td>${fMoney(gross)}</td>
               <td class="text-green">${discount > 0 ? fMoney(discount) : fMoney(0)}</td>
               <td class="text-right font-bold">${fMoney(net)}</td>
-        `, 12);
+        `, FUEL_COLS);
       }),
       ...legacyFuels.map(f => {
       const d = f.deduction;
@@ -197,21 +196,16 @@ export class PdfService {
 
       return wrapPdfTableRow(`
             <td>Diesel</td>
-            <td>${d.date.toLocaleDateString()}<br>${d.date.toLocaleTimeString()}</td>
-            <td>
+            <td>${fFuelDate(d.date)}</td>
+            <td class="fuel-merchant">
                 ${metadata.merchant || 'Fuel Stop'}
                 <div class="sub-text">${d.description}</div>
             </td>
-            <td>${qty ? `${qty} gal` : '—'}</td>
-            <td>${fMoney(gross)}</td>
-            <td>0.00 gal</td>
-            <td>${fMoney(0)}</td>
-            <td>${fMoney(0)}</td>
-            <td class="text-red">${fMoney(0)}</td>
+            <td class="fuel-qty">${qty ? `${qty} gal` : '—'}</td>
             <td>${fMoney(gross)}</td>
             <td class="text-green">${discount > 0 ? fMoney(discount) : fMoney(0)}</td>
             <td class="text-right font-bold">${fMoney(net)}</td>
-      `, 12);
+      `, FUEL_COLS);
       }),
     ].join('');
 
@@ -388,6 +382,23 @@ export class PdfService {
             .totals-row .pdf-row-table td { background: #e2e8f0; border-bottom: none; }
             
             .badge-green { background: #4ade80; color: white; padding: 2px 10px; border-radius: 12px; font-size: 9px; }
+
+            .fuel-table col.col-type { width: 8%; }
+            .fuel-table col.col-date { width: 10%; }
+            .fuel-table col.col-merchant { width: 34%; }
+            .fuel-table col.col-qty { width: 10%; }
+            .fuel-table col.col-amount { width: 14%; }
+            .fuel-table col.col-discount { width: 12%; }
+            .fuel-table col.col-pay { width: 12%; }
+            .fuel-table .fuel-merchant { word-wrap: break-word; overflow-wrap: break-word; }
+            .fuel-table .fuel-qty { white-space: nowrap; }
+            .fuel-table .pdf-row-table td:nth-child(1) { width: 8%; }
+            .fuel-table .pdf-row-table td:nth-child(2) { width: 10%; }
+            .fuel-table .pdf-row-table td:nth-child(3) { width: 34%; }
+            .fuel-table .pdf-row-table td:nth-child(4) { width: 10%; }
+            .fuel-table .pdf-row-table td:nth-child(5) { width: 14%; }
+            .fuel-table .pdf-row-table td:nth-child(6) { width: 12%; }
+            .fuel-table .pdf-row-table td:nth-child(7) { width: 12%; }
 
             .statement-footer {
                 margin-top: 40px;
@@ -577,19 +588,23 @@ export class PdfService {
         `) : ''}
 
         ${fuelTotal > 0 ? pdfSection('Fuel Transactions', `
-        <table>
+        <table class="fuel-table">
+            <colgroup>
+                <col class="col-type" />
+                <col class="col-date" />
+                <col class="col-merchant" />
+                <col class="col-qty" />
+                <col class="col-amount" />
+                <col class="col-discount" />
+                <col class="col-pay" />
+            </colgroup>
             <thead>
                 <tr>
                     <th>Type</th>
-                    <th>Date/Time</th>
-                    <th>Merchant/Location</th>
+                    <th>Date</th>
+                    <th>Merchant / Location</th>
                     <th>Qty</th>
-                    <th>Diesel Amnt</th>
-                    <th>Reefer Qty</th>
-                    <th>Reefer Amnt</th>
-                    <th>DEF</th>
-                    <th>Fee</th>
-                    <th>Total Amount</th>
+                    <th>Amount</th>
                     <th>Discount</th>
                     <th class="text-right">Pay Amount</th>
                 </tr>
@@ -603,13 +618,8 @@ export class PdfService {
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
                     <td class="text-right">${fMoney(fuelTotal)}</td>
-                `, 12, 'totals-row section-total-row')}
+                `, FUEL_COLS, 'totals-row section-total-row')}
             </tbody>
         </table>
         `) : ''}
