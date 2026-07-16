@@ -65,9 +65,10 @@ export function DriverIntakePanel({ driverId }: Props) {
     if (!status?.documentId) return;
     setError(null);
     try {
-      const res = await api.get(`/documents/${status.documentId}/download`, { responseType: 'blob' });
-      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+      const res = await api.get(`/documents/${status.documentId}/download`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'driver_application.pdf';
