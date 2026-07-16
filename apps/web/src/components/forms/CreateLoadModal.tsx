@@ -14,7 +14,7 @@ function splitDateTime(iso: string | Date | null | undefined) {
 }
 
 const EMPTY_FORM = {
-  driverId: '', truckId: '', trailerId: '', trailerMode: 'company' as 'company' | 'hook_drop',
+  driverId: '', bookedByDispatcherId: '', truckId: '', trailerId: '', trailerMode: 'company' as 'company' | 'hook_drop',
   externalTrailerRef: '',
   brokerName: '', brokerMC: '', brokerContact: '',
   pickupZip: '', pickupAddress: '', pickupCity: '', pickupState: 'TX', pickupDate: '', pickupTime: '08:00',
@@ -39,6 +39,7 @@ const US_STATES = [
 ].map(s => ({ value: s, label: s }));
 
 interface Driver { id: string; firstName: string; lastName: string; }
+interface Dispatcher { id: string; firstName: string; lastName: string; }
 interface Truck {
   id: string;
   unitNumber: string;
@@ -66,6 +67,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const [fetchingLoad, setFetchingLoad] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [dispatchers, setDispatchers] = useState<Dispatcher[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [trailers, setTrailers] = useState<Trailer[]>([]);
   const [loadNumber, setLoadNumber] = useState('');
@@ -93,10 +95,12 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
 
     Promise.all([
       api.get(loadId ? '/drivers?status=all&limit=200' : '/drivers?status=active&limit=200'),
+      api.get('/dispatchers?status=active&limit=200'),
       api.get('/trucks?status=active&limit=200'),
       api.get('/trailers'),
-    ]).then(([d, t, tr]) => {
+    ]).then(([d, disp, t, tr]) => {
       setDrivers(d.data.data);
+      setDispatchers(disp.data.data);
       const normalizedTrucks: Truck[] = ((t.data.data || []) as TruckApiResponse[]).map((truck) => ({
         id: truck.id,
         unitNumber: truck.unitNumber,
@@ -119,6 +123,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
         setAutoTruckId(null);
         setForm({
           driverId: load.driverId || load.driver?.id || '',
+          bookedByDispatcherId: load.bookedByDispatcherId || load.bookedByDispatcher?.id || '',
           truckId: load.truckId || load.truck?.id || '',
           trailerId: load.trailerId || '',
           trailerMode: load.externalTrailerRef ? 'hook_drop' : 'company',
@@ -255,6 +260,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.driverId) e.driverId = 'Required';
+    if (!form.bookedByDispatcherId) e.bookedByDispatcherId = 'Required';
     if (!form.truckId) e.truckId = 'Required';
     if (!form.brokerName.trim()) e.brokerName = 'Required';
     if (!form.pickupCity.trim()) e.pickupCity = 'Required';
@@ -292,6 +298,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
 
       const payload = {
         driverId: form.driverId,
+        bookedByDispatcherId: form.bookedByDispatcherId,
         truckId: form.truckId,
         trailerId: form.trailerMode === 'company' ? form.trailerId || null : null,
         externalTrailerRef:
@@ -368,11 +375,22 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
 
       {/* Assignment */}
       <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">Assignment</h4>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <FormField label="Driver" required error={errors.driverId}>
           <FormSelect value={form.driverId} onChange={(e) => handleDriverChange(e.target.value)} error={!!errors.driverId}
             placeholder="Select driver" options={drivers.map(d => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))} />
         </FormField>
+        <FormField label="Booked By" required error={errors.bookedByDispatcherId}>
+          <FormSelect
+            value={form.bookedByDispatcherId}
+            onChange={(e) => set('bookedByDispatcherId', e.target.value)}
+            error={!!errors.bookedByDispatcherId}
+            placeholder="Select dispatcher"
+            options={dispatchers.map((d) => ({ value: d.id, label: `${d.firstName} ${d.lastName}` }))}
+          />
+        </FormField>
+      </div>
+      <div className="grid grid-cols-2 gap-4 mt-3">
         <FormField label="Truck" required error={errors.truckId}>
           <FormSelect value={form.truckId} onChange={(e) => handleTruckChange(e.target.value)} error={!!errors.truckId}
             placeholder="Select truck" options={trucks.map(t => ({ value: t.id, label: t.unitNumber }))} />

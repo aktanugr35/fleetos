@@ -30,10 +30,12 @@ model Company {
 
   users            User[]
   drivers          Driver[]
+  dispatchers      Dispatcher[]
   trucks           Truck[]
   trailers         Trailer[]
   loads            Load[]
   settlements      Settlement[]
+  dispatcherSettlements DispatcherSettlement[]
   deductions       Deduction[]
   credits          Credit[]
   fuelCards        FuelCard[]
@@ -42,6 +44,7 @@ model Company {
   tollTransactions TollTransaction[]
   notifications    Notification[]
   auditLogs        AuditLog[]
+  intakeTokens     DriverIntakeToken[]
 
   @@map("companies")
 }
@@ -70,6 +73,7 @@ model User {
 
   company       Company?       @relation(fields: [companyId], references: [id])
   driver        Driver?
+  dispatcher    Dispatcher?
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
 
@@ -138,9 +142,52 @@ model Driver {
   documents   Document[]
   deductions  Deduction[]
   credits     Credit[]
+  intakeTokens DriverIntakeToken[]
 
   @@index([companyId])
   @@map("drivers")
+}
+
+model DriverIntakeToken {
+  id          String    @id @default(uuid())
+  companyId   String
+  driverId    String
+  token       String    @unique
+  createdById String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id])
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([driverId])
+  @@map("driver_intake_tokens")
+}
+
+// ─── DISPATCHER ───────────────────────────────────────
+model Dispatcher {
+  id             String   @id @default(uuid())
+  companyId      String
+  userId         String?  @unique
+  firstName      String
+  lastName       String
+  phone          String?
+  email          String?
+  commissionRate Int      @default(200) // %2 → 200 (percent * 100)
+  isActive       Boolean  @default(true)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company               Company                @relation(fields: [companyId], references: [id])
+  user                  User?                  @relation(fields: [userId], references: [id])
+  bookedLoads           Load[]
+  dispatcherSettlements DispatcherSettlement[]
+
+  @@index([companyId])
+  @@map("dispatchers")
 }
 
 // ─── TRUCK ────────────────────────────────────────────
@@ -217,6 +264,7 @@ model Load {
   driverId           String
   truckId            String
   trailerId          String?
+  bookedByDispatcherId String?
   externalTrailerRef String? // Hook & drop / external trailer (not company fleet)
   loadNumber         String     @unique
   brokerName         String
@@ -246,15 +294,18 @@ model Load {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company         Company          @relation(fields: [companyId], references: [id])
-  driver          Driver           @relation(fields: [driverId], references: [id])
-  truck           Truck            @relation(fields: [truckId], references: [id])
-  trailer         Trailer?         @relation(fields: [trailerId], references: [id])
-  documents       Document[]
-  settlementLines SettlementLine[]
+  company              Company                     @relation(fields: [companyId], references: [id])
+  driver               Driver                      @relation(fields: [driverId], references: [id])
+  truck                Truck                       @relation(fields: [truckId], references: [id])
+  trailer              Trailer?                    @relation(fields: [trailerId], references: [id])
+  bookedByDispatcher   Dispatcher?                 @relation(fields: [bookedByDispatcherId], references: [id])
+  documents            Document[]
+  settlementLines      SettlementLine[]
+  dispatcherSettlementLines DispatcherSettlementLine[]
 
   @@index([companyId])
   @@index([driverId])
+  @@index([bookedByDispatcherId])
   @@index([status])
   @@map("loads")
 }
@@ -315,6 +366,52 @@ model SettlementLine {
   load       Load       @relation(fields: [loadId], references: [id])
 
   @@map("settlement_lines")
+}
+
+// ─── DISPATCHER SETTLEMENT ────────────────────────────
+model DispatcherSettlement {
+  id              String           @id @default(uuid())
+  companyId       String
+  dispatcherId    String
+  periodStart     DateTime
+  periodEnd       DateTime
+  payrollId       String?
+  statementNumber String?
+  status          SettlementStatus @default(DRAFT)
+  pdfUrl          String?
+
+  grossAmount       Int // total load gross (cents)
+  commissionTotal   Int // sum of commission lines (cents)
+  netAmount         Int // payout to dispatcher (cents)
+
+  notes       String?
+  finalizedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company    Company                    @relation(fields: [companyId], references: [id])
+  dispatcher Dispatcher                 @relation(fields: [dispatcherId], references: [id])
+  lines      DispatcherSettlementLine[]
+
+  @@index([companyId])
+  @@index([dispatcherId])
+  @@map("dispatcher_settlements")
+}
+
+model DispatcherSettlementLine {
+  id                     String @id @default(uuid())
+  dispatcherSettlementId String
+  loadId                 String @unique
+  description            String
+  grossAmount            Int // cent
+  commissionRate         Int // %*100
+  commissionAmount       Int // cent
+  netAmount              Int // cent
+
+  dispatcherSettlement DispatcherSettlement @relation(fields: [dispatcherSettlementId], references: [id], onDelete: Cascade)
+  load                 Load                 @relation(fields: [loadId], references: [id])
+
+  @@map("dispatcher_settlement_lines")
 }
 
 // ─── DEDUCTION ────────────────────────────────────────
@@ -543,6 +640,7 @@ enum DocumentType {
   BILL_OF_LADING
   LUMPER_RECEIPT
   RATE_CONFIRMATION
+  DRIVER_APPLICATION
   OTHER
 }
 

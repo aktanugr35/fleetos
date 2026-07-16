@@ -5,6 +5,7 @@ const loadStatusEnum = z.nativeEnum(LoadStatus);
 
 export const createLoadSchema = z.object({
   driverId: z.string().min(1, 'Valid driver ID required'),
+  bookedByDispatcherId: z.string().min(1, 'Booked by dispatcher is required'),
   truckId: z.string().min(1, 'Valid truck ID required'),
   trailerId: z.string().optional().nullable(),
   /** Hook & drop / external trailer label when not using company trailer */

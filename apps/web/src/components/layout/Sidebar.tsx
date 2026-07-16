@@ -39,6 +39,16 @@ const navigation: NavItem[] = [
     ),
   },
   {
+    label: 'Dispatchers',
+    href: '/dashboard/dispatchers',
+    permission: 'dispatchers:list',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 11h-6" /><path d="M18 8v6" />
+      </svg>
+    ),
+  },
+  {
     label: 'Trucks',
     href: '/dashboard/trucks',
     permission: 'equipment:view',
@@ -88,6 +98,16 @@ const navigation: NavItem[] = [
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Dispatcher Pay',
+    href: '/dashboard/dispatcher-settlements',
+    permission: 'dispatcher-settlements:list',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
       </svg>
     ),
   },

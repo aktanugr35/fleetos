@@ -9,6 +9,8 @@ export type FleetPermission =
   | 'company:write'
   | 'drivers:list'
   | 'drivers:write'
+  | 'dispatchers:list'
+  | 'dispatchers:write'
   | 'equipment:view'
   | 'equipment:write'
   | 'loads:list'
@@ -20,6 +22,9 @@ export type FleetPermission =
   | 'settlements:list'
   | 'settlements:create'
   | 'settlements:finalize'
+  | 'dispatcher-settlements:list'
+  | 'dispatcher-settlements:create'
+  | 'dispatcher-settlements:finalize'
   | 'financial:list'
   | 'financial:write';
 
@@ -47,6 +52,8 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'company:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'drivers:list': STAFF_ROLES,
   'drivers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
+  'dispatchers:list': STAFF_ROLES,
+  'dispatchers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'equipment:view': STAFF_ROLES,
   'equipment:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'loads:list': STAFF_ROLES,
@@ -58,6 +65,9 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'settlements:list': STAFF_ROLES,
   'settlements:create': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
   'settlements:finalize': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
+  'dispatcher-settlements:list': STAFF_ROLES,
+  'dispatcher-settlements:create': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
+  'dispatcher-settlements:finalize': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
   'financial:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
   'financial:list': STAFF_ROLES,
 };

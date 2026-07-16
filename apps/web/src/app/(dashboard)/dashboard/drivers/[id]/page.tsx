@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateDriverModal } from '@/components/forms/CreateDriverModal';
+import { DriverIntakePanel } from '@/components/driver-intake/DriverIntakePanel';
 import { Toast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate, formatDateTimeAmPm } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
@@ -191,6 +192,8 @@ export default function DriverDetailPage() {
           </div>
         </div>
       </div>
+
+      {manageDrivers ? <DriverIntakePanel driverId={driverId} /> : null}
 
       <div className="card mb-6">
         <h3 className="font-semibold text-gray-200 mb-4">Compliance</h3>

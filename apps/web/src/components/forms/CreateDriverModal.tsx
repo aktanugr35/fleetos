@@ -51,6 +51,8 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
   const [loadingDriver, setLoadingDriver] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState(emptyForm);
+  const [intakeLink, setIntakeLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,6 +61,7 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
 
     if (!driverId) {
       setForm(emptyForm);
+      setIntakeLink(null);
       return;
     }
 
@@ -157,12 +160,31 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
       const payload = buildPayload();
       if (isEdit && driverId) {
         await api.patch(`/drivers/${driverId}`, payload);
+        onSuccess();
+        onClose();
       } else {
-        await api.post('/drivers', payload);
+        const res = await api.post('/drivers', payload);
+        const newDriverId = res.data.data?.id as string | undefined;
+        if (newDriverId) {
+          try {
+            const linkRes = await api.post(`/drivers/${newDriverId}/intake-link`);
+            setIntakeLink({
+              url: linkRes.data.data.url,
+              expiresAt: linkRes.data.data.expiresAt,
+            });
+            onSuccess();
+            return;
+          } catch {
+            onSuccess();
+            onClose();
+            if (!isEdit) setForm(emptyForm);
+            return;
+          }
+        }
+        onSuccess();
+        onClose();
+        if (!isEdit) setForm(emptyForm);
       }
-      onSuccess();
-      onClose();
-      if (!isEdit) setForm(emptyForm);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
@@ -171,6 +193,19 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyIntakeLink = async () => {
+    if (!intakeLink?.url) return;
+    await navigator.clipboard.writeText(intakeLink.url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const closeAfterIntake = () => {
+    setIntakeLink(null);
+    setForm(emptyForm);
+    onClose();
   };
 
   return (
@@ -190,6 +225,26 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
       {loadingDriver ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        </div>
+      ) : intakeLink ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+            <p className="text-sm text-emerald-300 font-medium">Driver created successfully</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Share this link with the driver to complete their DOT application online. No login required.
+            </p>
+          </div>
+          <FormField label="Application link">
+            <div className="flex gap-2">
+              <FormInput readOnly value={intakeLink.url} className="font-mono text-xs" />
+              <button type="button" className="btn btn-secondary shrink-0" onClick={copyIntakeLink}>
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </FormField>
+          <p className="text-xs text-gray-500">
+            Link expires {new Date(intakeLink.expiresAt).toLocaleString()}
+          </p>
         </div>
       ) : (
         <>
@@ -405,26 +460,34 @@ export function CreateDriverModal({ isOpen, onClose, onSuccess, driverId }: Crea
       )}
 
       <ModalFooter>
-        <button type="button" onClick={onClose} className="btn btn-secondary">
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading || loadingDriver}
-          className="btn btn-primary"
-        >
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-              {isEdit ? 'Saving...' : 'Creating...'}
-            </span>
-          ) : isEdit ? (
-            'Save Changes'
-          ) : (
-            'Create Driver'
-          )}
-        </button>
+        {intakeLink ? (
+          <button type="button" onClick={closeAfterIntake} className="btn btn-primary">
+            Done
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={onClose} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || loadingDriver}
+              className="btn btn-primary"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                  {isEdit ? 'Saving...' : 'Creating...'}
+                </span>
+              ) : isEdit ? (
+                'Save Changes'
+              ) : (
+                'Create Driver'
+              )}
+            </button>
+          </>
+        )}
       </ModalFooter>
     </Modal>
   );

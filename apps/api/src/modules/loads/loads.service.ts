@@ -93,6 +93,7 @@ export class LoadsService {
           driver: { select: { id: true, firstName: true, lastName: true } },
           truck: { select: { id: true, unitNumber: true } },
           trailer: { select: { id: true, unitNumber: true } },
+          bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
         },
       }),
       prisma.load.count({ where }),
@@ -108,6 +109,7 @@ export class LoadsService {
         driver: { select: { id: true, firstName: true, lastName: true, driverType: true, payStructure: true, payRate: true } },
         truck: { select: { id: true, unitNumber: true, make: true, model: true } },
         trailer: { select: { id: true, unitNumber: true } },
+        bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
         _count: { select: { settlementLines: true } },
       },
     });
@@ -116,6 +118,8 @@ export class LoadsService {
   }
 
   async create(tenantId: string, input: CreateLoadInput) {
+    await this.assertDispatcher(tenantId, input.bookedByDispatcherId);
+
     const loadNumber = input.loadNumber || await this.generateLoadNumber(tenantId);
     const status = this.inferInitialStatus(input);
     const baseRateTotal = this.calculateTotalCents({
@@ -129,6 +133,7 @@ export class LoadsService {
       data: {
         companyId: tenantId,
         driverId: input.driverId,
+        bookedByDispatcherId: input.bookedByDispatcherId,
         truckId: input.truckId,
         trailerId: input.externalTrailerRef ? null : input.trailerId ?? null,
         externalTrailerRef: input.externalTrailerRef?.trim() || null,
@@ -156,6 +161,7 @@ export class LoadsService {
         driver: { select: { id: true, firstName: true, lastName: true } },
         truck: { select: { id: true, unitNumber: true } },
         trailer: { select: { id: true, unitNumber: true } },
+        bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -191,8 +197,15 @@ export class LoadsService {
       }
     }
 
+    if (input.bookedByDispatcherId !== undefined) {
+      await this.assertDispatcher(tenantId, input.bookedByDispatcherId);
+    }
+
     const dataToUpdate: Record<string, unknown> = {};
     if (input.driverId !== undefined) dataToUpdate.driverId = input.driverId;
+    if (input.bookedByDispatcherId !== undefined) {
+      dataToUpdate.bookedByDispatcherId = input.bookedByDispatcherId;
+    }
     if (input.truckId !== undefined) dataToUpdate.truckId = input.truckId;
     if (input.externalTrailerRef !== undefined) {
       dataToUpdate.externalTrailerRef = input.externalTrailerRef?.trim() || null;
@@ -224,6 +237,7 @@ export class LoadsService {
     
     const mergedForRate: CreateLoadInput = {
       driverId: input.driverId ?? existing.driverId ?? '',
+      bookedByDispatcherId: input.bookedByDispatcherId ?? existing.bookedByDispatcherId ?? '',
       truckId: input.truckId ?? existing.truckId ?? '',
       brokerName: input.brokerName ?? existing.brokerName,
       pickupAddress: input.pickupAddress ?? existing.pickupLocation,
@@ -284,6 +298,7 @@ export class LoadsService {
         driver: { select: { id: true, firstName: true, lastName: true } },
         truck: { select: { id: true, unitNumber: true } },
         trailer: { select: { id: true, unitNumber: true } },
+        bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -304,6 +319,9 @@ export class LoadsService {
         settlementLines: {
           include: { settlement: { select: { status: true } } },
         },
+        dispatcherSettlementLines: {
+          include: { dispatcherSettlement: { select: { status: true } } },
+        },
         documents: { select: { id: true, fileUrl: true } },
       },
     });
@@ -320,9 +338,25 @@ export class LoadsService {
       );
     }
 
+    const onLockedDispatcherSettlement = existing.dispatcherSettlementLines.some(
+      (line) =>
+        line.dispatcherSettlement.status === 'FINALIZED' ||
+        line.dispatcherSettlement.status === 'PAID',
+    );
+    if (onLockedDispatcherSettlement) {
+      throw new AppError(
+        409,
+        'LOAD_ON_DISPATCHER_SETTLEMENT',
+        'Cannot delete a load that appears on a finalized or paid dispatcher settlement',
+      );
+    }
+
     await prisma.$transaction(async (tx) => {
       if (existing.settlementLines.length > 0) {
         await tx.settlementLine.deleteMany({ where: { loadId } });
+      }
+      if (existing.dispatcherSettlementLines.length > 0) {
+        await tx.dispatcherSettlementLine.deleteMany({ where: { loadId } });
       }
 
       for (const document of existing.documents) {
@@ -332,6 +366,15 @@ export class LoadsService {
 
       await tx.load.delete({ where: { id: loadId } });
     });
+  }
+
+  private async assertDispatcher(tenantId: string, dispatcherId: string) {
+    const dispatcher = await prisma.dispatcher.findFirst({
+      where: { id: dispatcherId, companyId: tenantId, isActive: true },
+    });
+    if (!dispatcher) {
+      throw new AppError(400, 'INVALID_DISPATCHER', 'Dispatcher not found or inactive');
+    }
   }
 
   /**
