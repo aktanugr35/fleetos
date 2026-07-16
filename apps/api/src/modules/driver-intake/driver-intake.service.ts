@@ -72,6 +72,37 @@ export class DriverIntakeService {
     };
   }
 
+  private intakeDocumentTypes(): DocumentType[] {
+    return [
+      DocumentType.DRIVER_APPLICATION,
+      ...REQUIRED_INTAKE_DOCUMENTS.map((d) => d.type),
+    ];
+  }
+
+  /** Delete all intake PDF/photo documents and issue a fresh application link. */
+  async resetIntake(tenantId: string, driverId: string, createdById: string) {
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId },
+    });
+    if (!driver) throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
+
+    const docs = await prisma.document.findMany({
+      where: { driverId, companyId: tenantId, type: { in: this.intakeDocumentTypes() } },
+      select: { id: true },
+    });
+
+    for (const doc of docs) {
+      await documentsService.delete(tenantId, doc.id).catch(() => undefined);
+    }
+
+    await prisma.driverIntakeToken.updateMany({
+      where: { driverId, companyId: tenantId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+
+    return this.createIntakeLink(tenantId, driverId, createdById);
+  }
+
   async getIntakeStatus(tenantId: string, driverId: string) {
     const driver = await prisma.driver.findFirst({
       where: { id: driverId, companyId: tenantId },

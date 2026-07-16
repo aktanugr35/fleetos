@@ -29,6 +29,7 @@ export function DriverIntakePanel({ driverId }: Props) {
   const [status, setStatus] = useState<IntakeStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +60,30 @@ export function DriverIntakePanel({ driverId }: Props) {
       setError(getApiErrorMessage(err, 'Could not create link'));
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const resetIntake = async () => {
+    if (
+      !window.confirm(
+        'Delete the submitted application PDF and all uploaded ID photos, then create a new link?',
+      )
+    ) {
+      return;
+    }
+    setResetting(true);
+    setError(null);
+    try {
+      const res = await api.post(`/drivers/${driverId}/intake-reset`);
+      const url = res.data.data.url as string;
+      await load();
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not reset application'));
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -140,9 +165,22 @@ export function DriverIntakePanel({ driverId }: Props) {
           <p className="text-sm text-gray-400">
             Application received {status.submittedAt ? formatDateTimeAmPm(status.submittedAt) : ''}.
           </p>
-          <button type="button" className="btn btn-secondary text-sm" onClick={downloadApplication}>
-            Download PDF
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn btn-secondary text-sm" onClick={downloadApplication}>
+              Download PDF
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary text-sm border-red-500/40 text-red-300 hover:bg-red-500/10"
+              onClick={resetIntake}
+              disabled={resetting}
+            >
+              {resetting ? 'Resetting…' : 'Reset & new link'}
+            </button>
+          </div>
+          {copied ? (
+            <p className="text-xs text-emerald-400">New link copied to clipboard.</p>
+          ) : null}
         </div>
       ) : status?.pendingLink ? (
         <div className="space-y-3">

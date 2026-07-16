@@ -66,6 +66,19 @@ export class DriverIntakeController {
       next(error);
     }
   }
+
+  async resetIntake(req: Request, res: Response, next: NextFunction) {
+    try {
+      const link = await driverIntakeService.resetIntake(
+        req.tenantId!,
+        req.params.driverId as string,
+        req.user!.userId,
+      );
+      res.json(successResponse(link));
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const driverIntakeController = new DriverIntakeController();

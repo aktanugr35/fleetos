@@ -39,10 +39,13 @@ INTAKE_TYPES="'DRIVER_APPLICATION','DRIVER_LICENSE_FRONT','DRIVER_LICENSE_BACK',
 
 # ── Resolve driver id ───────────────────────────────────
 if [ -z "$DRIVER_ID" ]; then
-  MATCHES=$(psql_exec -t -A -c "SELECT id FROM drivers WHERE (\"firstName\" || ' ' || \"lastName\") = '$DRIVER_NAME';")
-  COUNT=$(printf '%s\n' "$MATCHES" | grep -c . || true)
+  MATCHES=$(psql_exec -t -A -c "SELECT id FROM drivers WHERE trim(\"firstName\" || ' ' || \"lastName\") ILIKE trim('$DRIVER_NAME');")
+  COUNT=$(printf '%s\n' "$MATCHES" | sed '/^$/d' | wc -l | tr -d ' ')
   if [ "$COUNT" -eq 0 ]; then
-    echo "No driver found with name '$DRIVER_NAME'. Pass --driver-id <uuid>."
+    echo "No driver found matching '$DRIVER_NAME'. Pass --driver-id <uuid>."
+    echo ""
+    echo "Similar names:"
+    psql_exec -c "SELECT id, \"firstName\", \"lastName\" FROM drivers WHERE \"firstName\" ILIKE '%${DRIVER_NAME%% *}%' OR \"lastName\" ILIKE '%${DRIVER_NAME##* }%';"
     exit 1
   fi
   if [ "$COUNT" -gt 1 ]; then
@@ -131,6 +134,9 @@ FRONTEND_URL="${FRONTEND_URL%/}"
 
 echo ""
 echo "Done. Intake reset for $DRIVER_NAME."
+echo ""
+echo "Remaining intake documents:"
+psql_exec -c "SELECT COUNT(*) AS remaining FROM documents WHERE \"driverId\" = '$DRIVER_ID' AND type IN ($INTAKE_TYPES);"
 echo ""
 echo "New application link:"
 echo "  ${FRONTEND_URL}/driver-application/${NEW_TOKEN}"

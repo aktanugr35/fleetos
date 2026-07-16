@@ -62,5 +62,10 @@ router.get(
   rbacMiddleware(['SUPER_ADMIN', 'COMPANY_ADMIN', 'DISPATCHER', 'ACCOUNTING']),
   driverIntakeController.getStatus,
 );
+router.post(
+  '/drivers/:driverId/intake-reset',
+  rbacMiddleware(['SUPER_ADMIN', 'COMPANY_ADMIN']),
+  driverIntakeController.resetIntake,
+);
 
 export default router;
