@@ -1,0 +1,8 @@
+-- AlterEnum
+ALTER TYPE "DocumentType" ADD VALUE 'DRIVER_LICENSE_FRONT';
+ALTER TYPE "DocumentType" ADD VALUE 'DRIVER_LICENSE_BACK';
+ALTER TYPE "DocumentType" ADD VALUE 'PASSPORT';
+ALTER TYPE "DocumentType" ADD VALUE 'WORK_AUTHORIZATION';
+
+-- AlterTable
+ALTER TABLE "driver_intake_tokens" ADD COLUMN "formSubmittedAt" TIMESTAMP(3);

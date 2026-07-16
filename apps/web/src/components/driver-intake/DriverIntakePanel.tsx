@@ -5,11 +5,20 @@ import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { formatDateTimeAmPm } from '@/lib/utils';
 
+interface IntakeDocument {
+  id: string;
+  type: string;
+  title: string;
+  mimeType: string | null;
+  createdAt: string;
+}
+
 interface IntakeStatus {
   submitted: boolean;
   submittedAt: string | null;
   documentId: string | null;
-  pendingLink: { url: string; expiresAt: string } | null;
+  documents: IntakeDocument[];
+  pendingLink: { url: string; expiresAt: string; formSubmitted: boolean } | null;
 }
 
 interface Props {
@@ -61,25 +70,36 @@ export function DriverIntakePanel({ driverId }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const downloadApplication = async () => {
-    if (!status?.documentId) return;
+  const downloadDoc = async (documentId: string, filename: string, open = false) => {
     setError(null);
     try {
-      const res = await api.get(`/documents/${status.documentId}/download`, {
+      const res = await api.get(`/documents/${documentId}/download`, {
         responseType: 'blob',
       });
       const url = URL.createObjectURL(res.data);
+      if (open) {
+        window.open(url, '_blank', 'noopener');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        return;
+      }
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'driver_application.pdf';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not download PDF'));
+      setError(getApiErrorMessage(err, 'Could not download file'));
     }
   };
+
+  const downloadApplication = () => {
+    if (!status?.documentId) return;
+    void downloadDoc(status.documentId, 'driver_application.pdf');
+  };
+
+  const photoDocs = (status?.documents ?? []).filter((d) => d.type !== 'DRIVER_APPLICATION');
 
   if (loading) {
     return (
@@ -126,6 +146,9 @@ export function DriverIntakePanel({ driverId }: Props) {
         </div>
       ) : status?.pendingLink ? (
         <div className="space-y-3">
+          {status.pendingLink.formSubmitted ? (
+            <p className="text-xs text-amber-400">Form submitted — waiting for document photos.</p>
+          ) : null}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               readOnly
@@ -148,6 +171,38 @@ export function DriverIntakePanel({ driverId }: Props) {
           {generating ? 'Creating link…' : 'Create application link'}
         </button>
       )}
+
+      {photoDocs.length > 0 ? (
+        <div className="mt-5 pt-5 border-t border-[var(--border-color)]">
+          <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-3">
+            Uploaded ID Documents
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {photoDocs.map((doc) => (
+              <div key={doc.id} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3">
+                <p className="text-xs font-medium text-gray-200 truncate">{doc.title}</p>
+                <p className="text-[10px] text-gray-500 mb-2">{formatDateTimeAmPm(doc.createdAt)}</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                    onClick={() => void downloadDoc(doc.id, `${doc.type.toLowerCase()}.png`, true)}
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                    onClick={() => void downloadDoc(doc.id, `${doc.type.toLowerCase()}.png`)}
+                  >
+                    Download PNG
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

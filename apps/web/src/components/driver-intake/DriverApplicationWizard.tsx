@@ -10,6 +10,7 @@ import {
   type YesNo,
 } from '@/lib/driver-intake-form';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { DocumentUploadStep, type RequiredDocument } from './DocumentUploadStep';
 
 interface CompanyInfo {
   name: string;
@@ -88,6 +89,8 @@ function Field({
 const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500';
 
+type Phase = 'form' | 'documents' | 'done';
+
 export function DriverApplicationWizard({ token }: Props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +99,8 @@ export function DriverApplicationWizard({ token }: Props) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [phase, setPhase] = useState<Phase>('form');
+  const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>([]);
   const [form, setForm] = useState<DriverIntakeForm>(() => createEmptyDriverIntakeForm());
 
   useEffect(() => {
@@ -106,7 +110,9 @@ export function DriverApplicationWizard({ token }: Props) {
         const data = res.data.data;
         setCompany(data.company);
         setExpiresAt(data.expiresAt);
+        setRequiredDocuments(data.requiredDocuments ?? []);
         setForm(createEmptyDriverIntakeForm(data.driverHint));
+        if (data.formSubmitted) setPhase('documents');
       })
       .catch((err) => setError(getApiErrorMessage(err, 'This application link is invalid or expired')))
       .finally(() => setLoading(false));
@@ -192,7 +198,9 @@ export function DriverApplicationWizard({ token }: Props) {
         convictions: form.noConvictions ? [] : form.convictions,
       };
       await publicApi.post(`/public/driver-intake/${token}`, payload);
-      setSubmitted(true);
+      setError(null);
+      setPhase('documents');
+      window.scrollTo({ top: 0 });
     } catch (err) {
       setError(getApiErrorMessage(err, 'Failed to submit application'));
     } finally {
@@ -222,18 +230,33 @@ export function DriverApplicationWizard({ token }: Props) {
     );
   }
 
-  if (submitted) {
+  if (phase === 'done') {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
         <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8">
           <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-emerald-50 flex items-center justify-center text-2xl">✓</div>
-          <h1 className="text-xl font-semibold text-slate-900 mb-2">Application submitted</h1>
+          <h1 className="text-xl font-semibold text-slate-900 mb-2">All done</h1>
           <p className="text-slate-600 text-sm">
-            Thank you, {form.firstName}. Your DOT driver application has been sent to {company?.name}.
+            Thank you, {form.firstName}. Your DOT driver application and documents have been sent to {company?.name}.
             You may close this page.
           </p>
         </div>
       </div>
+    );
+  }
+
+  if (phase === 'documents') {
+    return (
+      <DocumentUploadStep
+        token={token}
+        companyName={company?.name}
+        driverName={form.firstName}
+        requiredDocuments={requiredDocuments}
+        onComplete={() => {
+          setPhase('done');
+          window.scrollTo({ top: 0 });
+        }}
+      />
     );
   }
 

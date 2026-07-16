@@ -149,14 +149,15 @@ model Driver {
 }
 
 model DriverIntakeToken {
-  id          String    @id @default(uuid())
-  companyId   String
-  driverId    String
-  token       String    @unique
-  createdById String
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+  id              String    @id @default(uuid())
+  companyId       String
+  driverId        String
+  token           String    @unique
+  createdById     String
+  expiresAt       DateTime
+  formSubmittedAt DateTime?
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
 
   company Company @relation(fields: [companyId], references: [id])
   driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
@@ -641,6 +642,10 @@ enum DocumentType {
   LUMPER_RECEIPT
   RATE_CONFIRMATION
   DRIVER_APPLICATION
+  DRIVER_LICENSE_FRONT
+  DRIVER_LICENSE_BACK
+  PASSPORT
+  WORK_AUTHORIZATION
   OTHER
 }
 
