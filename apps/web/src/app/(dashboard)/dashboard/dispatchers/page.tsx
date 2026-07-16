@@ -151,10 +151,11 @@ export default function DispatchersPage() {
         }}
       />
       <ConfirmDialog
-        isOpen={Boolean(deactivateId)}
+        open={Boolean(deactivateId)}
         title="Deactivate dispatcher?"
         message="They will no longer appear in Booked By selectors. Existing loads are kept."
         confirmLabel="Deactivate"
+        variant="danger"
         onConfirm={() => void handleDeactivate()}
         onCancel={() => setDeactivateId(null)}
       />
