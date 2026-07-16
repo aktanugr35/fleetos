@@ -1,14 +1,9 @@
 import type { DriverIntakeFormInput } from './driver-intake.schema';
 import { launchPdfBrowser, PDF_PAGE_TIMEOUT_MS } from '../../utils/puppeteer';
-import { buildCompanyLogoHtml } from '../../utils/companyLogo';
 
 type CompanyInfo = {
   name: string;
   dotNumber: string;
-  address?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  logoUrl?: string | null;
 };
 
 function esc(value: string | undefined | null): string {
@@ -23,219 +18,327 @@ function yn(value: string): string {
   return value === 'YES' ? 'Yes' : 'No';
 }
 
-function rows(items: string[][]): string {
-  return items
-    .map(
-      ([label, value]) =>
-        `<tr><td class="label">${esc(label)}</td><td>${esc(value)}</td></tr>`,
-    )
-    .join('');
+function dash(value: string | undefined | null): string {
+  const v = value?.trim();
+  return v ? esc(v) : '—';
+}
+
+function fmtDate(value: string | undefined | null): string {
+  if (!value?.trim()) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return esc(value);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function field(label: string, value: string): string {
+  return `<div class="field"><span class="lbl">${esc(label)}</span><span class="val">${value}</span></div>`;
+}
+
+function section(title: string, body: string): string {
+  return `<section class="sec"><h2>${esc(title)}</h2>${body}</section>`;
 }
 
 export class DriverIntakePdfService {
   async generatePdfBuffer(company: CompanyInfo, form: DriverIntakeFormInput): Promise<Buffer> {
-    const logo = buildCompanyLogoHtml(company.logoUrl ?? null, company.name);
     const submittedAt = new Date().toLocaleString('en-US', {
       dateStyle: 'medium',
       timeStyle: 'short',
     });
 
-    const residencyHtml = form.residency
+    const fullName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ');
+
+    const residencyRows = form.residency
       .map(
-        (r, i) => `
-        <div class="block">
-          <div class="block-title">Address ${i + 1}</div>
-          <table class="kv">${rows([
-            ['Street', r.street],
-            ['City', r.city],
-            ['State & Zip', `${r.state} ${r.zip}`],
-            ['# Years', r.years],
-          ])}</table>
-        </div>`,
+        (r, i) =>
+          `<tr>
+            <td>${i + 1}</td>
+            <td>${dash(r.street)}</td>
+            <td>${dash(r.city)}</td>
+            <td>${dash(r.state)}</td>
+            <td>${dash(r.zip)}</td>
+            <td>${dash(r.years)} yr</td>
+          </tr>`,
       )
       .join('');
 
-    const experienceHtml =
-      form.drivingExperience.length > 0
-        ? `<table class="data">
-          <thead><tr><th>Class</th><th>Equipment</th><th>From</th><th>To</th><th>Miles</th></tr></thead>
-          <tbody>${form.drivingExperience
-            .map(
-              (e) =>
-                `<tr><td>${esc(e.equipmentClass)}</td><td>${esc(e.equipmentType)}</td><td>${esc(e.dateFrom)}</td><td>${esc(e.dateTo)}</td><td>${esc(e.approxMiles)}</td></tr>`,
-            )
-            .join('')}</tbody></table>`
-        : '<p class="muted">None reported</p>';
-
-    const accidentsHtml = form.noAccidents
-      ? '<p class="muted">No accidents reported in the past 3 years</p>'
-      : `<table class="data">
-          <thead><tr><th>Dates</th><th>Nature</th><th>Fatalities</th><th>Injuries</th><th>Chemical Spills</th></tr></thead>
-          <tbody>${form.accidents
-            .map(
-              (a) =>
-                `<tr><td>${esc(a.dates)}</td><td>${esc(a.nature)}</td><td>${esc(a.fatalities)}</td><td>${esc(a.injuries)}</td><td>${esc(a.chemicalSpills)}</td></tr>`,
-            )
-            .join('')}</tbody></table>`;
-
-    const convictionsHtml = form.noConvictions
-      ? '<p class="muted">No traffic convictions reported</p>'
-      : `<table class="data">
-          <thead><tr><th>Date</th><th>Violation</th><th>State</th><th>Penalty</th></tr></thead>
-          <tbody>${form.convictions
-            .map(
-              (c) =>
-                `<tr><td>${esc(c.dateConvicted)}</td><td>${esc(c.violation)}</td><td>${esc(c.state)}</td><td>${esc(c.penalty)}</td></tr>`,
-            )
-            .join('')}</tbody></table>`;
-
-    const employmentHtml = form.employments
+    const experienceRows = form.drivingExperience
+      .filter((e) => e.equipmentClass || e.equipmentType || e.dateFrom)
       .map(
-        (e, i) => `
-        <div class="block page-break">
-          <div class="block-title">Employment ${i + 1}</div>
-          <table class="kv">${rows([
-            ['Employer', e.employerName],
-            ['Address', e.address],
-            ['Position', e.positionHeld],
-            ['From', e.dateFrom],
-            ['To', e.dateTo],
-            ['Reason for leaving', e.reasonForLeaving],
-            ['Gaps explained', e.employmentGaps || '—'],
-            ['Subject to FMCSR', yn(e.subjectToFmcsr)],
-            ['Safety-sensitive (DOT testing)', yn(e.safetySensitiveFunction)],
-            ['Previous employer email', e.previousEmployerEmail || '—'],
-            ['Previous employer phone', e.previousEmployerPhone || '—'],
-          ])}</table>
-        </div>`,
+        (e) =>
+          `<tr>
+            <td>${dash(e.equipmentClass)}</td>
+            <td>${dash(e.equipmentType)}</td>
+            <td>${fmtDate(e.dateFrom)}</td>
+            <td>${fmtDate(e.dateTo)}</td>
+            <td>${dash(e.approxMiles)}</td>
+          </tr>`,
+      )
+      .join('');
+
+    const accidentRows = form.noAccidents
+      ? ''
+      : form.accidents
+          .map(
+            (a) =>
+              `<tr>
+                <td>${dash(a.dates)}</td>
+                <td>${dash(a.nature)}</td>
+                <td>${dash(a.fatalities)}</td>
+                <td>${dash(a.injuries)}</td>
+                <td>${dash(a.chemicalSpills)}</td>
+              </tr>`,
+          )
+          .join('');
+
+    const convictionRows = form.noConvictions
+      ? ''
+      : form.convictions
+          .map(
+            (c) =>
+              `<tr>
+                <td>${fmtDate(c.dateConvicted)}</td>
+                <td>${dash(c.violation)}</td>
+                <td>${dash(c.state)}</td>
+                <td>${dash(c.penalty)}</td>
+              </tr>`,
+          )
+          .join('');
+
+    const employmentRows = form.employments
+      .map(
+        (e) =>
+          `<tr>
+            <td>${dash(e.employerName)}</td>
+            <td>${dash(e.positionHeld)}</td>
+            <td>${fmtDate(e.dateFrom)} – ${fmtDate(e.dateTo)}</td>
+            <td>${dash(e.reasonForLeaving)}</td>
+            <td>${yn(e.subjectToFmcsr)} / ${yn(e.safetySensitiveFunction)}</td>
+          </tr>`,
+      )
+      .join('');
+
+    const rq = form.requiredQuestions;
+    const questionsGrid = [
+      ['A', 'Denied license?', yn(rq.deniedLicense)],
+      ['B', 'Suspended/revoked?', yn(rq.suspendedRevoked)],
+      ['C', 'CMV conviction?', yn(rq.cmvCriminalConviction)],
+      ['D', 'Felony?', yn(rq.felonyConviction)],
+      ['E', 'Refused drug test?', yn(rq.refusedDrugAlcoholTest)],
+      ['F', 'Positive drug test?', yn(rq.positiveDrugAlcoholTest)],
+      ['G', 'Positive pre-employment?', yn(rq.positivePreEmploymentTest)],
+    ]
+      .map(
+        ([id, label, answer]) =>
+          `<div class="q"><span class="qid">${id}</span><span class="qtxt">${label}</span><span class="qans ${answer === 'Yes' ? 'yes' : 'no'}">${answer}</span></div>`,
       )
       .join('');
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>
-  body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #111; margin: 0; padding: 32px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px; }
-  .header h1 { font-size: 16px; margin: 0 0 4px; color: #0f172a; }
-  .meta { font-size: 9px; color: #475569; }
-  .section { margin-bottom: 18px; }
-  .section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #0284c7; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin: 0 0 8px; }
-  .block { margin-bottom: 10px; }
-  .block-title { font-weight: bold; margin-bottom: 4px; }
-  table.kv { width: 100%; border-collapse: collapse; }
-  table.kv td { border-bottom: 1px solid #e2e8f0; padding: 4px 6px; vertical-align: top; }
-  table.kv td.label { width: 34%; color: #475569; font-weight: 600; }
-  table.data { width: 100%; border-collapse: collapse; font-size: 9px; }
-  table.data th, table.data td { border: 1px solid #cbd5e1; padding: 4px; text-align: left; }
-  table.data th { background: #f1f5f9; }
-  .legal { font-size: 8.5px; line-height: 1.35; color: #334155; }
-  .signature { margin-top: 16px; border-top: 1px solid #94a3b8; padding-top: 10px; }
-  .muted { color: #64748b; font-style: italic; }
-  .page-break { break-inside: avoid-page; page-break-inside: avoid; }
+  @page { size: A4; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 7.5pt;
+    line-height: 1.35;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+  }
+  .title-bar {
+    border-bottom: 2px solid #334155;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+  .title-bar h1 {
+    font-size: 11pt;
+    font-weight: 700;
+    margin: 0 0 2px;
+    letter-spacing: 0.02em;
+    color: #0f172a;
+  }
+  .title-bar .sub {
+    font-size: 7pt;
+    color: #64748b;
+  }
+  .sec { margin-bottom: 7px; }
+  .sec h2 {
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #334155;
+    background: #f1f5f9;
+    padding: 3px 6px;
+    margin: 0 0 4px;
+    border-left: 3px solid #475569;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px 8px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px 8px; }
+  .field { display: flex; gap: 4px; min-width: 0; padding: 1px 0; }
+  .lbl { color: #64748b; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .lbl::after { content: ':'; }
+  .val { color: #0f172a; font-weight: 500; word-break: break-word; }
+  table.compact {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7pt;
+  }
+  table.compact th {
+    background: #e2e8f0;
+    color: #334155;
+    font-weight: 700;
+    text-align: left;
+    padding: 2px 4px;
+    border: 1px solid #cbd5e1;
+  }
+  table.compact td {
+    padding: 2px 4px;
+    border: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  .questions { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+  .q { display: flex; align-items: center; gap: 4px; padding: 1px 0; }
+  .qid { font-weight: 700; color: #475569; width: 12px; }
+  .qtxt { flex: 1; color: #475569; font-size: 6.8pt; }
+  .qans { font-weight: 700; font-size: 7pt; padding: 0 4px; border-radius: 2px; }
+  .qans.no { color: #166534; }
+  .qans.yes { color: #b45309; }
+  .note { font-size: 6.8pt; color: #64748b; font-style: italic; margin: 2px 0; }
+  .explain {
+    margin-top: 3px;
+    padding: 3px 5px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    font-size: 7pt;
+  }
+  .footer {
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid #cbd5e1;
+    display: grid;
+    grid-template-columns: 2fr 2fr 1fr;
+    gap: 8px;
+    align-items: end;
+  }
+  .sig-line {
+    border-bottom: 1px solid #334155;
+    padding-bottom: 2px;
+    font-weight: 600;
+    font-size: 8pt;
+    min-height: 14px;
+  }
+  .sig-lbl { font-size: 6.5pt; color: #64748b; margin-top: 1px; }
 </style></head><body>
-  <div class="header">
+  <div class="title-bar">
+    <h1>Driver Application — DOT Certification</h1>
+    <div class="sub">${esc(company.name)} · USDOT #${esc(company.dotNumber)} · Submitted ${esc(submittedAt)}</div>
+  </div>
+
+  ${section(
+    'Applicant',
+    `<div class="grid-4">
+      ${field('Name', dash(fullName))}
+      ${field('DOB', fmtDate(form.dateOfBirth))}
+      ${field('SSN', dash(form.socialSecurityNumber))}
+      ${field('Phone', dash(form.telephone))}
+      ${field('Email', dash(form.email))}
+      ${field('Maiden', dash(form.maidenName))}
+    </div>`,
+  )}
+
+  ${section(
+    'Emergency Contact',
+    `<div class="grid-4">
+      ${field('Name', dash(form.emergencyContactName))}
+      ${field('Phone', dash(form.emergencyContactPhone))}
+      ${field('Email', dash(form.emergencyContactEmail))}
+      ${field('Relation', dash(form.emergencyContactRelation))}
+    </div>`,
+  )}
+
+  ${section(
+    'Residency (3 Years)',
+    `<table class="compact">
+      <thead><tr><th>#</th><th>Street</th><th>City</th><th>St</th><th>Zip</th><th>Duration</th></tr></thead>
+      <tbody>${residencyRows}</tbody>
+    </table>`,
+  )}
+
+  ${section(
+    'Driver License',
+    `<div class="grid-4">
+      ${field('State', dash(form.licenseState))}
+      ${field('Number', dash(form.licenseNumber))}
+      ${field('Type', dash(form.licenseType))}
+      ${field('Expires', fmtDate(form.licenseExpiration))}
+    </div>`,
+  )}
+
+  ${section(
+    'Required Questions',
+    `<div class="questions">${questionsGrid}</div>
+    ${
+      rq.explanation?.trim()
+        ? `<div class="explain"><strong>Explanation:</strong> ${esc(rq.explanation)}</div>`
+        : ''
+    }`,
+  )}
+
+  ${section(
+    'Driving Experience',
+    experienceRows
+      ? `<table class="compact">
+          <thead><tr><th>Class</th><th>Equipment</th><th>From</th><th>To</th><th>Miles</th></tr></thead>
+          <tbody>${experienceRows}</tbody>
+        </table>`
+      : '<p class="note">None reported</p>',
+  )}
+
+  ${section(
+    'Accidents & Convictions (3 Years)',
+    `<div class="grid-2">
+      <div>
+        <strong style="font-size:7pt;color:#475569">Accidents</strong>
+        ${
+          form.noAccidents
+            ? '<p class="note">None</p>'
+            : `<table class="compact"><thead><tr><th>Date</th><th>Nature</th><th>Fatal</th><th>Inj</th><th>Spill</th></tr></thead><tbody>${accidentRows}</tbody></table>`
+        }
+      </div>
+      <div>
+        <strong style="font-size:7pt;color:#475569">Convictions</strong>
+        ${
+          form.noConvictions
+            ? '<p class="note">None</p>'
+            : `<table class="compact"><thead><tr><th>Date</th><th>Violation</th><th>St</th><th>Penalty</th></tr></thead><tbody>${convictionRows}</tbody></table>`
+        }
+      </div>
+    </div>`,
+  )}
+
+  ${section(
+    'Employment History',
+    `${form.employmentGapsExplanation?.trim() ? `<p class="note">Gaps: ${esc(form.employmentGapsExplanation)}</p>` : ''}
+    <table class="compact">
+      <thead><tr><th>Employer</th><th>Position</th><th>Period</th><th>Reason Left</th><th>FMCSR / DOT</th></tr></thead>
+      <tbody>${employmentRows}</tbody>
+    </table>`,
+  )}
+
+  <div class="footer">
     <div>
-      <div class="meta">USDOT # ${esc(company.dotNumber)} · ${esc(company.name)}</div>
-      <h1>Drivers Application for DOT Certification</h1>
-      <div class="meta">Submitted ${esc(submittedAt)}</div>
+      <div class="sig-line">${esc(form.applicantSignature)}</div>
+      <div class="sig-lbl">Applicant signature (typed)</div>
     </div>
-    <div>${logo}</div>
-  </div>
-
-  <div class="section">
-    <h2>Name</h2>
-    <table class="kv">${rows([
-      ['First', form.firstName],
-      ['Middle', form.middleName || '—'],
-      ['Maiden name', form.maidenName || '—'],
-      ['Last', form.lastName],
-    ])}</table>
-  </div>
-
-  <div class="section">
-    <h2>Previous Three Years Residency</h2>
-    ${residencyHtml}
-  </div>
-
-  <div class="section">
-    <h2>Applicant Information</h2>
-    <table class="kv">${rows([
-      ['Date of birth', form.dateOfBirth],
-      ['Social Security Number', form.socialSecurityNumber],
-      ['Telephone', form.telephone],
-      ['Email', form.email],
-    ])}</table>
-  </div>
-
-  <div class="section">
-    <h2>Emergency Contact</h2>
-    <table class="kv">${rows([
-      ['Name', form.emergencyContactName],
-      ['Phone', form.emergencyContactPhone],
-      ['Email', form.emergencyContactEmail || '—'],
-      ['Relation', form.emergencyContactRelation],
-    ])}</table>
-  </div>
-
-  <div class="section page-break">
-    <h2>Required Questions</h2>
-    <table class="kv">${rows([
-      ['A. Denied license/permit/privilege?', yn(form.requiredQuestions.deniedLicense)],
-      ['B. Suspended or revoked?', yn(form.requiredQuestions.suspendedRevoked)],
-      ['C. CMV criminal conviction?', yn(form.requiredQuestions.cmvCriminalConviction)],
-      ['D. Felony conviction?', yn(form.requiredQuestions.felonyConviction)],
-      ['E. Refused DOT drug/alcohol test?', yn(form.requiredQuestions.refusedDrugAlcoholTest)],
-      ['F. Tested positive DOT drug/alcohol?', yn(form.requiredQuestions.positiveDrugAlcoholTest)],
-      ['G. Positive pre-employment test (job not obtained)?', yn(form.requiredQuestions.positivePreEmploymentTest)],
-      ['Explanation (if any YES)', form.requiredQuestions.explanation || '—'],
-    ])}</table>
-  </div>
-
-  <div class="section page-break">
-    <h2>Certification of Compliance with Driver License Requirements</h2>
-    <p class="legal">I certify that I have read and understand FMCSR Parts 383 and 391 driver license requirements. The following license is the only one I will possess.</p>
-    <table class="kv">${rows([
-      ['State', form.licenseState],
-      ['License number', form.licenseNumber],
-      ['Type', form.licenseType],
-      ['Expiration', form.licenseExpiration],
-    ])}</table>
-  </div>
-
-  <div class="section">
-    <h2>Driving Experience</h2>
-    ${experienceHtml}
-  </div>
-
-  <div class="section">
-    <h2>Accident Record (Past 3 Years)</h2>
-    ${accidentsHtml}
-  </div>
-
-  <div class="section">
-    <h2>Traffic Convictions & Forfeitures (Past 3 Years)</h2>
-    ${convictionsHtml}
-  </div>
-
-  <div class="section">
-    <h2>Employment Record</h2>
-    ${form.employmentGapsExplanation ? `<p><strong>Employment gaps:</strong> ${esc(form.employmentGapsExplanation)}</p>` : ''}
-    ${employmentHtml}
-  </div>
-
-  <div class="section page-break">
-    <h2>Authorization</h2>
-    <p class="legal">I authorize ${esc(company.name)} and its agents to obtain Motor Vehicle Records, PSP reports, and employment history as required by 49 CFR 391.23 and §40.25(g).</p>
-  </div>
-
-  <div class="section">
-    <h2>Applicant Certification</h2>
-    <p class="legal">I certify that I have completed this application truthfully and to the best of my knowledge. I authorize investigations into my personal, employment, financial, and medical history as needed for employment decisions.</p>
-    <div class="signature">
-      <table class="kv">${rows([
-        ['Applicant name', `${form.firstName} ${form.lastName}`],
-        ['Signature (typed)', form.applicantSignature],
-        ['Date', form.signatureDate],
-      ])}</table>
+    <div>
+      <div class="sig-line">${esc(fullName)}</div>
+      <div class="sig-lbl">Printed name</div>
+    </div>
+    <div>
+      <div class="sig-line">${fmtDate(form.signatureDate)}</div>
+      <div class="sig-lbl">Date</div>
     </div>
   </div>
 </body></html>`;
@@ -249,7 +352,8 @@ export class DriverIntakePdfService {
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: { top: '16px', bottom: '16px', left: '16px', right: '16px' },
+        margin: { top: '8mm', bottom: '8mm', left: '8mm', right: '8mm' },
+        preferCSSPageSize: true,
       });
       await page.close();
       return Buffer.from(pdf);
