@@ -69,19 +69,17 @@ export class DocumentsController {
 
   async download(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await documentsService.resolveDownload(
-        req.tenantId!,
-        req.params.id as string
-      );
+      const document = await documentsService.getById(req.tenantId!, req.params.id as string);
+      const { stream, contentType } = await documentsService.openDownloadStream(document.fileUrl);
 
-      if (result.kind === 'redirect') {
-        return res.redirect(result.url);
-      }
+      const safeTitle = document.title.replace(/[^\w.-]+/g, '_') || 'document';
+      const filename = safeTitle.toLowerCase().endsWith('.pdf') ? safeTitle : `${safeTitle}.pdf`;
 
-      const filename = result.document.title.replace(/[^\w.-]+/g, '_') || 'document';
-      res.setHeader('Content-Type', result.document.mimeType || 'application/octet-stream');
-      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
-      return res.sendFile(result.filePath);
+      res.setHeader('Content-Type', contentType || document.mimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      stream.on('error', (err) => next(err));
+      stream.pipe(res);
     } catch (error) {
       next(error);
     }

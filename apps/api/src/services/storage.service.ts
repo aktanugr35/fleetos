@@ -133,6 +133,49 @@ export async function getDocumentSignedDownloadUrl(fileUrl: string): Promise<str
   return getSignedUrl(getS3Client(), command, { expiresIn: 3600 });
 }
 
+export async function openDocumentReadStream(fileUrl: string): Promise<{
+  stream: NodeJS.ReadableStream;
+  contentType: string;
+}> {
+  const parsed = parseStoredFileUrl(fileUrl);
+
+  if (parsed.kind === 's3') {
+    const response = await getS3Client().send(
+      new GetObjectCommand({
+        Bucket: env.S3_BUCKET_NAME,
+        Key: parsed.key,
+      }),
+    );
+
+    if (!response.Body) {
+      throw new AppError(404, 'FILE_NOT_FOUND', 'Document file is missing in storage');
+    }
+
+    return {
+      stream: response.Body as NodeJS.ReadableStream,
+      contentType: response.ContentType || 'application/octet-stream',
+    };
+  }
+
+  const filePath = resolveUploadUrl(`/${parsed.key}`);
+  if (!fs.existsSync(filePath)) {
+    throw new AppError(404, 'FILE_NOT_FOUND', 'Document file is missing on disk');
+  }
+
+  return {
+    stream: fs.createReadStream(filePath),
+    contentType: mimeTypeFromPath(filePath),
+  };
+}
+
+function mimeTypeFromPath(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.pdf') return 'application/pdf';
+  if (ext === '.png') return 'image/png';
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+  return 'application/octet-stream';
+}
+
 export function getLocalDocumentPath(fileUrl: string): string {
   const parsed = parseStoredFileUrl(fileUrl);
   if (parsed.kind === 's3') {

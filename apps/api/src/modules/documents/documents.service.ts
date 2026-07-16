@@ -6,6 +6,7 @@ import {
   deleteStoredFile,
   getDocumentSignedDownloadUrl,
   getLocalDocumentPath,
+  openDocumentReadStream,
   saveDocumentFile,
 } from '../../services/storage.service';
 
@@ -107,6 +108,10 @@ export class DocumentsService {
     await deleteStoredFile(document.fileUrl);
     await prisma.document.delete({ where: { id } });
     return { id };
+  }
+
+  async openDownloadStream(fileUrl: string) {
+    return openDocumentReadStream(fileUrl);
   }
 
   async resolveDownload(tenantId: string, id: string) {
