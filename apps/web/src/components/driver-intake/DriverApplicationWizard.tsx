@@ -129,6 +129,10 @@ export function DriverApplicationWizard({ token }: Props) {
       if (!form.firstName.trim()) e.firstName = 'Required';
       if (!form.lastName.trim()) e.lastName = 'Required';
       form.residency.forEach((r, i) => {
+        if (i > 0) {
+          const any = [r.street, r.city, r.state, r.zip, r.years].some((v) => v.trim());
+          if (!any) return;
+        }
         if (!r.street.trim()) e[`residency.${i}.street`] = 'Required';
         if (!r.city.trim()) e[`residency.${i}.city`] = 'Required';
         if (r.state.length !== 2) e[`residency.${i}.state`] = '2-letter state';
@@ -319,13 +323,20 @@ export function DriverApplicationWizard({ token }: Props) {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-3">Previous three years residency</h3>
+              <h3 className="text-sm font-semibold text-slate-800 mb-1">Residency (past 3 years)</h3>
+              <p className="text-xs text-slate-500 mb-3">
+                Address 1 is required. Add addresses 2 and 3 only if you lived elsewhere during the past 3 years.
+              </p>
               <div className="space-y-4">
-                {form.residency.map((r, i) => (
+                {form.residency.map((r, i) => {
+                  const optional = i > 0;
+                  return (
                   <div key={i} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">Address {i + 1}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
+                      Address {i + 1}{optional ? ' (optional)' : ''}
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Field label="Street" required error={fieldErrors[`residency.${i}.street`]}>
+                      <Field label="Street" required={!optional} error={fieldErrors[`residency.${i}.street`]}>
                         <input
                           className={inputClass}
                           value={r.street}
@@ -336,7 +347,7 @@ export function DriverApplicationWizard({ token }: Props) {
                           }}
                         />
                       </Field>
-                      <Field label="City" required error={fieldErrors[`residency.${i}.city`]}>
+                      <Field label="City" required={!optional} error={fieldErrors[`residency.${i}.city`]}>
                         <input
                           className={inputClass}
                           value={r.city}
@@ -347,7 +358,7 @@ export function DriverApplicationWizard({ token }: Props) {
                           }}
                         />
                       </Field>
-                      <Field label="State" required error={fieldErrors[`residency.${i}.state`]}>
+                      <Field label="State" required={!optional} error={fieldErrors[`residency.${i}.state`]}>
                         <select
                           className={inputClass}
                           value={r.state}
@@ -363,7 +374,7 @@ export function DriverApplicationWizard({ token }: Props) {
                           ))}
                         </select>
                       </Field>
-                      <Field label="ZIP" required error={fieldErrors[`residency.${i}.zip`]}>
+                      <Field label="ZIP" required={!optional} error={fieldErrors[`residency.${i}.zip`]}>
                         <input
                           className={inputClass}
                           value={r.zip}
@@ -374,7 +385,7 @@ export function DriverApplicationWizard({ token }: Props) {
                           }}
                         />
                       </Field>
-                      <Field label="Years at address" required error={fieldErrors[`residency.${i}.years`]}>
+                      <Field label="Years at address" required={!optional} error={fieldErrors[`residency.${i}.years`]}>
                         <input
                           className={inputClass}
                           value={r.years}
@@ -387,7 +398,8 @@ export function DriverApplicationWizard({ token }: Props) {
                       </Field>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

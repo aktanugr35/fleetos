@@ -2,13 +2,44 @@ import { z } from 'zod';
 
 const yesNo = z.enum(['YES', 'NO']);
 
-const residencyEntrySchema = z.object({
-  street: z.string().min(1, 'Street is required'),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().length(2, 'Use 2-letter state'),
-  zip: z.string().min(5, 'Zip is required'),
-  years: z.string().min(1, 'Years at address is required'),
+const residencyEntryFieldsSchema = z.object({
+  street: z.string(),
+  city: z.string(),
+  state: z.string(),
+  zip: z.string(),
+  years: z.string(),
 });
+
+function residencyRowFilled(row: z.infer<typeof residencyEntryFieldsSchema>): boolean {
+  return [row.street, row.city, row.state, row.zip, row.years].some((v) => v.trim().length > 0);
+}
+
+function validateResidencyRow(
+  row: z.infer<typeof residencyEntryFieldsSchema>,
+  index: number,
+  ctx: z.RefinementCtx,
+  required: boolean,
+) {
+  const prefix = `residency.${index}`;
+  const filled = residencyRowFilled(row);
+  if (!required && !filled) return;
+
+  if (!row.street.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Street is required', path: [prefix, 'street'] });
+  }
+  if (!row.city.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'City is required', path: [prefix, 'city'] });
+  }
+  if (row.state.trim().length !== 2) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use 2-letter state', path: [prefix, 'state'] });
+  }
+  if (!row.zip.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Zip is required', path: [prefix, 'zip'] });
+  }
+  if (!row.years.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Years at address is required', path: [prefix, 'years'] });
+  }
+}
 
 const drivingExperienceSchema = z.object({
   equipmentClass: z.string().optional(),
@@ -52,7 +83,7 @@ export const driverIntakeFormSchema = z.object({
   middleName: z.string().optional(),
   maidenName: z.string().optional(),
   lastName: z.string().min(1, 'Last name is required'),
-  residency: z.array(residencyEntrySchema).length(3, 'Provide 3 years of residency history'),
+  residency: z.array(residencyEntryFieldsSchema).length(3),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   socialSecurityNumber: z.string().min(4, 'SSN is required'),
   telephone: z.string().min(1, 'Telephone is required'),
@@ -94,6 +125,10 @@ export const driverIntakeFormSchema = z.object({
   applicantSignature: z.string().min(2, 'Signature (full legal name) is required'),
   signatureDate: z.string().min(1, 'Date is required'),
 }).superRefine((data, ctx) => {
+  data.residency.forEach((row, index) => {
+    validateResidencyRow(row, index, ctx, index === 0);
+  });
+
   const rq = data.requiredQuestions;
   const anyYes = [
     rq.deniedLicense,
@@ -115,7 +150,7 @@ export const driverIntakeFormSchema = z.object({
 
 export type DriverIntakeFormInput = z.infer<typeof driverIntakeFormSchema>;
 
-export const emptyResidencyEntry = (): z.infer<typeof residencyEntrySchema> => ({
+export const emptyResidencyEntry = (): z.infer<typeof residencyEntryFieldsSchema> => ({
   street: '',
   city: '',
   state: '',

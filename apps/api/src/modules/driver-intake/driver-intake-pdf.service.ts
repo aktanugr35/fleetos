@@ -48,6 +48,7 @@ export class DriverIntakePdfService {
     const fullName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ');
 
     const residencyRows = form.residency
+      .filter((r) => r.street.trim() || r.city.trim() || r.state.trim() || r.zip.trim() || r.years.trim())
       .map(
         (r, i) =>
           `<tr>
