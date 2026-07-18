@@ -71,9 +71,19 @@ export function SetupRegistrationForm() {
     <div className="animate-fade-in">
       <div className="card p-8 max-h-[85vh] overflow-y-auto">
         <div className="mb-6">
+          <span
+            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full mb-3"
+            style={{
+              color: 'var(--brand-teal)',
+              background: 'color-mix(in srgb, var(--brand-teal) 14%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--brand-teal) 32%, transparent)',
+            }}
+          >
+            Get started
+          </span>
           <h2 className="text-2xl font-bold">Create your account</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Register your company and administrator account to get started with Haulyard.
+            Register your company and administrator account to start running your fleet on Haulyard.
           </p>
         </div>
 
@@ -85,7 +95,7 @@ export function SetupRegistrationForm() {
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6">
           <div>
-            <h3 className="text-sm font-semibold text-gray-300 mb-3">Administrator</h3>
+            <h3 className="auth-section-title mb-3">Administrator</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm text-gray-400 mb-1">First name</label>
@@ -114,7 +124,7 @@ export function SetupRegistrationForm() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-300 mb-3">Company</h3>
+            <h3 className="auth-section-title mb-3">Company</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Company name</label>

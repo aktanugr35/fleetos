@@ -13,8 +13,14 @@ export default function AuthLayout({
       </div>
       {/* Background gradient effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-blue-500/8 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-purple-500/8 blur-3xl" />
+        <div
+          className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full blur-3xl"
+          style={{ background: 'color-mix(in srgb, var(--brand-amber) 10%, transparent)' }}
+        />
+        <div
+          className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full blur-3xl"
+          style={{ background: 'color-mix(in srgb, var(--brand-teal) 10%, transparent)' }}
+        />
       </div>
 
       {/* Left side — Branding panel */}
@@ -22,8 +28,14 @@ export default function AuthLayout({
         <div className="max-w-md space-y-8">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div
+              className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, var(--brand-midnight-2), var(--brand-teal))',
+                boxShadow: '0 10px 24px -10px color-mix(in srgb, var(--brand-teal) 60%, transparent)',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" style={{ color: 'var(--brand-amber)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10 17h4V5H2v12h3" />
                 <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
                 <circle cx="7.5" cy="17.5" r="2.5" />

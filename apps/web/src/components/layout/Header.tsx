@@ -82,7 +82,10 @@ export function Header() {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2.5 p-1.5 rounded-lg hover-surface transition"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, var(--brand-teal), var(--brand-midnight-2))' }}
+            >
               {initials}
             </div>
             <div className="text-left hidden sm:block">

@@ -50,8 +50,11 @@ function LoginForm() {
   return (
     <div className="animate-fade-in">
       <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, var(--brand-midnight-2), var(--brand-teal))' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" style={{ color: 'var(--brand-amber)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 17h4V5H2v12h3" />
             <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
             <circle cx="7.5" cy="17.5" r="2.5" />

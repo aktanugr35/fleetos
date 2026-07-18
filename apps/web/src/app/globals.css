@@ -3,13 +3,7 @@
 /* ─── Haulyard Design System ─────────────────────────── */
 
 :root {
-  /* Brand Colors */
-  --haulyard-primary: #3b82f6;
-  --haulyard-primary-hover: #2563eb;
-  --haulyard-secondary: #8b5cf6;
-  --haulyard-accent: #06b6d4;
-
-  /* Haulyard Brand Identity (marketing / landing) */
+  /* Brand Identity palette */
   --brand-midnight: #0c1b33;
   --brand-midnight-2: #0f2242;
   --brand-amber: #f5820a;
@@ -18,37 +12,43 @@
   --brand-asphalt: #64748b;
   --brand-cloud: #f0f4ff;
 
+  /* Accent roles — amber = primary action, teal = secondary accent */
+  --haulyard-primary: var(--brand-amber);
+  --haulyard-primary-hover: var(--brand-amber-hover);
+  --haulyard-secondary: var(--brand-teal);
+  --haulyard-accent: var(--brand-teal);
+
   /* Status Colors */
   --status-green: #22c55e;
   --status-yellow: #eab308;
   --status-red: #ef4444;
 
-  /* Dark Theme */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #111118;
-  --bg-card: #16161f;
-  --bg-elevated: #1e1e2a;
-  --border-color: #2a2a3a;
-  --border-hover: #3a3a4a;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --surface-hover: rgba(255, 255, 255, 0.05);
+  /* Dark Theme — midnight-based surfaces, cloud text */
+  --bg-primary: #0a1424;
+  --bg-secondary: #0e1c30;
+  --bg-card: #112339;
+  --bg-elevated: #17304c;
+  --border-color: #223251;
+  --border-hover: #31456a;
+  --text-primary: #eef2fb;
+  --text-secondary: #a6b6cd;
+  --text-muted: #71829c;
+  --surface-hover: rgba(240, 244, 255, 0.06);
 }
 
-/* ─── Light theme (pure white surfaces) ─────────────── */
+/* ─── Light theme — cloud surfaces, midnight text ───── */
 html[data-theme="light"] {
   color-scheme: light;
-  --bg-primary: #ffffff;
-  --bg-secondary: #ffffff;
+  --bg-primary: #eef1fa;
+  --bg-secondary: #f4f6fc;
   --bg-card: #ffffff;
-  --bg-elevated: #f8fafc;
-  --border-color: #e2e8f0;
-  --border-hover: #cbd5e1;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --surface-hover: rgba(15, 23, 42, 0.06);
+  --bg-elevated: #f7f9ff;
+  --border-color: #dbe2f1;
+  --border-hover: #c1cee4;
+  --text-primary: #0c1b33;
+  --text-secondary: #45566f;
+  --text-muted: #667890;
+  --surface-hover: rgba(12, 27, 51, 0.05);
 }
 
 html[data-theme="dark"] {
@@ -144,6 +144,24 @@ html[data-theme="light"] .auth-layout .text-gray-500 {
   background-color: var(--surface-hover);
 }
 
+/* Light theme: darken sidebar nav text/icons for readability */
+html[data-theme="light"] .app-sidebar .text-gray-400 {
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] .app-sidebar .text-gray-500 {
+  color: #334155 !important;
+}
+
+/* Compliance alert — readable red on both themes (data-theme aware) */
+.compliance-alert {
+  color: #f87171;
+}
+
+html[data-theme="light"] .compliance-alert {
+  color: #b91c1c;
+}
+
 /* ─── Base Styles ────────────────────────────────────── */
 * {
   box-sizing: border-box;
@@ -218,10 +236,10 @@ textarea {
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 0 rgba(245, 130, 10, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+    box-shadow: 0 0 0 8px rgba(245, 130, 10, 0);
   }
 }
 
@@ -235,7 +253,7 @@ textarea {
 
 /* ─── Glass Effect ───────────────────────────────────── */
 .glass {
-  background: rgba(22, 22, 31, 0.8);
+  background: rgba(14, 28, 48, 0.82);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
 }
@@ -290,7 +308,7 @@ textarea {
 }
 
 html[data-theme="light"] .dashboard-hero {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), var(--bg-card));
+  background: linear-gradient(135deg, rgba(245, 130, 10, 0.07), var(--bg-card));
 }
 
 .dashboard-stat-card {
@@ -456,7 +474,7 @@ html[data-theme="light"] .dashboard-hero {
 
 .revenue-trend-dot.is-active {
   fill: var(--haulyard-primary);
-  stroke: #93c5fd;
+  stroke: #fcc079;
   stroke-width: 2;
 }
 
@@ -465,7 +483,7 @@ html[data-theme="light"] .dashboard-hero {
 }
 
 .revenue-trend-bar.is-active {
-  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.45));
+  filter: drop-shadow(0 0 8px rgba(245, 130, 10, 0.45));
 }
 
 .revenue-trend-month {
@@ -521,14 +539,15 @@ html[data-theme="light"] .dashboard-hero {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--haulyard-primary), var(--haulyard-secondary));
-  color: white;
+  background: linear-gradient(135deg, var(--brand-amber), #ff9d3d);
+  color: #1a1204;
+  font-weight: 600;
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--brand-amber-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 22px -8px rgba(245, 130, 10, 0.5);
 }
 
 .btn-secondary {
@@ -567,7 +586,7 @@ html[data-theme="light"] .dashboard-hero {
 .input:focus {
   outline: none;
   border-color: var(--haulyard-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(245, 130, 10, 0.16);
 }
 
 .input::placeholder {
@@ -1023,4 +1042,106 @@ html[data-theme="light"] .dashboard-hero {
 
 .lp-divider {
   color: color-mix(in srgb, var(--lp-cloud) 45%, transparent);
+}
+
+.auth-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.auth-section-title::before {
+  content: '';
+  width: 3px;
+  height: 0.9rem;
+  border-radius: 2px;
+  background: var(--brand-teal);
+}
+
+/* ─── Brand accent normalization ─────────────────────── */
+/* App-wide: retint stray Tailwind blue accents onto the brand palette.
+   Amber = primary action, Teal = links / nav / secondary accents.
+   Both text and matching background shift together so contrast is kept. */
+
+/* Link / identifier / nav accent text → teal */
+.text-blue-300,
+.text-blue-400,
+.text-blue-500,
+.text-blue-600,
+.text-blue-400\/90 {
+  color: var(--brand-teal) !important;
+}
+
+.hover\:text-blue-300:hover,
+.hover\:text-blue-400:hover,
+.hover\:text-blue-500:hover,
+.group:hover .group-hover\:text-blue-400 {
+  color: color-mix(in srgb, var(--brand-teal) 78%, var(--brand-cloud)) !important;
+}
+
+/* Soft blue background tints → teal tints (same weight) */
+.bg-blue-500\/5,
+.hover\:bg-blue-500\/5:hover {
+  background-color: color-mix(in srgb, var(--brand-teal) 6%, transparent) !important;
+}
+.bg-blue-500\/\[0\.02\] {
+  background-color: color-mix(in srgb, var(--brand-teal) 4%, transparent) !important;
+}
+.bg-blue-500\/\[0\.06\] {
+  background-color: color-mix(in srgb, var(--brand-teal) 7%, transparent) !important;
+}
+.bg-blue-500\/10 {
+  background-color: color-mix(in srgb, var(--brand-teal) 12%, transparent) !important;
+}
+.bg-blue-500\/12 {
+  background-color: color-mix(in srgb, var(--brand-teal) 14%, transparent) !important;
+}
+.bg-blue-500\/15 {
+  background-color: color-mix(in srgb, var(--brand-teal) 16%, transparent) !important;
+}
+.bg-blue-500\/20 {
+  background-color: color-mix(in srgb, var(--brand-teal) 20%, transparent) !important;
+}
+
+/* Blue borders / rings → teal */
+.border-blue-500\/10 {
+  border-color: color-mix(in srgb, var(--brand-teal) 16%, transparent) !important;
+}
+.border-blue-500\/20 {
+  border-color: color-mix(in srgb, var(--brand-teal) 26%, transparent) !important;
+}
+.border-blue-500\/30,
+.hover\:border-blue-500\/30:hover {
+  border-color: color-mix(in srgb, var(--brand-teal) 34%, transparent) !important;
+}
+.ring-blue-500\/50 {
+  --tw-ring-color: color-mix(in srgb, var(--brand-teal) 50%, transparent) !important;
+}
+
+/* Full-strength blue = activity / attention → amber */
+.border-blue-500 {
+  border-color: var(--brand-amber) !important;
+}
+.bg-blue-500 {
+  background-color: var(--brand-amber) !important;
+}
+
+/* Purple category accents → amber (second brand accent) */
+.text-purple-300,
+.text-purple-400 {
+  color: var(--brand-amber) !important;
+}
+.bg-purple-500\/10 {
+  background-color: color-mix(in srgb, var(--brand-amber) 12%, transparent) !important;
+}
+.bg-purple-500\/15 {
+  background-color: color-mix(in srgb, var(--brand-amber) 15%, transparent) !important;
+}
+.border-purple-500\/30 {
+  border-color: color-mix(in srgb, var(--brand-amber) 32%, transparent) !important;
 }
