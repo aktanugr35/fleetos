@@ -31,8 +31,8 @@
   --border-color: #223251;
   --border-hover: #31456a;
   --text-primary: #eef2fb;
-  --text-secondary: #a6b6cd;
-  --text-muted: #71829c;
+  --text-secondary: #b8c5d9;
+  --text-muted: #8fa3be;
   --surface-hover: rgba(240, 244, 255, 0.06);
 }
 
@@ -46,8 +46,8 @@ html[data-theme="light"] {
   --border-color: #dbe2f1;
   --border-hover: #c1cee4;
   --text-primary: #0c1b33;
-  --text-secondary: #45566f;
-  --text-muted: #667890;
+  --text-secondary: #334155;
+  --text-muted: #475569;
   --surface-hover: rgba(12, 27, 51, 0.05);
 }
 
@@ -78,30 +78,112 @@ body {
   }
 }
 
-/* Map common Tailwind grays to theme-aware colors in light mode */
+/* ─── App typography — theme-aware gray/slate remapping ─ */
+/* Most pages use Tailwind gray-* classes; remap them to readable brand tokens. */
+
+html[data-theme="dark"] .text-gray-100,
+html[data-theme="dark"] .text-white {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .text-gray-200 {
+  color: #dce4f2 !important;
+}
+
+html[data-theme="dark"] .text-gray-300 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .text-gray-400 {
+  color: #a8b8d0 !important;
+}
+
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-gray-600 {
+  color: var(--text-muted) !important;
+}
+
 html[data-theme="light"] .text-gray-100,
 html[data-theme="light"] .text-white {
   color: var(--text-primary) !important;
 }
 
-html[data-theme="light"] .text-gray-200 {
-  color: #1e293b !important;
-}
-
+html[data-theme="light"] .text-gray-200,
 html[data-theme="light"] .text-gray-300 {
-  color: #334155 !important;
+  color: var(--text-primary) !important;
 }
 
 html[data-theme="light"] .text-gray-400 {
-  color: #475569 !important;
+  color: var(--text-secondary) !important;
 }
 
-html[data-theme="light"] .text-gray-500 {
-  color: #64748b !important;
-}
-
+html[data-theme="light"] .text-gray-500,
 html[data-theme="light"] .text-gray-600 {
-  color: #64748b !important;
+  color: var(--text-muted) !important;
+}
+
+/* Slate classes (forms, intake panels, legacy pages) */
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-slate-400,
+html[data-theme="dark"] .text-slate-300 {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="light"] .text-slate-900,
+html[data-theme="light"] .text-slate-800 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .text-slate-700,
+html[data-theme="light"] .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="light"] .text-slate-500,
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] .text-slate-300 {
+  color: var(--text-muted) !important;
+}
+
+/* Sidebar nav — extra contrast in both themes */
+html[data-theme="dark"] .app-sidebar .text-gray-400 {
+  color: #c5d2e4 !important;
+}
+
+html[data-theme="dark"] .app-sidebar .text-gray-500 {
+  color: #9eb0c9 !important;
+}
+
+html[data-theme="light"] .app-sidebar .text-gray-400 {
+  color: #1e293b !important;
+}
+
+html[data-theme="light"] .app-sidebar .text-gray-500 {
+  color: #334155 !important;
+}
+
+/* Loading skeletons */
+html[data-theme="light"] .bg-gray-800\/60,
+html[data-theme="light"] .bg-gray-800 {
+  background-color: #dbe2f1 !important;
+}
+
+html[data-theme="light"] .bg-gray-900\/50 {
+  background-color: #eef1fa !important;
+}
+
+html[data-theme="light"] .border-gray-800 {
+  border-color: var(--border-color) !important;
 }
 
 html[data-theme="light"] .bg-gray-950 {
@@ -142,15 +224,6 @@ html[data-theme="light"] .auth-layout .text-gray-500 {
 
 .hover-surface:hover {
   background-color: var(--surface-hover);
-}
-
-/* Light theme: darken sidebar nav text/icons for readability */
-html[data-theme="light"] .app-sidebar .text-gray-400 {
-  color: #1e293b !important;
-}
-
-html[data-theme="light"] .app-sidebar .text-gray-500 {
-  color: #334155 !important;
 }
 
 /* Compliance alert — readable red on both themes (data-theme aware) */
@@ -607,7 +680,7 @@ html[data-theme="light"] .dashboard-hero {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   border-bottom: 1px solid var(--border-color);
   background: var(--bg-secondary);
 }
@@ -616,7 +689,7 @@ html[data-theme="light"] .dashboard-hero {
   padding: 0.875rem 1rem;
   font-size: 0.875rem;
   border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .data-table tbody tr {
@@ -673,7 +746,7 @@ html[data-theme="light"] .dashboard-hero {
   .data-table.mobile-card-table td[data-label]::before {
     content: attr(data-label);
     flex: 0 0 auto;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.04em;

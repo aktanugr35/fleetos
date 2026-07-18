@@ -55,16 +55,16 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
         className="relative w-full max-w-md rounded-xl border border-gray-700 bg-gray-900 p-6 shadow-xl"
       >
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-gray-100">
+        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-[var(--text-primary)]">
           {title}
         </h2>
-        <p className="mt-2 text-sm text-gray-400">{message}</p>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">{message}</p>
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
             disabled={loading}
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium rounded-lg text-gray-300 hover:bg-gray-800 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium rounded-lg text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-50"
           >
             {cancelLabel}
           </button>

@@ -71,12 +71,12 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'm
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-gray-100">{title}</h2>
-            {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
+            {description && <p className="text-sm text-[var(--text-secondary)] mt-0.5">{description}</p>}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/[0.06] transition"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/[0.06] transition"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
