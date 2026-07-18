@@ -118,15 +118,6 @@ sh scripts/vps/deploy.sh
 
 Stop: `pnpm docker:prod:down`
 
-## Production deploy (cloud — optional)
-
-Split hosting without a VPS:
-
-- [docs/DEPLOY-VERCEL-RENDER.md](docs/DEPLOY-VERCEL-RENDER.md) — `render.yaml`, `apps/web/vercel.json`
-- [docs/DEPLOY-RAILWAY.md](docs/DEPLOY-RAILWAY.md) — `railway.toml` (API only)
-
-These files do not affect the VPS Docker stack.
-
 ### Database backups
 
 Postgres data is stored in the Docker volume `postgres_data`. Example logical backup:

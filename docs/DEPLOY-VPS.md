@@ -87,13 +87,6 @@ docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructu
 docker exec haulyard-prod-db pg_dump -U fleetos fleetos > "haulyard-$(date +%Y%m%d).sql"
 ```
 
-## Optional cloud deploy
-
-Not required for VPS:
-
-- [DEPLOY-VERCEL-RENDER.md](./DEPLOY-VERCEL-RENDER.md) — `render.yaml`, `apps/web/vercel.json`
-- [DEPLOY-RAILWAY.md](./DEPLOY-RAILWAY.md) — `railway.toml` (API only)
-
 ## Troubleshooting
 
 | Issue | Fix |

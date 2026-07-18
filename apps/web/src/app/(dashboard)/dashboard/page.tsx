@@ -176,7 +176,7 @@ export default function DashboardPage() {
       setChartData(chartRes.data.data);
       setRecentLoads(loadsRes.data.data || []);
       const s = complianceRes.data.data.summary;
-      setCompliance({ expired: s.expired, warning: s.warning, valid: s.valid });
+      setCompliance({ expired: s.expired, warning: s.dueSoon ?? s.warning ?? 0, valid: s.valid });
     } catch (err) {
       logErrorDev('dashboard', err);
       const message = getApiErrorMessage(err, 'Failed to load dashboard');

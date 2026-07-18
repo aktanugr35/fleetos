@@ -28,23 +28,25 @@ model Company {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  users            User[]
-  drivers          Driver[]
-  dispatchers      Dispatcher[]
-  trucks           Truck[]
-  trailers         Trailer[]
-  loads            Load[]
-  settlements      Settlement[]
+  users                 User[]
+  drivers               Driver[]
+  dispatchers           Dispatcher[]
+  trucks                Truck[]
+  trailers              Trailer[]
+  loads                 Load[]
+  settlements           Settlement[]
   dispatcherSettlements DispatcherSettlement[]
-  deductions       Deduction[]
-  credits          Credit[]
-  fuelCards        FuelCard[]
-  tollDevices      TollDevice[]
-  fuelTransactions FuelTransaction[]
-  tollTransactions TollTransaction[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  intakeTokens     DriverIntakeToken[]
+  deductions            Deduction[]
+  credits               Credit[]
+  fuelCards             FuelCard[]
+  tollDevices           TollDevice[]
+  fuelTransactions      FuelTransaction[]
+  tollTransactions      TollTransaction[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  intakeTokens          DriverIntakeToken[]
+  complianceSettings    CompanyComplianceSetting[]
+  complianceRecords     ComplianceRecord[]
 
   @@map("companies")
 }
@@ -134,15 +136,16 @@ model Driver {
   createdAt                   DateTime     @default(now())
   updatedAt                   DateTime     @updatedAt
 
-  company     Company      @relation(fields: [companyId], references: [id])
-  user        User?        @relation(fields: [userId], references: [id])
-  truck       Truck?
-  loads       Load[]
-  settlements Settlement[]
-  documents   Document[]
-  deductions  Deduction[]
-  credits     Credit[]
-  intakeTokens DriverIntakeToken[]
+  company           Company             @relation(fields: [companyId], references: [id])
+  user              User?               @relation(fields: [userId], references: [id])
+  truck             Truck?
+  loads             Load[]
+  settlements       Settlement[]
+  documents         Document[]
+  deductions        Deduction[]
+  credits           Credit[]
+  intakeTokens      DriverIntakeToken[]
+  complianceRecords ComplianceRecord[]
 
   @@index([companyId])
   @@map("drivers")
@@ -212,14 +215,15 @@ model Truck {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  company          Company           @relation(fields: [companyId], references: [id])
-  ownerDriver      Driver?           @relation(fields: [ownerDriverId], references: [id])
-  loads            Load[]
-  documents        Document[]
-  fuelCards        FuelCard[]
-  tollDevices      TollDevice[]
-  fuelTransactions FuelTransaction[]
-  tollTransactions TollTransaction[]
+  company           Company            @relation(fields: [companyId], references: [id])
+  ownerDriver       Driver?            @relation(fields: [ownerDriverId], references: [id])
+  loads             Load[]
+  documents         Document[]
+  fuelCards         FuelCard[]
+  tollDevices       TollDevice[]
+  fuelTransactions  FuelTransaction[]
+  tollTransactions  TollTransaction[]
+  complianceRecords ComplianceRecord[]
 
   @@index([companyId])
   @@map("trucks")
@@ -242,9 +246,10 @@ model Trailer {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id])
-  loads     Load[]
-  documents Document[]
+  company           Company            @relation(fields: [companyId], references: [id])
+  loads             Load[]
+  documents         Document[]
+  complianceRecords ComplianceRecord[]
 
   @@index([companyId])
   @@map("trailers")
@@ -260,18 +265,18 @@ enum LoadStatus {
 }
 
 model Load {
-  id                 String     @id @default(uuid())
-  companyId          String
-  driverId           String
-  truckId            String
-  trailerId          String?
+  id                   String     @id @default(uuid())
+  companyId            String
+  driverId             String
+  truckId              String
+  trailerId            String?
   bookedByDispatcherId String?
-  externalTrailerRef String? // Hook & drop / external trailer (not company fleet)
-  loadNumber         String     @unique
-  brokerName         String
-  brokerMC           String?
-  referenceNumber    String?
-  status             LoadStatus @default(PENDING)
+  externalTrailerRef   String? // Hook & drop / external trailer (not company fleet)
+  loadNumber           String     @unique
+  brokerName           String
+  brokerMC             String?
+  referenceNumber      String?
+  status               LoadStatus @default(PENDING)
 
   // Rota
   pickupLocation     String
@@ -295,13 +300,13 @@ model Load {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company              Company                     @relation(fields: [companyId], references: [id])
-  driver               Driver                      @relation(fields: [driverId], references: [id])
-  truck                Truck                       @relation(fields: [truckId], references: [id])
-  trailer              Trailer?                    @relation(fields: [trailerId], references: [id])
-  bookedByDispatcher   Dispatcher?                 @relation(fields: [bookedByDispatcherId], references: [id])
-  documents            Document[]
-  settlementLines      SettlementLine[]
+  company                   Company                    @relation(fields: [companyId], references: [id])
+  driver                    Driver                     @relation(fields: [driverId], references: [id])
+  truck                     Truck                      @relation(fields: [truckId], references: [id])
+  trailer                   Trailer?                   @relation(fields: [trailerId], references: [id])
+  bookedByDispatcher        Dispatcher?                @relation(fields: [bookedByDispatcherId], references: [id])
+  documents                 Document[]
+  settlementLines           SettlementLine[]
   dispatcherSettlementLines DispatcherSettlementLine[]
 
   @@index([companyId])
@@ -381,9 +386,9 @@ model DispatcherSettlement {
   status          SettlementStatus @default(DRAFT)
   pdfUrl          String?
 
-  grossAmount       Int // total load gross (cents)
-  commissionTotal   Int // sum of commission lines (cents)
-  netAmount         Int // payout to dispatcher (cents)
+  grossAmount     Int // total load gross (cents)
+  commissionTotal Int // sum of commission lines (cents)
+  netAmount       Int // payout to dispatcher (cents)
 
   notes       String?
   finalizedAt DateTime?
@@ -665,10 +670,12 @@ model Document {
   uploadedById String
   createdAt    DateTime     @default(now())
 
-  driver  Driver?  @relation(fields: [driverId], references: [id])
-  truck   Truck?   @relation(fields: [truckId], references: [id])
-  trailer Trailer? @relation(fields: [trailerId], references: [id])
-  load    Load?    @relation(fields: [loadId], references: [id])
+  driver            Driver?            @relation(fields: [driverId], references: [id])
+  truck             Truck?             @relation(fields: [truckId], references: [id])
+  trailer           Trailer?           @relation(fields: [trailerId], references: [id])
+  load              Load?              @relation(fields: [loadId], references: [id])
+  complianceRecords ComplianceRecord[] @relation("ComplianceRecordDocument")
+  complianceEvents  ComplianceEvent[]  @relation("ComplianceEventDocument")
 
   @@index([companyId])
   @@map("documents")
@@ -721,4 +728,125 @@ model AuditLog {
   @@index([companyId])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+// ─── COMPLIANCE ───────────────────────────────────────
+enum ComplianceEntityType {
+  DRIVER
+  TRUCK
+  TRAILER
+  COMPANY
+}
+
+enum ComplianceTrackingMode {
+  EXPIRY // fixed expiry date; renew sets a new expiry
+  INTERVAL // recurring; nextDue = lastCompleted + cadence
+  MILEAGE // preventive maintenance by mileage or date
+}
+
+enum ComplianceStatus {
+  VALID
+  DUE_SOON
+  EXPIRED
+  MISSING
+  NA
+}
+
+// Catalog of compliance requirement types (system defaults + custom).
+model ComplianceType {
+  id                   String                 @id @default(uuid())
+  key                  String                 @unique // e.g. DRIVER_CDL, TRUCK_NY_HUT
+  label                String
+  category             String // Licensing, Medical, Drug & Alcohol, Inspection, Registration, Taxes, Permits, Insurance, Maintenance, Authority
+  entityType           ComplianceEntityType
+  trackingMode         ComplianceTrackingMode @default(EXPIRY)
+  defaultCadenceMonths Int? // null = one-off expiry with no auto renewal cadence
+  description          String?
+  isSystem             Boolean                @default(true)
+  sortOrder            Int                    @default(0)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  settings CompanyComplianceSetting[]
+  records  ComplianceRecord[]
+
+  @@index([entityType])
+  @@map("compliance_types")
+}
+
+// Per-company configuration: which types are tracked, cadence override, reminders.
+model CompanyComplianceSetting {
+  id               String   @id @default(uuid())
+  companyId        String
+  complianceTypeId String
+  enabled          Boolean  @default(true)
+  cadenceMonths    Int? // override the type default
+  reminderDays     Int[]    @default([60, 30, 14, 7, 1])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  complianceType ComplianceType @relation(fields: [complianceTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, complianceTypeId])
+  @@index([companyId])
+  @@map("company_compliance_settings")
+}
+
+// A tracked compliance item for a specific entity.
+model ComplianceRecord {
+  id               String               @id @default(uuid())
+  companyId        String
+  complianceTypeId String
+  entityType       ComplianceEntityType
+  driverId         String?
+  truckId          String?
+  trailerId        String?
+  issuedDate       DateTime?
+  expiryDate       DateTime?
+  lastCompletedAt  DateTime?
+  nextDueAt        DateTime?
+  status           ComplianceStatus     @default(MISSING)
+  referenceNumber  String? // permit #, decal #, clearinghouse query ref
+  documentId       String?
+  notes            String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  company        Company           @relation(fields: [companyId], references: [id])
+  complianceType ComplianceType    @relation(fields: [complianceTypeId], references: [id])
+  driver         Driver?           @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  truck          Truck?            @relation(fields: [truckId], references: [id], onDelete: Cascade)
+  trailer        Trailer?          @relation(fields: [trailerId], references: [id], onDelete: Cascade)
+  document       Document?         @relation("ComplianceRecordDocument", fields: [documentId], references: [id])
+  events         ComplianceEvent[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([complianceTypeId])
+  @@index([driverId])
+  @@index([truckId])
+  @@index([trailerId])
+  @@map("compliance_records")
+}
+
+// Historical log of renewals / actions on a compliance record.
+model ComplianceEvent {
+  id              String    @id @default(uuid())
+  recordId        String
+  action          String // CREATED | RENEWED | UPDATED | MARKED_NA | REACTIVATED
+  completedAt     DateTime
+  previousExpiry  DateTime?
+  newExpiryDate   DateTime?
+  referenceNumber String?
+  documentId      String?
+  notes           String?
+  performedById   String?
+  createdAt       DateTime  @default(now())
+
+  record   ComplianceRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  document Document?        @relation("ComplianceEventDocument", fields: [documentId], references: [id])
+
+  @@index([recordId])
+  @@map("compliance_events")
 }

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Local monorepo root .env (optional on Render/Vercel — platform env vars used there)
+// Local monorepo root .env (optional in production — host/container env vars used there)
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -56,7 +56,7 @@ const envSchema = z
       z.number().int().positive(),
     ),
     FRONTEND_URL: httpOriginUrl.default('http://localhost:3000'),
-    /** Comma-separated extra CORS origins (e.g. Vercel preview URLs). */
+    /** Comma-separated extra CORS origins. */
     CORS_ORIGINS: z.string().optional(),
 
     SEED_DEMO: z

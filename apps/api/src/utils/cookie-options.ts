@@ -1,6 +1,6 @@
 import { env } from '../config/env';
 
-/** Refresh token cookie options (Vercel + Render = cross-site). */
+/** Refresh token cookie options. Set CROSS_SITE_COOKIES=true when the web and API are on different domains. */
 export function refreshTokenCookieOptions() {
   const crossSite =
     process.env.CROSS_SITE_COOKIES === 'true' ||
