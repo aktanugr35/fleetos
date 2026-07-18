@@ -73,7 +73,7 @@ export function SetupRegistrationForm() {
         <div className="mb-6">
           <h2 className="text-2xl font-bold">Create your account</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Register your company and administrator account to get started with FleetOS.
+            Register your company and administrator account to get started with Haulyard.
           </p>
         </div>
 

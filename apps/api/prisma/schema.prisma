@@ -1,5 +1,5 @@
 // ============================================
-// FleetOS — Prisma Schema
+// Haulyard — Prisma Schema
 // ============================================
 
 generator client {

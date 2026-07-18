@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { downloadSettlementPdf } from '@/lib/settlements';
 import api from '@/lib/api';
 import { usePermission } from '@/hooks/usePermission';
-import { SettlementStatus, type SettlementSummary } from '@fleetos/shared-types';
+import { SettlementStatus, type SettlementSummary } from '@haulyard/shared-types';
 
 export type { SettlementSummary };
 

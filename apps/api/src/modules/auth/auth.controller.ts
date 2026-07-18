@@ -17,7 +17,7 @@ export class AuthController {
       const result = await authService.login(input);
 
       // Set refresh token as httpOnly cookie
-      res.cookie('fleetos_refresh_token', result.refreshToken, refreshTokenCookieOptions());
+      res.cookie('haulyard_refresh_token', result.refreshToken, refreshTokenCookieOptions());
 
       res.json(successResponse({
         accessToken: result.accessToken,
@@ -33,14 +33,14 @@ export class AuthController {
    */
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      const refreshToken = req.cookies?.fleetos_refresh_token;
+      const refreshToken = req.cookies?.haulyard_refresh_token;
       const userId = req.user?.userId;
 
       if (userId) {
         await authService.logout(refreshToken, userId);
       }
 
-      res.clearCookie('fleetos_refresh_token', clearRefreshTokenCookieOptions());
+      res.clearCookie('haulyard_refresh_token', clearRefreshTokenCookieOptions());
       res.json(successResponse({ message: 'Logged out successfully' }));
     } catch (error) {
       next(error);
@@ -52,7 +52,7 @@ export class AuthController {
    */
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
-      const refreshToken = req.cookies?.fleetos_refresh_token;
+      const refreshToken = req.cookies?.haulyard_refresh_token;
 
       if (!refreshToken) {
         return res.status(401).json({
@@ -64,7 +64,7 @@ export class AuthController {
       const result = await authService.refresh(refreshToken);
 
       // Set new refresh token cookie
-      res.cookie('fleetos_refresh_token', result.refreshToken, refreshTokenCookieOptions());
+      res.cookie('haulyard_refresh_token', result.refreshToken, refreshTokenCookieOptions());
 
       res.json(successResponse({
         accessToken: result.accessToken,
@@ -97,7 +97,7 @@ export class AuthController {
       const input = changePasswordSchema.parse(req.body);
       await authService.changePassword(userId, input);
 
-      res.clearCookie('fleetos_refresh_token', clearRefreshTokenCookieOptions());
+      res.clearCookie('haulyard_refresh_token', clearRefreshTokenCookieOptions());
       res.json(successResponse({ message: 'Password changed successfully. Please login again.' }));
     } catch (error) {
       next(error);

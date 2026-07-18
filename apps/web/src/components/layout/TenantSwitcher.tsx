@@ -25,11 +25,11 @@ export function TenantSwitcher() {
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="fleetos-tenant" className="sr-only">
+      <label htmlFor="haulyard-tenant" className="sr-only">
         Active company
       </label>
       <select
-        id="fleetos-tenant"
+        id="haulyard-tenant"
         className="input py-1.5 text-sm max-w-[11rem] md:max-w-[14rem] bg-[var(--bg-primary)]"
         value={tenantId ?? ''}
         onChange={(e) => setSuperAdminTenantId(e.target.value || null)}

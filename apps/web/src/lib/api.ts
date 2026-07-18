@@ -13,7 +13,7 @@ function isAuthEndpoint(url?: string): boolean {
 }
 
 /**
- * Axios instance configured for FleetOS API
+ * Axios instance configured for Haulyard API
  */
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,

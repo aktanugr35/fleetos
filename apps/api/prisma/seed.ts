@@ -21,7 +21,7 @@ async function main() {
     return;
   }
 
-  console.log('Seeding FleetOS demo database...');
+  console.log('Seeding Haulyard demo database...');
 
   const company = await prisma.company.upsert({
     where: { dotNumber: '1234567' },
@@ -42,10 +42,10 @@ async function main() {
   const passwordHash = await bcrypt.hash('Admin123!', 12);
 
   await prisma.user.upsert({
-    where: { email: 'super@fleetos.app' },
+    where: { email: 'super@haulyard.app' },
     update: {},
     create: {
-      email: 'super@fleetos.app',
+      email: 'super@haulyard.app',
       passwordHash,
       firstName: 'System',
       lastName: 'Admin',

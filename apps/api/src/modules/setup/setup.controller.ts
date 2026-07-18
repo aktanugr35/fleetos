@@ -20,7 +20,7 @@ export class SetupController {
       const input = setupSchema.parse(req.body);
       const result = await setupService.bootstrap(input);
 
-      res.cookie('fleetos_refresh_token', result.refreshToken, {
+      res.cookie('haulyard_refresh_token', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

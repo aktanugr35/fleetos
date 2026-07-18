@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { BrandWordmark } from '@/components/layout/BrandWordmark';
 import type { FleetPermission } from '@/hooks/usePermission';
 import { usePermission } from '@/hooks/usePermission';
 import { useSidebar } from '@/components/layout/DashboardShell';
@@ -198,9 +199,7 @@ export function Sidebar() {
             <circle cx="7.5" cy="17.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" />
           </svg>
         </div>
-        <span className="text-lg font-bold tracking-tight">
-          Fleet<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">OS</span>
-        </span>
+        <BrandWordmark className="text-lg" />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">

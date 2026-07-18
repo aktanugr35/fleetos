@@ -1,5 +1,5 @@
 {
-  "name": "@fleetos/web",
+  "name": "@haulyard/web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^9.15.0",
-    "@fleetos/shared-types": "workspace:*",
+    "@haulyard/shared-types": "workspace:*",
     "@hookform/resolvers": "^5.0.1",
     "@tanstack/react-query": "^5.74.4",
     "@tanstack/react-table": "^8.21.3",

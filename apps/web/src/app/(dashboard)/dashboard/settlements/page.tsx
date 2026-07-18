@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateSettlementModal } from '@/components/forms/CreateSettlementModal';
 import { SettlementDetailModal } from '@/components/settlements/SettlementDetailModal';
-import { SettlementStatus, type SettlementSummary } from '@fleetos/shared-types';
+import { SettlementStatus, type SettlementSummary } from '@haulyard/shared-types';
 import { Toast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { usePermission } from '@/hooks/usePermission';

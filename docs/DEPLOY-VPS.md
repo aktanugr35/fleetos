@@ -1,8 +1,8 @@
-# FleetOS — VPS deploy (IONOS / Ubuntu)
+# Haulyard — VPS deploy (IONOS / Ubuntu)
 
 **Recommended production path:** one Linux VPS, Docker Compose, Nginx on the host.
 
-WordPress stays on IONOS web hosting. FleetOS uses a subdomain, e.g. `panel.valleytransusa.com`.
+WordPress stays on IONOS web hosting. Haulyard uses a subdomain, e.g. `panel.valleytransusa.com`.
 
 ## Requirements
 
@@ -26,8 +26,8 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ## 2. Clone and configure
 
 ```bash
-git clone https://github.com/aktanugr35/fleetos.git
-cd fleetos
+git clone https://github.com/aktanugr35/haulyard.git
+cd haulyard
 cp infrastructure/.env.prod.example infrastructure/.env.prod
 nano infrastructure/.env.prod
 ```
@@ -62,9 +62,9 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000
 ## 4. Nginx + HTTPS
 
 ```bash
-sudo cp infrastructure/nginx/fleetos.conf.example /etc/nginx/sites-available/fleetos
-sudo nano /etc/nginx/sites-available/fleetos   # set server_name
-sudo ln -sf /etc/nginx/sites-available/fleetos /etc/nginx/sites-enabled/
+sudo cp infrastructure/nginx/haulyard.conf.example /etc/nginx/sites-available/haulyard
+sudo nano /etc/nginx/sites-available/haulyard   # set server_name
+sudo ln -sf /etc/nginx/sites-available/haulyard /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d panel.valleytransusa.com
 ```
@@ -76,7 +76,7 @@ Open `https://panel.valleytransusa.com` → **Sign Up** (first user when DB is e
 ## Updates
 
 ```bash
-cd fleetos
+cd haulyard
 git pull
 docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructure/.env.prod up --build -d
 ```
@@ -84,7 +84,7 @@ docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructu
 ## Backup
 
 ```bash
-docker exec fleetos-prod-db pg_dump -U fleetos fleetos > "fleetos-$(date +%Y%m%d).sql"
+docker exec haulyard-prod-db pg_dump -U fleetos fleetos > "haulyard-$(date +%Y%m%d).sql"
 ```
 
 ## Optional cloud deploy

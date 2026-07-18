@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import {
   roleHasPermission,
   type FleetPermission,
-} from '@fleetos/shared-types';
+} from '@haulyard/shared-types';
 import { useAuthStore } from '@/store/authStore';
 
 export type { FleetPermission };

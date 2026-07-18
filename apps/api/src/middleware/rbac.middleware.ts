@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { STAFF_ROLES as SHARED_STAFF_ROLES, UserRole } from '@fleetos/shared-types';
+import { STAFF_ROLES as SHARED_STAFF_ROLES, UserRole } from '@haulyard/shared-types';
 import { AppError } from './errorHandler.middleware';
 
 export type Role = `${UserRole}`;

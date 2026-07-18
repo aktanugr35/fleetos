@@ -13,5 +13,5 @@ fi
 
 node "$PRISMA_BIN" migrate deploy --schema=apps/api/prisma/schema.prisma
 
-echo "Starting FleetOS API..."
+echo "Starting Haulyard API..."
 exec node apps/api/dist/index.js

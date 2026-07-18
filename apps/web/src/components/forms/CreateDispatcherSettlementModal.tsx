@@ -189,8 +189,8 @@ export function CreateDispatcherSettlementModal({
                     <td>{load.loadNumber}</td>
                     <td>{load.brokerName}</td>
                     <td>{load.deliveryDate ? formatDate(load.deliveryDate) : '—'}</td>
-                    <td>{formatCurrency(load.totalRevenueCents / 100)}</td>
-                    <td>{formatCurrency(load.commissionAmount / 100)}</td>
+                    <td>{formatCurrency(load.totalRevenueCents)}</td>
+                    <td>{formatCurrency(load.commissionAmount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -200,7 +200,7 @@ export function CreateDispatcherSettlementModal({
 
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">{selectedLoadIds.length} load(s) selected</span>
-          <span className="font-semibold">Payout: {formatCurrency(totalCommission / 100)}</span>
+          <span className="font-semibold">Payout: {formatCurrency(totalCommission)}</span>
         </div>
 
         <FormField label="Notes">

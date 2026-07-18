@@ -1,8 +1,8 @@
 {
-  "name": "@fleetos/api",
+  "name": "@haulyard/api",
   "version": "1.0.0",
   "private": true,
-  "description": "FleetOS Backend API",
+  "description": "Haulyard Backend API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "lint": "tsc --noEmit -p tsconfig.json",
     "test": "node --import tsx --test 'src/**/*.test.ts'",
-    "test:integration": "FLEETOS_INTEGRATION=1 node --import tsx --test 'src/**/*.integration.test.ts'",
+    "test:integration": "HAULYARD_INTEGRATION=1 node --import tsx --test 'src/**/*.integration.test.ts'",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -26,7 +26,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
     "@aws-sdk/s3-request-presigner": "^3.758.0",
-    "@fleetos/shared-types": "workspace:*",
+    "@haulyard/shared-types": "workspace:*",
     "@prisma/client": "^6.8.2",
     "@sentry/node": "^9.15.0",
     "bcryptjs": "^2.4.3",

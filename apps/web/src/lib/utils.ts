@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export { formatCurrency } from '@fleetos/shared-types';
+export { formatCurrency } from '@haulyard/shared-types';
 
 /**
  * Format date to locale string
@@ -23,7 +23,7 @@ export function formatDate(date: string | Date): string {
 
 export { formatDateTimeAmPm, formatTimeAmPm, US_DISPLAY_TIME_ZONE } from './us-time';
 
-export { toDateInputValue } from '@fleetos/shared-types';
+export { toDateInputValue } from '@haulyard/shared-types';
 
 /**
  * Get initials from first and last name

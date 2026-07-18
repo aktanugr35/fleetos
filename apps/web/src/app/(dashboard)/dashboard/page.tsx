@@ -240,19 +240,19 @@ export default function DashboardPage() {
             label="Last 4 Weeks"
             value={formatCurrency(driverDashboard?.totals.last4WeeksCents || 0)}
             icon={<IconRevenue />}
-            accentColor="var(--fleetos-primary)"
+            accentColor="var(--haulyard-primary)"
           />
           <StatCard
             label="Year To Date"
             value={formatCurrency(driverDashboard?.totals.ytdCents || 0)}
             icon={<IconRevenue />}
-            accentColor="var(--fleetos-accent)"
+            accentColor="var(--haulyard-accent)"
           />
           <StatCard
             label="All Time"
             value={formatCurrency(driverDashboard?.totals.allTimeCents || 0)}
             icon={<IconRevenue />}
-            accentColor="var(--fleetos-secondary)"
+            accentColor="var(--haulyard-secondary)"
           />
         </div>
 
@@ -316,7 +316,7 @@ export default function DashboardPage() {
 
   const pipeline = [
     { key: 'PENDING', label: 'Pending', count: loadsByStatus.PENDING || 0, color: 'var(--status-yellow)' },
-    { key: 'IN_TRANSIT', label: 'In transit', count: loadsByStatus.IN_TRANSIT || 0, color: 'var(--fleetos-primary)' },
+    { key: 'IN_TRANSIT', label: 'In transit', count: loadsByStatus.IN_TRANSIT || 0, color: 'var(--haulyard-primary)' },
     { key: 'DELIVERED', label: 'Delivered', count: loadsByStatus.DELIVERED || 0, color: 'var(--status-green)' },
   ];
 
@@ -361,19 +361,19 @@ export default function DashboardPage() {
           label="Delivered this month"
           value={formatCurrency(summary?.financial?.monthlyRevenue || 0)}
           icon={<IconRevenue />}
-          accentColor="var(--fleetos-primary)"
+          accentColor="var(--haulyard-primary)"
         />
         <StatCard
           label="Active loads"
           value={String(activeLoadsCount)}
           icon={<IconLoads />}
-          accentColor="var(--fleetos-accent)"
+          accentColor="var(--haulyard-accent)"
         />
         <StatCard
           label="Active drivers"
           value={String(summary?.operational?.activeDrivers || 0)}
           icon={<IconDrivers />}
-          accentColor="var(--fleetos-secondary)"
+          accentColor="var(--haulyard-secondary)"
         />
         <StatCard
           label="Active trucks"

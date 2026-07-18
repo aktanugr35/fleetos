@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CreditType, DeductionType } from '@fleetos/shared-types';
+import { CreditType, DeductionType } from '@haulyard/shared-types';
 import { compareCalendarDates, parseLocalDateInput } from '../../utils/datePeriod';
 
 export const createSettlementSchema = z.object({

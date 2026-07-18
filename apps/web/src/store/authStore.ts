@@ -85,7 +85,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'fleetos-auth',
+      name: 'haulyard-auth',
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

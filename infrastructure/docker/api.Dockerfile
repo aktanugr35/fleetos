@@ -1,4 +1,4 @@
-# FleetOS API — production image (includes Chromium for settlement PDFs)
+# Haulyard API — production image (includes Chromium for settlement PDFs)
 FROM node:20-bookworm-slim AS build
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -7,9 +7,9 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile \
-  && pnpm --filter @fleetos/shared-types build \
-  && pnpm --filter @fleetos/api exec prisma generate \
-  && pnpm --filter @fleetos/api build
+  && pnpm --filter @haulyard/shared-types build \
+  && pnpm --filter @haulyard/api exec prisma generate \
+  && pnpm --filter @haulyard/api build
 
 FROM node:20-bookworm-slim AS runner
 RUN apt-get update \

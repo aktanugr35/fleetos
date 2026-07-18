@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { getUserRoleLabel } from '@fleetos/shared-types';
+import { getUserRoleLabel } from '@haulyard/shared-types';
 import { formatDate } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';

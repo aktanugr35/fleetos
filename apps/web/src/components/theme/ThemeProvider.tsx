@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRe
 
 export type ColorScheme = 'dark' | 'light';
 
-const STORAGE_KEY = 'fleetos-color-scheme';
+const STORAGE_KEY = 'haulyard-color-scheme';
 
 function readStored(): ColorScheme {
   if (typeof window === 'undefined') return 'dark';

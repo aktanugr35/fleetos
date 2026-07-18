@@ -18,10 +18,10 @@ set -e
 
 DRIVER_ID=""
 DRIVER_NAME="Ugur Aktan"
-DB_CONTAINER="${DB_CONTAINER:-fleetos-prod-db}"
-API_CONTAINER="${API_CONTAINER:-fleetos-prod-api}"
-DB_USER="${POSTGRES_USER:-fleetos}"
-DB_NAME="${POSTGRES_DB:-fleetos}"
+DB_CONTAINER="${DB_CONTAINER:-haulyard-prod-db}"
+API_CONTAINER="${API_CONTAINER:-haulyard-prod-api}"
+DB_USER="${POSTGRES_USER:-haulyard}"
+DB_NAME="${POSTGRES_DB:-haulyard}"
 
 while [ $# -gt 0 ]; do
   case "$1" in

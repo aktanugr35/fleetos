@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import type { ApiResponse, PaginationMeta } from '@fleetos/shared-types';
+import type { ApiResponse, PaginationMeta } from '@haulyard/shared-types';
 
 export type { ApiResponse, PaginationMeta };
 

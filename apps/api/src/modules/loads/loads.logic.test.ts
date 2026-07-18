@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
-import { LoadStatus } from '@fleetos/shared-types';
+import { LoadStatus } from '@haulyard/shared-types';
 import { calculateLoadTotalCents, inferInitialLoadStatus, nextLoadSequenceNumber } from './loads.logic';
 
 describe('inferInitialLoadStatus', () => {

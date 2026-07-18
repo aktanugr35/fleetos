@@ -7,8 +7,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const DEV_JWT_PLACEHOLDERS = new Set([
-  'fleetos-dev-access-secret-change-in-production',
-  'fleetos-dev-refresh-secret-change-in-production',
+  'haulyard-dev-access-secret-change-in-production',
+  'haulyard-dev-refresh-secret-change-in-production',
 ]);
 
 const isProdLike = (nodeEnv: string) =>
@@ -40,7 +40,7 @@ const envSchema = z
     AWS_ACCESS_KEY_ID: z.string().optional(),
     AWS_SECRET_ACCESS_KEY: z.string().optional(),
     AWS_REGION: z.string().default('us-east-1'),
-    S3_BUCKET_NAME: z.string().min(1).default('fleetos-documents'),
+    S3_BUCKET_NAME: z.string().min(1).default('haulyard-documents'),
     /** Optional S3-compatible endpoint URL (Cloudflare R2, MinIO, etc.). */
     S3_ENDPOINT: z.preprocess(
       (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
@@ -48,7 +48,7 @@ const envSchema = z
     ),
 
     RESEND_API_KEY: z.string().optional(),
-    FROM_EMAIL: z.string().email().default('noreply@fleetos.app'),
+    FROM_EMAIL: z.string().email().default('noreply@haulyard.app'),
 
     NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
     API_PORT: z.preprocess(

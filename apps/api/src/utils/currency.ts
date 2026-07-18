@@ -5,4 +5,4 @@ export {
   parseDollarsToCents,
   calculatePercentage,
   calculatePerMile,
-} from '@fleetos/shared-types';
+} from '@haulyard/shared-types';

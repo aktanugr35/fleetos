@@ -1,10 +1,10 @@
 # Optional — cloud API only. Primary deploy: docs/DEPLOY-VPS.md (Docker on VPS).
-# Railway — FleetOS API (monorepo root)
+# Railway — Haulyard API (monorepo root)
 # DATABASE_URL must be set at runtime (Postgres plugin → Variables).
 # Migrations run on start, not during build (no DB at build time).
 
 [build]
-buildCommand = "corepack enable && corepack prepare pnpm@9.15.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @fleetos/shared-types build && pnpm --filter @fleetos/api exec prisma generate && pnpm --filter @fleetos/api build"
+buildCommand = "corepack enable && corepack prepare pnpm@9.15.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @haulyard/shared-types build && pnpm --filter @haulyard/api exec prisma generate && pnpm --filter @haulyard/api build"
 
 [deploy]
 startCommand = "sh scripts/railway/start-api.sh"

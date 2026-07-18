@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateDispatcherSettlementModal } from '@/components/forms/CreateDispatcherSettlementModal';
-import { SettlementStatus } from '@fleetos/shared-types';
+import { SettlementStatus } from '@haulyard/shared-types';
 import { Toast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { usePermission } from '@/hooks/usePermission';
@@ -145,7 +145,7 @@ export default function DispatcherSettlementsPage() {
                     <td data-label="Dispatcher">{s.dispatcher.firstName} {s.dispatcher.lastName}</td>
                     <td data-label="Period">{formatDate(s.periodStart)} – {formatDate(s.periodEnd)}</td>
                     <td data-label="Status"><StatusBadge status={s.status} /></td>
-                    <td data-label="Payout">{formatCurrency(s.netAmount / 100)}</td>
+                    <td data-label="Payout">{formatCurrency(s.netAmount)}</td>
                     <td data-label="Loads">{s._count?.lines ?? 0}</td>
                     <td data-label="Actions" className="text-right space-x-2">
                       {s.pdfUrl ? (

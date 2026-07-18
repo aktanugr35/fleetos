@@ -1,4 +1,4 @@
-# FleetOS Web — Next.js standalone production image
+# Haulyard Web — Next.js standalone production image
 FROM node:20-bookworm-slim AS build
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
@@ -10,8 +10,8 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 
 COPY . .
 RUN pnpm install --frozen-lockfile \
-  && pnpm --filter @fleetos/shared-types build \
-  && pnpm --filter @fleetos/web build
+  && pnpm --filter @haulyard/shared-types build \
+  && pnpm --filter @haulyard/web build
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app

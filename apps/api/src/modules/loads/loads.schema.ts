@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LoadStatus } from '@fleetos/shared-types';
+import { LoadStatus } from '@haulyard/shared-types';
 
 const loadStatusEnum = z.nativeEnum(LoadStatus);
 

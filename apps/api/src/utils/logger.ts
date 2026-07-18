@@ -14,7 +14,7 @@ export const logger = winston.createLogger({
     errors({ stack: true }),
     logFormat
   ),
-  defaultMeta: { service: 'fleetos-api' },
+  defaultMeta: { service: 'haulyard-api' },
   transports: [
     new winston.transports.Console({
       format: combine(colorize(), logFormat),

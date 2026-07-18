@@ -20,13 +20,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "FleetOS — Fleet Management System",
-  description: "Comprehensive logistics and fleet management platform for US trucking companies",
+  title: "Haulyard — Run your fleet from the yard",
+  description: "Trucking TMS for loads, driver settlements, dispatcher pay, and DOT driver onboarding",
   keywords: ["fleet management", "TMS", "trucking", "logistics", "dispatch"],
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FleetOS",
+    title: "Haulyard",
   },
 };
 

@@ -1,5 +1,5 @@
-# FleetOS — Nginx reverse proxy (host install, not Docker)
-# Copy: sudo cp infrastructure/nginx/fleetos.conf.example /etc/nginx/sites-available/fleetos
+# Haulyard — Nginx reverse proxy (host install, not Docker)
+# Copy: sudo cp infrastructure/nginx/haulyard.conf.example /etc/nginx/sites-available/haulyard
 # Docker binds API/Web to 127.0.0.1 only — see docker-compose.prod.yml
 
 server {

@@ -1,4 +1,4 @@
-# FleetOS — Vercel (Web) + Render (API) Deploy
+# Haulyard — Vercel (Web) + Render (API) Deploy
 
 Free-tier friendly setup. **No VPS.**
 
@@ -20,7 +20,7 @@ Free-tier friendly setup. **No VPS.**
 ## 1. GitHub
 
 ```bash
-cd fleetos
+cd haulyard
 git init   # if needed
 git remote add origin https://github.com/YOUR_USER/fleetos.git
 git add .
@@ -63,7 +63,7 @@ Never commit `.env` — only `.env.example` files.
 |---------|--------|
 | Root Directory | *(leave empty — repo root)* |
 | Build Command | See `render.yaml` `buildCommand` |
-| Start Command | `pnpm --filter @fleetos/api start` |
+| Start Command | `pnpm --filter /api start` |
 | Health Check | `/health` |
 
 **Environment variables (minimum):**
@@ -83,9 +83,9 @@ S3_BUCKET_NAME=
 SEED_DEMO=false
 ```
 
-Deploy → note API URL: `https://fleetos-api.onrender.com`
+Deploy → note API URL: `https://haulyard-api.onrender.com`
 
-Test: `curl https://fleetos-api.onrender.com/health`
+Test: `curl https://haulyard-api.onrender.com/health`
 
 ---
 
@@ -99,7 +99,7 @@ Test: `curl https://fleetos-api.onrender.com/health`
 **Environment variable:**
 
 ```env
-NEXT_PUBLIC_API_URL=https://fleetos-api.onrender.com
+NEXT_PUBLIC_API_URL=https://haulyard-api.onrender.com
 ```
 
 Deploy → URL: `https://your-project.vercel.app`

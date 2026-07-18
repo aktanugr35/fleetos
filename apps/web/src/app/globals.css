@@ -1,13 +1,22 @@
 @import "tailwindcss";
 
-/* ─── FleetOS Design System ─────────────────────────── */
+/* ─── Haulyard Design System ─────────────────────────── */
 
 :root {
   /* Brand Colors */
-  --fleetos-primary: #3b82f6;
-  --fleetos-primary-hover: #2563eb;
-  --fleetos-secondary: #8b5cf6;
-  --fleetos-accent: #06b6d4;
+  --haulyard-primary: #3b82f6;
+  --haulyard-primary-hover: #2563eb;
+  --haulyard-secondary: #8b5cf6;
+  --haulyard-accent: #06b6d4;
+
+  /* Haulyard Brand Identity (marketing / landing) */
+  --brand-midnight: #0c1b33;
+  --brand-midnight-2: #0f2242;
+  --brand-amber: #f5820a;
+  --brand-amber-hover: #d96f00;
+  --brand-teal: #0d9488;
+  --brand-asphalt: #64748b;
+  --brand-cloud: #f0f4ff;
 
   /* Status Colors */
   --status-green: #22c55e;
@@ -180,7 +189,7 @@ textarea {
 
 /* ─── Focus Styles ───────────────────────────────────── */
 *:focus-visible {
-  outline: 2px solid var(--fleetos-primary);
+  outline: 2px solid var(--haulyard-primary);
   outline-offset: 2px;
 }
 
@@ -272,7 +281,7 @@ textarea {
 .dashboard-hero {
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--fleetos-primary) 12%, var(--bg-card)),
+    color-mix(in srgb, var(--haulyard-primary) 12%, var(--bg-card)),
     var(--bg-card)
   );
   border: 1px solid var(--border-color);
@@ -297,7 +306,7 @@ html[data-theme="light"] .dashboard-hero {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--stat-accent, linear-gradient(90deg, var(--fleetos-primary), var(--fleetos-accent)));
+  background: var(--stat-accent, linear-gradient(90deg, var(--haulyard-primary), var(--haulyard-accent)));
   opacity: 0.85;
 }
 
@@ -308,9 +317,9 @@ html[data-theme="light"] .dashboard-hero {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--stat-accent-color, var(--fleetos-primary)) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--stat-accent-color, var(--fleetos-primary)) 22%, transparent);
-  color: var(--stat-accent-color, var(--fleetos-primary));
+  background: color-mix(in srgb, var(--stat-accent-color, var(--haulyard-primary)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stat-accent-color, var(--haulyard-primary)) 22%, transparent);
+  color: var(--stat-accent-color, var(--haulyard-primary));
 }
 
 .dashboard-section-title {
@@ -328,7 +337,7 @@ html[data-theme="light"] .dashboard-hero {
   width: 3px;
   height: 1rem;
   border-radius: 2px;
-  background: linear-gradient(180deg, var(--fleetos-primary), var(--fleetos-accent));
+  background: linear-gradient(180deg, var(--haulyard-primary), var(--haulyard-accent));
 }
 
 .dashboard-pipeline-pill {
@@ -355,8 +364,8 @@ html[data-theme="light"] .dashboard-hero {
 }
 
 .dashboard-quick-link:hover {
-  border-color: color-mix(in srgb, var(--fleetos-primary) 40%, var(--border-color));
-  background: color-mix(in srgb, var(--fleetos-primary) 6%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--haulyard-primary) 40%, var(--border-color));
+  background: color-mix(in srgb, var(--haulyard-primary) 6%, var(--bg-secondary));
   transform: translateX(2px);
 }
 
@@ -368,21 +377,21 @@ html[data-theme="light"] .dashboard-hero {
   width: 2rem;
   height: 2rem;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--fleetos-primary) 12%, transparent);
-  color: var(--fleetos-primary);
+  background: color-mix(in srgb, var(--haulyard-primary) 12%, transparent);
+  color: var(--haulyard-primary);
 }
 
 .dashboard-chart-bar {
   border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--fleetos-primary) 70%, white), var(--fleetos-primary));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--haulyard-primary) 70%, white), var(--haulyard-primary));
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .dashboard-chart-bar.is-muted {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--fleetos-primary) 35%, transparent),
-    color-mix(in srgb, var(--fleetos-primary) 18%, transparent)
+    color-mix(in srgb, var(--haulyard-primary) 35%, transparent),
+    color-mix(in srgb, var(--haulyard-primary) 18%, transparent)
   );
 }
 
@@ -394,7 +403,7 @@ html[data-theme="light"] .dashboard-hero {
 
 .revenue-trend-chart-panel {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--fleetos-primary) 4%, var(--bg-secondary)), var(--bg-secondary));
+    linear-gradient(180deg, color-mix(in srgb, var(--haulyard-primary) 4%, var(--bg-secondary)), var(--bg-secondary));
 }
 
 .revenue-trend-chart-canvas {
@@ -434,19 +443,19 @@ html[data-theme="light"] .dashboard-hero {
 }
 
 .revenue-trend-month-label.is-active {
-  fill: var(--fleetos-primary);
+  fill: var(--haulyard-primary);
   font-weight: 700;
 }
 
 .revenue-trend-dot {
   fill: var(--bg-card);
-  stroke: var(--fleetos-primary);
+  stroke: var(--haulyard-primary);
   stroke-width: 2;
   transition: r 0.15s ease;
 }
 
 .revenue-trend-dot.is-active {
-  fill: var(--fleetos-primary);
+  fill: var(--haulyard-primary);
   stroke: #93c5fd;
   stroke-width: 2;
 }
@@ -512,7 +521,7 @@ html[data-theme="light"] .dashboard-hero {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--fleetos-primary), var(--fleetos-secondary));
+  background: linear-gradient(135deg, var(--haulyard-primary), var(--haulyard-secondary));
   color: white;
 }
 
@@ -557,7 +566,7 @@ html[data-theme="light"] .dashboard-hero {
 
 .input:focus {
   outline: none;
-  border-color: var(--fleetos-primary);
+  border-color: var(--haulyard-primary);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
@@ -668,4 +677,134 @@ html[data-theme="light"] .dashboard-hero {
     padding-top: 0.75rem;
     text-align: left;
   }
+}
+
+/* ─── Haulyard Landing (brand identity) ──────────────── */
+.landing {
+  --lp-bg: var(--brand-midnight);
+  --lp-bg-2: var(--brand-midnight-2);
+  --lp-amber: var(--brand-amber);
+  --lp-teal: var(--brand-teal);
+  --lp-asphalt: var(--brand-asphalt);
+  --lp-cloud: var(--brand-cloud);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(245, 130, 10, 0.14), transparent 60%),
+    radial-gradient(1000px 700px at -10% 20%, rgba(13, 148, 136, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--lp-bg), var(--lp-bg-2));
+  color: var(--lp-cloud);
+  min-height: 100dvh;
+}
+
+.landing ::selection {
+  background: rgba(245, 130, 10, 0.3);
+  color: #fff;
+}
+
+.lp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lp-teal);
+  background: color-mix(in srgb, var(--lp-teal) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lp-teal) 34%, transparent);
+}
+
+.lp-headline {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--lp-cloud);
+}
+
+.lp-accent {
+  color: var(--lp-amber);
+}
+
+.lp-body {
+  color: color-mix(in srgb, var(--lp-cloud) 72%, var(--lp-asphalt));
+}
+
+.lp-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: 12px;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.lp-cta-primary {
+  background: var(--lp-amber);
+  color: #1a1204;
+  box-shadow: 0 10px 30px -8px rgba(245, 130, 10, 0.5);
+}
+
+.lp-cta-primary:hover {
+  background: var(--brand-amber-hover);
+  transform: translateY(-1px);
+}
+
+.lp-cta-ghost {
+  background: rgba(240, 244, 255, 0.04);
+  color: var(--lp-cloud);
+  border: 1px solid rgba(240, 244, 255, 0.16);
+}
+
+.lp-cta-ghost:hover {
+  background: rgba(240, 244, 255, 0.08);
+  border-color: rgba(240, 244, 255, 0.28);
+}
+
+.lp-card {
+  background: rgba(240, 244, 255, 0.04);
+  border: 1px solid rgba(240, 244, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.25rem 1.35rem;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.lp-card:hover {
+  border-color: color-mix(in srgb, var(--lp-amber) 40%, transparent);
+  background: rgba(240, 244, 255, 0.06);
+  transform: translateY(-2px);
+}
+
+.lp-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  color: var(--lp-teal);
+  background: color-mix(in srgb, var(--lp-teal) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--lp-teal) 30%, transparent);
+}
+
+.lp-slogan-strip {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lp-amber) 14%, transparent), transparent 70%);
+  border: 1px solid color-mix(in srgb, var(--lp-amber) 26%, transparent);
+  border-radius: 16px;
+}
+
+.lp-divider {
+  color: color-mix(in srgb, var(--lp-cloud) 45%, transparent);
+}
+
+.lp-footer-link {
+  color: color-mix(in srgb, var(--lp-cloud) 60%, var(--lp-asphalt));
+  transition: color 0.15s ease;
+}
+
+.lp-footer-link:hover {
+  color: var(--lp-amber);
 }

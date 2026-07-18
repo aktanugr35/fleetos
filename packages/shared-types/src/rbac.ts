@@ -1,7 +1,7 @@
 import { UserRole } from './enums';
 
 /**
- * FleetOS permission keys — keep in sync with API route RBAC and web UI gates.
+ * Haulyard permission keys — keep in sync with API route RBAC and web UI gates.
  * See walkthrough Faz 8 role matrix.
  */
 export type FleetPermission =

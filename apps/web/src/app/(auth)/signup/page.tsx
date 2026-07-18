@@ -38,7 +38,7 @@ function SignupContent() {
           <h2 className="text-2xl font-bold">Sign up</h2>
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
             New company registration is not available on this system. If your fleet already uses
-            FleetOS, ask your company administrator to create an account for you.
+            Haulyard, ask your company administrator to create an account for you.
           </p>
         </div>
         <Link href="/login" className="btn btn-primary w-full py-3 text-center block">

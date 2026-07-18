@@ -14,13 +14,13 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_DB: fleetos
-          POSTGRES_USER: fleetos
-          POSTGRES_PASSWORD: fleetos_secret
+          POSTGRES_DB: haulyard
+          POSTGRES_USER: haulyard
+          POSTGRES_PASSWORD: haulyard_secret
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U fleetos"
+          --health-cmd "pg_isready -U haulyard"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -35,7 +35,7 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql://fleetos:fleetos_secret@localhost:5432/fleetos
+      DATABASE_URL: postgresql://haulyard:haulyard_secret@localhost:5432/haulyard
       REDIS_URL: redis://localhost:6379
       JWT_ACCESS_SECRET: ci-access-secret-min-10-chars
       JWT_REFRESH_SECRET: ci-refresh-secret-min-10-chars
@@ -62,7 +62,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: pnpm --filter @fleetos/api exec prisma generate
+        run: pnpm --filter @haulyard/api exec prisma generate
 
       - name: Apply migrations
         run: pnpm db:migrate:deploy
@@ -72,10 +72,10 @@ jobs:
 
       # Web uses strict ESLint rules not yet clean; Next build already typechecks web.
       - name: Lint (API)
-        run: pnpm --filter @fleetos/api lint
+        run: pnpm --filter @haulyard/api lint
 
       - name: Unit tests
         run: pnpm test
 
       - name: Integration tests
-        run: pnpm --filter @fleetos/api test:integration
+        run: pnpm --filter @haulyard/api test:integration

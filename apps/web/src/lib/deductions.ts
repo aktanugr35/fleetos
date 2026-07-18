@@ -9,4 +9,4 @@ export {
   DEDUCTION_CATEGORY_LABELS,
   CREDIT_CATEGORY_LABELS,
   toDateInputValue,
-} from '@fleetos/shared-types';
+} from '@haulyard/shared-types';

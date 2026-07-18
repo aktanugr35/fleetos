@@ -11,9 +11,9 @@ set -e
 
 FIRST=""
 LAST=""
-DB_CONTAINER="${DB_CONTAINER:-fleetos-prod-db}"
-DB_USER="${POSTGRES_USER:-fleetos}"
-DB_NAME="${POSTGRES_DB:-fleetos}"
+DB_CONTAINER="${DB_CONTAINER:-haulyard-prod-db}"
+DB_USER="${POSTGRES_USER:-haulyard}"
+DB_NAME="${POSTGRES_DB:-haulyard}"
 
 while [ $# -gt 0 ]; do
   case "$1" in

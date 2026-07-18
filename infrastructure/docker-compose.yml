@@ -3,24 +3,24 @@ version: '3.9'
 services:
   db:
     image: postgres:15-alpine
-    container_name: fleetos-db
+    container_name: haulyard-db
     environment:
-      POSTGRES_DB: fleetos
-      POSTGRES_USER: fleetos
-      POSTGRES_PASSWORD: fleetos_secret
+      POSTGRES_DB: haulyard
+      POSTGRES_USER: haulyard
+      POSTGRES_PASSWORD: haulyard_secret
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fleetos"]
+      test: ["CMD-SHELL", "pg_isready -U haulyard"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: fleetos-redis
+    container_name: haulyard-redis
     ports:
       - "6379:6379"
     volumes:

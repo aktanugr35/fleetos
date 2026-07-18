@@ -25,7 +25,7 @@ export async function bootstrap() {
   logger.info('✅ Database connected');
 
   app.listen(env.API_PORT, () => {
-    logger.info(`🚛 FleetOS API running on http://localhost:${env.API_PORT}`);
+    logger.info(`🚛 Haulyard API running on http://localhost:${env.API_PORT}`);
     logger.info(`📋 Environment: ${env.NODE_ENV}`);
   });
 }

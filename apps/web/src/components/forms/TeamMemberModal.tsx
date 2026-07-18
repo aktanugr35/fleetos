@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { FormField, FormInput, FormSelect } from '@/components/ui/FormElements';
-import { getUserRoleLabel } from '@fleetos/shared-types';
+import { getUserRoleLabel } from '@haulyard/shared-types';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';

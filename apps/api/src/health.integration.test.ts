@@ -5,7 +5,7 @@ import app from './app';
 import { prisma } from './config/database';
 import { redis } from './config/redis';
 
-const RUN_INTEGRATION = process.env.FLEETOS_INTEGRATION === '1';
+const RUN_INTEGRATION = process.env.HAULYARD_INTEGRATION === '1';
 
 describe('API integration', { skip: !RUN_INTEGRATION }, () => {
   it('GET /health returns healthy when DB and Redis are up', async () => {

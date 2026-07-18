@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
+import { BrandWordmark } from '@/components/layout/BrandWordmark';
 
 function LoginForm() {
   const router = useRouter();
@@ -57,15 +58,13 @@ function LoginForm() {
             <circle cx="17.5" cy="17.5" r="2.5" />
           </svg>
         </div>
-        <span className="text-2xl font-bold">
-          Fleet<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">OS</span>
-        </span>
+        <BrandWordmark className="text-2xl" />
       </div>
 
       <div className="card p-8">
         <div className="mb-6">
           <h2 className="text-2xl font-bold">Welcome back</h2>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your FleetOS account</p>
+          <p className="text-sm text-gray-500 mt-1">Sign in to your Haulyard account</p>
         </div>
 
         {error && (
@@ -154,7 +153,7 @@ function LoginForm() {
       </div>
 
       <p className="text-center text-xs text-gray-600 mt-6" suppressHydrationWarning>
-        FleetOS v1.0.0 — © {new Date().getFullYear()} All rights reserved
+        Haulyard v1.0.0 — © {new Date().getFullYear()} All rights reserved
       </p>
     </div>
   );

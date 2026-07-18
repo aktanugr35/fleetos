@@ -1,6 +1,6 @@
-# FleetOS
+# Haulyard
 
-Monorepo for a logistics / fleet TMS: **Express + Prisma** API (`apps/api`), **Next.js** dashboard (`apps/web`), and shared **`@fleetos/shared-types`** (enums, API shapes, currency helpers).
+Monorepo for a logistics / fleet TMS: **Express + Prisma** API (`apps/api`), **Next.js** dashboard (`apps/web`), and shared **`@haulyard/shared-types`** (enums, API shapes, currency helpers).
 
 Detailed roadmap and acceptance checks live in [`walkthrough.md`](./walkthrough.md).
 
@@ -42,7 +42,7 @@ Migrations live in `apps/api/prisma/migrations/`. Use **`db:migrate:deploy`** in
 **Upgrading from `db push` only:** if your database already has tables but no migration history:
 
 ```bash
-pnpm --filter @fleetos/api exec prisma migrate resolve --applied 20260516120000_init
+pnpm --filter @haulyard/api exec prisma migrate resolve --applied 20260516120000_init
 ```
 
 `db:push` remains available for quick experiments but is not the primary workflow.
@@ -108,7 +108,7 @@ Step-by-step: **[docs/DEPLOY-VPS.md](docs/DEPLOY-VPS.md)**
 cp infrastructure/.env.prod.example infrastructure/.env.prod
 # Edit secrets, domain URLs, R2/S3 keys — then:
 sh scripts/vps/deploy.sh
-# Nginx: infrastructure/nginx/fleetos.conf.example
+# Nginx: infrastructure/nginx/haulyard.conf.example
 ```
 
 - **2 GB RAM** is enough for a small team; add swap (see deploy guide).
@@ -132,7 +132,7 @@ These files do not affect the VPS Docker stack.
 Postgres data is stored in the Docker volume `postgres_data`. Example logical backup:
 
 ```bash
-docker exec fleetos-prod-db pg_dump -U fleetos fleetos > "fleetos-$(date +%Y%m%d).sql"
+docker exec haulyard-prod-db pg_dump -U fleetos fleetos > "haulyard-$(date +%Y%m%d).sql"
 ```
 
 Restore into a fresh database with `psql` or your host’s backup tooling.
@@ -145,7 +145,7 @@ Restore into a fresh database with `psql` or your host’s backup tooling.
 | `pnpm build`  | Typecheck / build all packages   |
 | `pnpm lint`   | Lint                             |
 | `pnpm test`   | Unit tests (API + shared-types + web; 50+ cases) |
-| `pnpm --filter @fleetos/api test:integration` | Supertest health/setup (needs Docker DB + `FLEETOS_INTEGRATION=1`) |
+| `pnpm --filter @haulyard/api test:integration` | Supertest health/setup (needs Docker DB + `HAULYARD_INTEGRATION=1`) |
 | `pnpm docker:up` / `pnpm docker:down` | Dev infra (Postgres + Redis) |
 | `pnpm docker:prod:up` / `docker:prod:down` | Production Docker stack |
 | `pnpm db:migrate:deploy` | Apply migrations (prod / fresh DB) |

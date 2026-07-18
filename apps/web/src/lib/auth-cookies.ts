@@ -1,5 +1,5 @@
 /** Cookie name — must match middleware and localStorage key */
-export const ACCESS_TOKEN_COOKIE = 'fleetos_access_token';
+export const ACCESS_TOKEN_COOKIE = 'haulyard_access_token';
 
 const MAX_AGE_SECONDS = 15 * 60; // matches JWT_ACCESS_EXPIRES default (15m)
 

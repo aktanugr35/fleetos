@@ -1,4 +1,4 @@
-import { LoadStatus } from '@fleetos/shared-types';
+import { LoadStatus } from '@haulyard/shared-types';
 import type { CreateLoadInput } from './loads.schema';
 
 /** Infer initial load status when not explicitly provided. */

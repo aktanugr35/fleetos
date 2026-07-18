@@ -1,12 +1,12 @@
 # Optional — cloud deploy. Primary deploy: docs/DEPLOY-VPS.md (Docker on VPS).
-# Render Blueprint — FleetOS API (monorepo root)
+# Render Blueprint — Haulyard API (monorepo root)
 # Docs: docs/DEPLOY-VERCEL-RENDER.md
 #
 # After deploy: set FRONTEND_URL + CROSS_SITE_COOKIES=true + S3 + Upstash REDIS_URL in dashboard.
 
 services:
   - type: web
-    name: fleetos-api
+    name: haulyard-api
     runtime: node
     plan: free
     region: oregon
@@ -14,9 +14,9 @@ services:
       corepack enable &&
       corepack prepare pnpm@9.15.0 --activate &&
       pnpm install --frozen-lockfile &&
-      pnpm --filter @fleetos/shared-types build &&
-      pnpm --filter @fleetos/api exec prisma generate &&
-      pnpm --filter @fleetos/api build
+      pnpm --filter @haulyard/shared-types build &&
+      pnpm --filter @haulyard/api exec prisma generate &&
+      pnpm --filter @haulyard/api build
     startCommand: pnpm start:api
     healthCheckPath: /health
     envVars:
@@ -26,7 +26,7 @@ services:
         value: "true"
       - key: DATABASE_URL
         fromDatabase:
-          name: fleetos-db
+          name: haulyard-db
           property: connectionString
       - key: JWT_ACCESS_SECRET
         generateValue: true
@@ -46,7 +46,7 @@ services:
         sync: false
 
 databases:
-  - name: fleetos-db
+  - name: haulyard-db
     plan: free
-    databaseName: fleetos
-    user: fleetos
+    databaseName: haulyard
+    user: haulyard

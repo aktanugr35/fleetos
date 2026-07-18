@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DocumentType } from '@fleetos/shared-types';
+import { DocumentType } from '@haulyard/shared-types';
 
 export const documentTypeSchema = z.nativeEnum(DocumentType);
 
