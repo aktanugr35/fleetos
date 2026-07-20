@@ -9,6 +9,7 @@ import { Toast } from '@/components/ui/Toast';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { getUserRoleLabel } from '@haulyard/shared-types';
 import { formatDate } from '@/lib/utils';
@@ -132,8 +133,8 @@ export default function TeamMembersPage() {
 
       <div className="card">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <input
-            className="input max-w-md"
+          <SearchInput
+            wrapperClassName="max-w-md"
             placeholder="Search by name or email"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

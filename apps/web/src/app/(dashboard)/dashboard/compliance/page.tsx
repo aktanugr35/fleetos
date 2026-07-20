@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
 import { formatDate } from '@/lib/utils';
@@ -455,14 +456,14 @@ export default function CompliancePage() {
 
           {/* Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <input
+            <SearchInput
+              wrapperClassName="max-w-xs flex-1"
+              placeholder="Search entity, requirement, reference…"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search entity, requirement, reference…"
-              className="input max-w-xs flex-1"
             />
             <select
               value={status}

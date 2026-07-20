@@ -6,6 +6,7 @@ import { CreateDispatcherModal } from '@/components/forms/CreateDispatcherModal'
 import { Toast } from '@/components/ui/Toast';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import api from '@/lib/api';
 import { usePermission } from '@/hooks/usePermission';
@@ -75,8 +76,8 @@ export default function DispatchersPage() {
       />
 
       <div className="card mb-4 p-4">
-        <input
-          className="form-input max-w-sm"
+        <SearchInput
+          wrapperClassName="max-w-sm"
           placeholder="Search dispatchers…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

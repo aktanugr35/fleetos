@@ -44,6 +44,11 @@ export const updateLoadSchema = createLoadSchema.partial().extend({
 
 export const loadQuerySchema = z.object({
   status: loadStatusEnum.optional(),
+  /** When true, returns only PENDING + IN_TRANSIT (ignores status if set). */
+  activeOnly: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
   driverId: z.string().optional(),
   search: z.string().optional(),
   dateFrom: z.string().optional(),

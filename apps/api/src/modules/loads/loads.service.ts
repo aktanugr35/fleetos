@@ -65,7 +65,11 @@ export class LoadsService {
   async list(tenantId: string, query: LoadQueryInput) {
     const where: Prisma.LoadWhereInput = { companyId: tenantId };
 
-    if (query.status) where.status = query.status;
+    if (query.activeOnly) {
+      where.status = { in: ['PENDING', 'IN_TRANSIT'] };
+    } else if (query.status) {
+      where.status = query.status;
+    }
     if (query.driverId) where.driverId = query.driverId;
 
     if (query.search) {

@@ -666,6 +666,28 @@ html[data-theme="light"] .dashboard-hero {
   color: var(--text-muted);
 }
 
+/* Search inputs with leading magnifier — .input padding shorthand overrides Tailwind pl-* */
+.input-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.input-search-icon {
+  pointer-events: none;
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+.input.input--with-leading-icon {
+  padding-left: 2.625rem;
+}
+
 /* ─── Table Styles ───────────────────────────────────── */
 .data-table {
   width: 100%;

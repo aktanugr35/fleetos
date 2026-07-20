@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { TenantSwitcher } from '@/components/layout/TenantSwitcher';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { SearchInput } from '@/components/ui/SearchInput';
 import { useSidebar } from '@/components/layout/DashboardShell';
 
 export function Header() {
@@ -56,17 +57,10 @@ export function Header() {
         </svg>
       </button>
       <div className="flex-1 max-w-md hidden sm:block">
-        <div className="relative">
-          <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search drivers, trucks, loads..."
-            className="input pl-10 py-2 text-sm bg-[var(--bg-primary)]"
-          />
-        </div>
+        <SearchInput
+          placeholder="Search drivers, trucks, loads..."
+          className="py-2 text-sm bg-[var(--bg-primary)]"
+        />
       </div>
 
       <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
