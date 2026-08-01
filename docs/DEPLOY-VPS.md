@@ -91,8 +91,9 @@ docker exec haulyard-prod-db pg_dump -U fleetos fleetos > "haulyard-$(date +%Y%m
 
 | Issue | Fix |
 |-------|-----|
-| API exits on boot | Check `.env.prod` — JWT 32+ chars, S3 keys set |
-| Login fails | `FRONTEND_URL` must match browser URL exactly; VPS uses `CROSS_SITE_COOKIES=false` |
+| API exits on boot | Check `.env.prod` — JWT 32+ chars, S3 keys set. After Passwords deploy, set `CREDENTIALS_ENCRYPTION_KEY` (`openssl rand -hex 32`) before using that page |
+| Login fails / 502 | API container down — `docker logs haulyard-prod-api`; often missing env or migration error |
+| Login fails (API up) | `FRONTEND_URL` must match browser URL exactly; VPS uses `CROSS_SITE_COOKIES=false` |
 | "No refresh token" on HTTP | Use `http://` in `FRONTEND_URL` (not https) until certbot; rebuild API after cookie fix |
 | PDF slow / OOM | Normal on 2 GB; wait or add swap / upgrade RAM |
 | 502 from Nginx | `docker ps`; containers must listen on `127.0.0.1:3000` and `:3001` |

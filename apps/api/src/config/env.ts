@@ -123,13 +123,6 @@ const envSchema = z
         message: 'Demo seed must not be enabled in staging/production',
       });
     }
-    if (!data.CREDENTIALS_ENCRYPTION_KEY) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['CREDENTIALS_ENCRYPTION_KEY'],
-        message: 'Required in staging/production for encrypted credential storage',
-      });
-    }
   });
 
 const parsed = envSchema.safeParse(process.env);
