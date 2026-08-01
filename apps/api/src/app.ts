@@ -34,6 +34,7 @@ import fuelTollRoutes from './modules/fuel-toll/fuel-toll.routes';
 import geoRoutes from './modules/geo/geo.routes';
 import usersRoutes from './modules/users/users.routes';
 import driverIntakeRoutes from './modules/driver-intake/driver-intake.routes';
+import passwordsRoutes from './modules/passwords/passwords.routes';
 
 // ─── Express App ────────────────────────────────────────
 const app = express();
@@ -126,6 +127,7 @@ app.use('/api/v1/dispatcher-settlements', dispatcherSettlementRoutes);
 app.use('/api/v1/deductions', deductionRoutes);
 app.use('/api/v1/credits', creditRoutes);
 app.use('/api/v1/compliance', complianceRoutes);
+app.use('/api/v1/passwords', passwordsRoutes);
 app.use('/api/v1/documents', documentsRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/geo', geoRoutes);

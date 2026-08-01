@@ -47,6 +47,7 @@ model Company {
   intakeTokens          DriverIntakeToken[]
   complianceSettings    CompanyComplianceSetting[]
   complianceRecords     ComplianceRecord[]
+  passwords             CompanyPassword[]
 
   @@map("companies")
 }
@@ -849,4 +850,36 @@ model ComplianceEvent {
 
   @@index([recordId])
   @@map("compliance_events")
+}
+
+// ─── COMPANY PASSWORDS ────────────────────────────────
+enum PasswordCategory {
+  PERMITS_TAX
+  LOAD_BOARDS
+  COMPLIANCE
+  EMAIL
+  OPERATIONS
+  OTHER
+}
+
+model CompanyPassword {
+  id                String           @id @default(uuid())
+  companyId         String
+  title             String
+  category          PasswordCategory @default(OTHER)
+  url               String?
+  username          String?
+  passwordEncrypted String
+  notes             String?
+  importKey         String
+  sortOrder         Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, importKey])
+  @@index([companyId])
+  @@index([companyId, category])
+  @@map("company_passwords")
 }

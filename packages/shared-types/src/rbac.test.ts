@@ -31,4 +31,18 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:create'), false);
   });
+
+  it('driver cannot view passwords', () => {
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'passwords:view'), false);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'passwords:manage'), false);
+  });
+
+  it('dispatcher can view but not manage passwords', () => {
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'passwords:view'), true);
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'passwords:manage'), false);
+  });
+
+  it('company admin can manage passwords', () => {
+    assert.equal(roleHasPermission(UserRole.COMPANY_ADMIN, 'passwords:manage'), true);
+  });
 });

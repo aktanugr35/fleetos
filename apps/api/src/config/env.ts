@@ -68,6 +68,12 @@ const envSchema = z
       (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
       z.string().url().optional(),
     ),
+
+    /** AES-256 key for company credential vault (64-char hex or base64 32 bytes). Required in prod. */
+    CREDENTIALS_ENCRYPTION_KEY: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().min(32).optional(),
+    ),
   })
   .superRefine((data, ctx) => {
     if (!isProdLike(data.NODE_ENV)) {
@@ -115,6 +121,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['SEED_DEMO'],
         message: 'Demo seed must not be enabled in staging/production',
+      });
+    }
+    if (!data.CREDENTIALS_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CREDENTIALS_ENCRYPTION_KEY'],
+        message: 'Required in staging/production for encrypted credential storage',
       });
     }
   });
