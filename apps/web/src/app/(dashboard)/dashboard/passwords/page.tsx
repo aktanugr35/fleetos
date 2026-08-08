@@ -69,6 +69,10 @@ export default function PasswordsPage() {
     setToast({ type, message });
   };
 
+  const apiErrorMessage = (err: unknown, fallback: string) =>
+    (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+      ?.message || fallback;
+
   const handleCreate = async (values: PasswordFormValues) => {
     setSaving(true);
     try {
@@ -83,8 +87,8 @@ export default function PasswordsPage() {
       setFormOpen(false);
       showToast('Password entry added');
       await loadEntries();
-    } catch {
-      showToast('Could not add password entry', 'error');
+    } catch (err) {
+      showToast(apiErrorMessage(err, 'Could not add password entry'), 'error');
     } finally {
       setSaving(false);
     }
@@ -107,8 +111,8 @@ export default function PasswordsPage() {
       setSelected(null);
       showToast('Password entry updated');
       await loadEntries();
-    } catch {
-      showToast('Could not update password entry', 'error');
+    } catch (err) {
+      showToast(apiErrorMessage(err, 'Could not update password entry'), 'error');
     } finally {
       setSaving(false);
     }
@@ -123,8 +127,8 @@ export default function PasswordsPage() {
       setSelected(null);
       showToast('Password entry deleted');
       await loadEntries();
-    } catch {
-      showToast('Could not delete password entry', 'error');
+    } catch (err) {
+      showToast(apiErrorMessage(err, 'Could not delete password entry'), 'error');
     } finally {
       setSaving(false);
     }
@@ -211,7 +215,7 @@ export default function PasswordsPage() {
           {canManage && (
             <button
               type="button"
-              className="btn btn--primary mt-4"
+              className="btn btn-primary mt-4"
               onClick={() => {
                 setEditing(null);
                 setFormOpen(true);

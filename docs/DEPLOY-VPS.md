@@ -73,6 +73,35 @@ sudo certbot --nginx -d panel.valleytransusa.com
 
 Open `https://panel.valleytransusa.com` → **Sign Up** (first user when DB is empty).
 
+## 6. Import portal passwords (Excel)
+
+Upload your Excel file to the VPS (e.g. `/root/fleetos/valleysifreguncel.xlsx`), then from repo root:
+
+```bash
+cd /root/fleetos
+git pull
+sh scripts/vps/deploy.sh
+sh scripts/vps/import-passwords.sh /root/fleetos/valleysifreguncel.xlsx
+```
+
+If you have multiple companies, list slugs first:
+
+```bash
+docker exec haulyard-prod-db psql -U fleetos -d fleetos -c 'SELECT slug, name FROM companies;'
+sh scripts/vps/import-passwords.sh /root/fleetos/valleysifreguncel.xlsx --company-slug=YOUR-SLUG
+```
+
+Expected output: `Verified: 22 entries imported.`
+
+Optional (recommended): set a dedicated vault key in `infrastructure/.env.prod`:
+
+```bash
+openssl rand -hex 32
+# CREDENTIALS_ENCRYPTION_KEY=<output>
+```
+
+Then redeploy. If you import before setting this key, do **not** change the key later without re-importing.
+
 ## Updates
 
 ```bash

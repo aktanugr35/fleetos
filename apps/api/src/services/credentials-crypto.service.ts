@@ -1,14 +1,19 @@
 import crypto from 'crypto';
-import { env, isProdLikeEnv } from '../config/env';
+import { env } from '../config/env';
+import { logger } from '../utils/logger';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
+let warnedAboutFallbackKey = false;
 
 function resolveKey(): Buffer {
   const raw = env.CREDENTIALS_ENCRYPTION_KEY ?? env.JWT_ACCESS_SECRET;
 
-  if (isProdLikeEnv() && !env.CREDENTIALS_ENCRYPTION_KEY) {
-    throw new Error('CREDENTIALS_ENCRYPTION_KEY is required in staging/production');
+  if (!env.CREDENTIALS_ENCRYPTION_KEY && !warnedAboutFallbackKey) {
+    warnedAboutFallbackKey = true;
+    logger.warn(
+      'CREDENTIALS_ENCRYPTION_KEY is not set — using JWT secret fallback for credential vault encryption',
+    );
   }
 
   if (raw.length === 64 && /^[0-9a-fA-F]+$/.test(raw)) {

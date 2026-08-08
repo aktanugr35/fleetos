@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
-import { prisma } from '../src/config/database';
-import { passwordsService } from '../src/modules/passwords/passwords.service';
+import { prisma } from '../config/database';
+import { passwordsService } from '../modules/passwords/passwords.service';
 
 const SHEET_NAME = 'Şifreler';
 const HEADER_ROWS = 2;
@@ -26,7 +26,7 @@ function cellText(value: ExcelJS.CellValue | null | undefined): string {
 function parseArgs() {
   const args = process.argv.slice(2);
   let filePath = '';
-  let companySlug = process.env.COMPANY_SLUG || 'valley-transportation';
+  let companySlug = process.env.COMPANY_SLUG || '';
   let replace = false;
 
   for (const arg of args) {
@@ -46,17 +46,49 @@ function parseArgs() {
   return { filePath, companySlug, replace };
 }
 
+async function resolveCompany(slug: string) {
+  if (slug) {
+    return prisma.company.findFirst({ where: { slug } });
+  }
+
+  const companies = await prisma.company.findMany({
+    select: { id: true, name: true, slug: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  if (companies.length === 1) {
+    return companies[0];
+  }
+
+  console.error('Multiple companies found — pass --company-slug=<slug>:');
+  for (const company of companies) {
+    console.error(`  - ${company.slug} (${company.name})`);
+  }
+  return null;
+}
+
 async function main() {
   const { filePath, companySlug, replace } = parseArgs();
 
   if (!filePath) {
-    console.error('Usage: tsx scripts/import-passwords.ts <path-to-xlsx> [--company-slug=valley-transportation] [--replace]');
+    console.error(
+      'Usage: node apps/api/dist/cli/import-passwords.js <path-to-xlsx> [--company-slug=slug] [--replace]',
+    );
     process.exit(1);
   }
 
-  const company = await prisma.company.findFirst({ where: { slug: companySlug } });
+  const company = await resolveCompany(companySlug);
   if (!company) {
-    console.error(`Company not found for slug: ${companySlug}`);
+    if (companySlug) {
+      const companies = await prisma.company.findMany({ select: { slug: true, name: true } });
+      console.error(`Company not found for slug: ${companySlug}`);
+      if (companies.length) {
+        console.error('Available companies:');
+        for (const entry of companies) {
+          console.error(`  - ${entry.slug} (${entry.name})`);
+        }
+      }
+    }
     process.exit(1);
   }
 
