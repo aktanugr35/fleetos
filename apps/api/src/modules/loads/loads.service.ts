@@ -2,16 +2,57 @@ import { Prisma, type Load } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { deleteStoredFile } from '../../services/storage.service';
-import type { CreateLoadInput, UpdateLoadInput, LoadQueryInput } from './loads.schema';
+import type {
+  CreateLoadInput,
+  UpdateLoadInput,
+  LoadQueryInput,
+  LoadStopInput,
+} from './loads.schema';
 import { calculateLoadTotalCents, inferInitialLoadStatus, nextLoadSequenceNumber } from './loads.logic';
+
+/** Stop row as stored, plus the split city/state the UI works with. */
+type LoadStopRow = {
+  id: string;
+  sequence: number;
+  type: string;
+  location: string;
+  address: string | null;
+  scheduledAt: Date | null;
+  notes: string | null;
+};
 
 /** Load row with optional relations from list/detail queries. */
 type LoadForMap = Load & {
   driver?: { id: string; firstName: string; lastName: string } | null;
   truck?: { id: string; unitNumber: string } | null;
   trailer?: { id: string; unitNumber: string } | null;
+  stops?: LoadStopRow[];
   _count?: { settlementLines: number };
 };
+
+const STOPS_SELECT = {
+  select: {
+    id: true,
+    sequence: true,
+    type: true,
+    location: true,
+    address: true,
+    scheduledAt: true,
+    notes: true,
+  },
+  orderBy: { sequence: 'asc' },
+} as const;
+
+function stopCreateData(stops: LoadStopInput[]) {
+  return stops.map((stop, index) => ({
+    sequence: index + 1,
+    type: stop.type,
+    location: `${stop.city.trim()}, ${stop.state}`,
+    address: stop.address?.trim() || null,
+    scheduledAt: stop.scheduledAt ?? null,
+    notes: stop.notes?.trim() || null,
+  }));
+}
 
 export class LoadsService {
   /**
@@ -47,12 +88,22 @@ export class LoadsService {
   private mapLoad(load: LoadForMap) {
     const pickupParts = (load.pickupLocation || '').split(', ');
     const deliveryParts = (load.deliveryLocation || '').split(', ');
+    const stops = (load.stops || []).map((stop) => {
+      const parts = (stop.location || '').split(', ');
+      return {
+        ...stop,
+        city: parts[0] || '',
+        state: parts[1] || '',
+      };
+    });
     return {
       ...load,
       pickupCity: pickupParts[0] || '',
       pickupState: pickupParts[1] || '',
       deliveryCity: deliveryParts[0] || '',
       deliveryState: deliveryParts[1] || '',
+      stops,
+      stopCount: stops.length,
       miles: load.totalMiles,
       loadedMiles: load.loadedMiles || 0,
       deadheadMiles: load.deadheadMiles || 0,
@@ -98,6 +149,7 @@ export class LoadsService {
           truck: { select: { id: true, unitNumber: true } },
           trailer: { select: { id: true, unitNumber: true } },
           bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+          stops: STOPS_SELECT,
         },
       }),
       prisma.load.count({ where }),
@@ -114,6 +166,7 @@ export class LoadsService {
         truck: { select: { id: true, unitNumber: true, make: true, model: true } },
         trailer: { select: { id: true, unitNumber: true } },
         bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+        stops: STOPS_SELECT,
         _count: { select: { settlementLines: true } },
       },
     });
@@ -160,12 +213,14 @@ export class LoadsService {
         fuelSurcharge: input.otherChargesCents,
         notes: input.notes,
         status,
+        ...(input.stops?.length ? { stops: { create: stopCreateData(input.stops) } } : {}),
       },
       include: {
         driver: { select: { id: true, firstName: true, lastName: true } },
         truck: { select: { id: true, unitNumber: true } },
         trailer: { select: { id: true, unitNumber: true } },
         bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+        stops: STOPS_SELECT,
       },
     });
 
@@ -176,7 +231,7 @@ export class LoadsService {
       });
     }
 
-    return load;
+    return this.mapLoad(load);
   }
 
   async update(tenantId: string, loadId: string, input: UpdateLoadInput) {
@@ -295,6 +350,14 @@ export class LoadsService {
         new Date();
     }
 
+    // Stops are replaced as a set so the UI can freely add, remove, and reorder them.
+    if (input.stops !== undefined) {
+      dataToUpdate.stops = {
+        deleteMany: {},
+        create: stopCreateData(input.stops),
+      };
+    }
+
     const updatedLoad = await prisma.load.update({
       where: { id: loadId },
       data: dataToUpdate,
@@ -303,6 +366,7 @@ export class LoadsService {
         truck: { select: { id: true, unitNumber: true } },
         trailer: { select: { id: true, unitNumber: true } },
         bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+        stops: STOPS_SELECT,
       },
     });
 

@@ -309,12 +309,38 @@ model Load {
   documents                 Document[]
   settlementLines           SettlementLine[]
   dispatcherSettlementLines DispatcherSettlementLine[]
+  stops                     LoadStop[]
 
   @@index([companyId])
   @@index([driverId])
   @@index([bookedByDispatcherId])
   @@index([status])
   @@map("loads")
+}
+
+// Intermediate stops between pickup and final delivery (multi-stop loads).
+enum LoadStopType {
+  PICKUP
+  DELIVERY
+}
+
+model LoadStop {
+  id          String       @id @default(uuid())
+  loadId      String
+  sequence    Int
+  type        LoadStopType @default(DELIVERY)
+  location    String // "City, ST"
+  address     String? // street / facility name
+  scheduledAt DateTime?
+  notes       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  load Load @relation(fields: [loadId], references: [id], onDelete: Cascade)
+
+  @@unique([loadId, sequence])
+  @@index([loadId])
+  @@map("load_stops")
 }
 
 // ─── SETTLEMENT (WEEKLY STATEMENT) ───────────────────

@@ -8,6 +8,21 @@ import { formatCurrency } from '@/lib/utils';
 import { combineDateAndTime24, splitIsoToDateAndTime24 } from '@/lib/us-time';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import {
+  LoadStopsEditor,
+  createEmptyStop,
+  type LoadStopType,
+  type StopFormValue,
+} from '@/components/loads/LoadStopsEditor';
+
+interface LoadStopApiResponse {
+  type?: string | null;
+  city?: string | null;
+  state?: string | null;
+  address?: string | null;
+  scheduledAt?: string | null;
+  notes?: string | null;
+}
 
 function splitDateTime(iso: string | Date | null | undefined) {
   return splitIsoToDateAndTime24(iso);
@@ -74,6 +89,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const [onSettlement, setOnSettlement] = useState(false);
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [stops, setStops] = useState<StopFormValue[]>([]);
 
   const [rateConfirmationFile, setRateConfirmationFile] = useState<File | null>(null);
   const [autoTruckId, setAutoTruckId] = useState<string | null>(null);
@@ -85,6 +101,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   useEffect(() => {
     if (!isOpen) {
       setForm(EMPTY_FORM);
+      setStops([]);
       setLoadNumber('');
       setOnSettlement(false);
       setRateConfirmationFile(null);
@@ -153,6 +170,21 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           status: load.status || 'PENDING',
           notes: load.notes || '',
         });
+        setStops(
+          ((load.stops || []) as LoadStopApiResponse[]).map((stop) => {
+            const scheduled = splitDateTime(stop.scheduledAt);
+            return {
+              ...createEmptyStop(stop.state || 'TX'),
+              type: (stop.type === 'PICKUP' ? 'PICKUP' : 'DELIVERY') as LoadStopType,
+              city: stop.city || '',
+              state: stop.state || 'TX',
+              address: stop.address || '',
+              date: scheduled.date,
+              time: scheduled.time24 || '08:00',
+              notes: stop.notes || '',
+            };
+          }),
+        );
       })
       .catch(() => {
         setErrors({ _form: 'Failed to load details' });
@@ -183,6 +215,13 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const handleTruckChange = (truckId: string) => {
     setAutoTruckId(null); // manual override should stay as selected
     set('truckId', truckId);
+  };
+
+  const lookupZipCode = async (zip: string) => {
+    const clean = zip.replace(/\D/g, '').slice(0, 5);
+    if (clean.length !== 5) return null;
+    const res = await api.get(`/geo/zip/${clean}`);
+    return res.data.data as { city: string; state: string };
   };
 
   const lookupZip = async (kind: 'pickup' | 'delivery') => {
@@ -274,6 +313,9 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       e.loadedMiles = 'Required';
     }
     if (!form.rateCents || parseFloat(form.rateCents) <= 0) e.rateCents = 'Required';
+    stops.forEach((stop, index) => {
+      if (!stop.city.trim()) e[`stop-${index}-city`] = 'Required';
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -325,6 +367,14 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
         detentionCents: Math.round(parseFloat(form.detentionCents || '0') * 100),
         lumperCents: Math.round(parseFloat(form.lumperCents || '0') * 100),
         notes: form.notes || undefined,
+        stops: stops.map((stop) => ({
+          type: stop.type,
+          city: stop.city.trim(),
+          state: stop.state,
+          address: stop.address.trim() || null,
+          scheduledAt: stop.date ? combineDateAndTime24(stop.date, stop.time || '08:00') : null,
+          notes: stop.notes.trim() || null,
+        })),
       };
 
       if (isEdit && loadId) {
@@ -544,6 +594,14 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           </FormField>
         </div>
       </div>
+
+      <LoadStopsEditor
+        stops={stops}
+        onChange={setStops}
+        states={US_STATES}
+        onLookupZip={lookupZipCode}
+        errors={errors}
+      />
 
       <div className="mt-4">
         <FormField label={isEdit ? 'Status' : 'Initial Status'}>

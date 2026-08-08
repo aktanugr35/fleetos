@@ -1,37 +1,23 @@
-import ExcelJS from 'exceljs';
 import { prisma } from '../config/database';
 import { passwordsService } from '../modules/passwords/passwords.service';
+import { parseRowsJson, readRowsFromWorkbook, type PasswordImportRow } from './passwords-xlsx';
 
-const SHEET_NAME = 'Şifreler';
-const HEADER_ROWS = 2;
 const EXPECTED_ROWS = 22;
-
-function cellText(value: ExcelJS.CellValue | null | undefined): string {
-  if (value == null) return '';
-  if (typeof value === 'string') return value.trim();
-  if (typeof value === 'number') return String(value).trim();
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object' && 'text' in value && typeof value.text === 'string') {
-    return value.text.trim();
-  }
-  if (typeof value === 'object' && 'result' in value) {
-    return cellText(value.result as ExcelJS.CellValue);
-  }
-  if (typeof value === 'object' && 'richText' in value && Array.isArray(value.richText)) {
-    return value.richText.map((part) => part.text).join('').trim();
-  }
-  return String(value).trim();
-}
 
 function parseArgs() {
   const args = process.argv.slice(2);
   let filePath = '';
   let companySlug = process.env.COMPANY_SLUG || '';
   let replace = false;
+  let stdin = false;
 
   for (const arg of args) {
     if (arg === '--replace') {
       replace = true;
+      continue;
+    }
+    if (arg === '--stdin') {
+      stdin = true;
       continue;
     }
     if (arg.startsWith('--company-slug=')) {
@@ -43,7 +29,16 @@ function parseArgs() {
     }
   }
 
-  return { filePath, companySlug, replace };
+  return { filePath, companySlug, replace, stdin };
+}
+
+async function readRowsFromStdin(): Promise<PasswordImportRow[]> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return parseRowsJson(Buffer.concat(chunks).toString('utf8'));
 }
 
 async function resolveCompany(slug: string) {
@@ -68,11 +63,12 @@ async function resolveCompany(slug: string) {
 }
 
 async function main() {
-  const { filePath, companySlug, replace } = parseArgs();
+  const { filePath, companySlug, replace, stdin } = parseArgs();
 
-  if (!filePath) {
+  if (!filePath && !stdin) {
     console.error(
-      'Usage: node apps/api/dist/cli/import-passwords.js <path-to-xlsx> [--company-slug=slug] [--replace]',
+      'Usage: node apps/api/dist/cli/import-passwords.js <path-to-xlsx> [--company-slug=slug] [--replace]\n' +
+        '       node apps/api/dist/cli/import-passwords.js --stdin [--company-slug=slug] [--replace]',
     );
     process.exit(1);
   }
@@ -92,64 +88,29 @@ async function main() {
     process.exit(1);
   }
 
+  const rows = stdin ? await readRowsFromStdin() : await readRowsFromWorkbook(filePath);
+
+  if (rows.length === 0) {
+    console.error('No usable rows found — nothing imported.');
+    process.exit(1);
+  }
+
   if (replace) {
     const deleted = await prisma.companyPassword.deleteMany({ where: { companyId: company.id } });
     console.log(`Removed ${deleted.count} existing password entries for ${company.name}.`);
   }
 
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(filePath);
-
-  const sheet =
-    workbook.getWorksheet(SHEET_NAME) ??
-    workbook.worksheets.find((ws) => ws.name.toLowerCase().includes('şifre')) ??
-    workbook.worksheets[0];
-
-  if (!sheet) {
-    console.error('No worksheet found in workbook.');
-    process.exit(1);
-  }
-
   let created = 0;
   let updated = 0;
-  let skipped = 0;
   const titles: string[] = [];
 
-  for (let rowNumber = HEADER_ROWS + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
-    const row = sheet.getRow(rowNumber);
-    const title = cellText(row.getCell(1).value);
-    const url = cellText(row.getCell(2).value) || null;
-    const username = cellText(row.getCell(3).value) || null;
-    const password = cellText(row.getCell(4).value);
-    const notes = cellText(row.getCell(5).value) || null;
-
-    if (!title && !username && !password) {
-      skipped += 1;
-      continue;
-    }
-
-    if (!title) {
-      console.error(`Row ${rowNumber}: missing title — skipped.`);
-      skipped += 1;
-      continue;
-    }
-
-    if (!password) {
-      console.error(`Row ${rowNumber} (${title}): missing password — skipped.`);
-      skipped += 1;
-      continue;
-    }
-
+  for (const [index, row] of rows.entries()) {
     const result = await passwordsService.upsertImportedRow(company.id, {
-      title,
-      url,
-      username,
-      password,
-      notes,
-      sortOrder: rowNumber - HEADER_ROWS,
+      ...row,
+      sortOrder: index + 1,
     });
 
-    titles.push(title);
+    titles.push(row.title);
     if (result === 'created') created += 1;
     else updated += 1;
   }
@@ -157,11 +118,11 @@ async function main() {
   const imported = created + updated;
 
   console.log(`Company: ${company.name} (${company.slug})`);
-  console.log(`Sheet: ${sheet.name}`);
-  console.log(`Imported: ${imported} (created ${created}, updated ${updated}, skipped ${skipped})`);
+  console.log(`Source: ${stdin ? 'stdin (JSON)' : filePath}`);
+  console.log(`Imported: ${imported} (created ${created}, updated ${updated})`);
 
   if (imported !== EXPECTED_ROWS) {
-    console.warn(`Expected ${EXPECTED_ROWS} entries — verify the Excel file before relying on import.`);
+    console.warn(`Expected ${EXPECTED_ROWS} entries — verify the source before relying on import.`);
   } else {
     console.log(`Verified: ${EXPECTED_ROWS} entries imported.`);
   }

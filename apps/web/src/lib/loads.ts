@@ -2,6 +2,17 @@ export type LoadStatus = 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'TONU' | 'CANC
 
 export type StatusFilter = '' | 'ACTIVE' | LoadStatus;
 
+export interface LoadStop {
+  id: string;
+  sequence: number;
+  type: 'PICKUP' | 'DELIVERY';
+  city: string;
+  state: string;
+  address: string | null;
+  scheduledAt: string | null;
+  notes: string | null;
+}
+
 export interface LoadListItem {
   id: string;
   loadNumber: string;
@@ -17,6 +28,8 @@ export interface LoadListItem {
   totalRevenueCents: number;
   driver: { id: string; firstName: string; lastName: string } | null;
   truck: { id: string; unitNumber: string } | null;
+  stops?: LoadStop[];
+  stopCount?: number;
 }
 
 export interface LoadStats {
@@ -149,4 +162,16 @@ export function groupLoadsByDriver(loads: LoadListItem[]): DriverGroup[] {
 
 export function formatRoute(load: Pick<LoadListItem, 'pickupCity' | 'pickupState' | 'deliveryCity' | 'deliveryState'>): string {
   return `${load.pickupCity}, ${load.pickupState} → ${load.deliveryCity}, ${load.deliveryState}`;
+}
+
+/** Full leg-by-leg route including intermediate stops. */
+export function formatRouteWithStops(
+  load: Pick<LoadListItem, 'pickupCity' | 'pickupState' | 'deliveryCity' | 'deliveryState' | 'stops'>,
+): string {
+  const legs = [
+    `${load.pickupCity}, ${load.pickupState}`,
+    ...(load.stops ?? []).map((stop) => `${stop.city}, ${stop.state}`),
+    `${load.deliveryCity}, ${load.deliveryState}`,
+  ];
+  return legs.join(' → ');
 }

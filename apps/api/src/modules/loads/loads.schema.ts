@@ -3,7 +3,22 @@ import { LoadStatus } from '@haulyard/shared-types';
 
 const loadStatusEnum = z.nativeEnum(LoadStatus);
 
+/** Intermediate stop between pickup and final delivery. */
+export const loadStopSchema = z.object({
+  type: z.enum(['PICKUP', 'DELIVERY']).default('DELIVERY'),
+  city: z.string().min(1, 'Stop city is required'),
+  state: z.string().length(2).toUpperCase(),
+  address: z.string().max(300).optional().nullable(),
+  scheduledAt: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => (v ? new Date(v) : null)),
+  notes: z.string().max(500).optional().nullable(),
+});
+
 export const createLoadSchema = z.object({
+  stops: z.array(loadStopSchema).max(20).optional(),
   driverId: z.string().min(1, 'Valid driver ID required'),
   bookedByDispatcherId: z.string().min(1, 'Booked by dispatcher is required'),
   truckId: z.string().min(1, 'Valid truck ID required'),
@@ -57,6 +72,7 @@ export const loadQuerySchema = z.object({
   limit: z.coerce.number().optional().default(20),
 });
 
+export type LoadStopInput = z.infer<typeof loadStopSchema>;
 export type CreateLoadInput = z.infer<typeof createLoadSchema>;
 export type UpdateLoadInput = z.infer<typeof updateLoadSchema>;
 export type LoadQueryInput = z.infer<typeof loadQuerySchema>;
