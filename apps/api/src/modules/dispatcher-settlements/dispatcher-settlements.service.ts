@@ -275,6 +275,20 @@ export class DispatcherSettlementsService {
       data: { status: 'PAID' },
     });
   }
+
+  async delete(tenantId: string, settlementId: string) {
+    const existing = await prisma.dispatcherSettlement.findFirst({
+      where: { id: settlementId, companyId: tenantId },
+    });
+    if (!existing) {
+      throw new AppError(404, 'DISPATCHER_SETTLEMENT_NOT_FOUND', 'Dispatcher settlement not found');
+    }
+
+    await prisma.dispatcherSettlement.delete({ where: { id: settlementId } });
+    dispatcherPdfService.removePdf(existing.pdfUrl);
+
+    return { id: settlementId, statementNumber: existing.statementNumber };
+  }
 }
 
 export const dispatcherSettlementsService = new DispatcherSettlementsService();

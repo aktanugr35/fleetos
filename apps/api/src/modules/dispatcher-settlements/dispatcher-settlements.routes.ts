@@ -26,5 +26,11 @@ router.patch(
   dispatcherSettlementsController.approve,
 );
 router.patch('/:id/paid', rbacMiddleware([...WRITE_ROLES]), dispatcherSettlementsController.markPaid);
+router.delete(
+  '/:id',
+  rbacMiddleware([...WRITE_ROLES]),
+  auditMiddleware('DISPATCHER_SETTLEMENT_DELETE', 'DispatcherSettlement', (req) => req.params.id as string),
+  dispatcherSettlementsController.delete,
+);
 
 export default router;

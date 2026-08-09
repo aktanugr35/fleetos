@@ -4,7 +4,9 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { formatMoneyCents } from '../../utils/money';
 import { launchPdfBrowser, PDF_PAGE_TIMEOUT_MS } from '../../utils/puppeteer';
+import { logger } from '../../utils/logger';
 import { SETTLEMENTS_DIR, resolveUploadUrl } from '../../config/paths';
+import { pdfSection, wrapPdfTableRow } from '../settlements/pdf.layout';
 
 function esc(value: string): string {
   return value
@@ -40,6 +42,18 @@ export class DispatcherPdfService {
     return { filepath, filename: `dispatcher_settlement_${safeName}.pdf` };
   }
 
+  removePdf(pdfUrl: string | null | undefined): void {
+    if (!pdfUrl) return;
+    try {
+      const filepath = this.resolvePdfFilePath(pdfUrl);
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+      }
+    } catch (err) {
+      logger.warn('Could not remove dispatcher settlement PDF', { err, pdfUrl });
+    }
+  }
+
   async generatePdf(settlementId: string, tenantId?: string): Promise<string> {
     const settlement = await prisma.dispatcherSettlement.findFirst({
       where: {
@@ -47,7 +61,6 @@ export class DispatcherPdfService {
         ...(tenantId ? { companyId: tenantId } : {}),
       },
       include: {
-        company: true,
         dispatcher: true,
         lines: { include: { load: true } },
       },
@@ -62,192 +75,115 @@ export class DispatcherPdfService {
       date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const commissionPct = (settlement.dispatcher.commissionRate / 100).toFixed(2);
     const dispatcherName = `${settlement.dispatcher.firstName} ${settlement.dispatcher.lastName}`;
-    const workPeriod = `${fDate(settlement.periodStart)} – ${fDate(settlement.periodEnd)}`;
+    const workPeriod = `${fDate(settlement.periodStart)} - ${fDate(settlement.periodEnd)}`;
     const statementNo = settlement.statementNumber || 'N/A';
 
     const loadsHtml = settlement.lines
       .map((line) => {
         const load = line.load;
-        return `<tr>
-          <td>${esc(load.loadNumber)}</td>
-          <td>${esc(load.brokerName)}</td>
-          <td>${esc(load.pickupLocation)}<div class="sub">${fDate(load.pickupDate)}</div></td>
-          <td>${esc(load.deliveryLocation)}<div class="sub">${load.deliveryDate ? fDate(load.deliveryDate) : '—'}</div></td>
-          <td class="num">${fMoney(line.grossAmount)}</td>
-          <td class="num">${commissionPct}%</td>
-          <td class="num bold">${fMoney(line.netAmount)}</td>
-        </tr>`;
+        return wrapPdfTableRow(
+          `
+        <td>${esc(load.loadNumber)}</td>
+        <td>${esc(load.brokerName)}</td>
+        <td>${esc(load.pickupLocation)}<div class="sub-text">${fDate(load.pickupDate)}</div></td>
+        <td>${esc(load.deliveryLocation)}<div class="sub-text">${load.deliveryDate ? fDate(load.deliveryDate) : '—'}</div></td>
+        <td class="text-right">${fMoney(line.grossAmount)}</td>
+        <td class="text-right">${commissionPct}%</td>
+        <td class="text-right font-bold">${fMoney(line.netAmount)}</td>
+      `,
+          7,
+        );
       })
       .join('');
 
-    const statusNote =
-      settlement.status === 'FINALIZED' || settlement.status === 'PAID'
-        ? `${settlement.status}${settlement.finalizedAt ? ` · ${fDate(settlement.finalizedAt)}` : ''}`
-        : '';
+    const loadsTable = `
+      <table>
+        <thead>
+          <tr>
+            <th>Load</th>
+            <th>Broker</th>
+            <th>Origin</th>
+            <th>Destination</th>
+            <th class="text-right">Gross</th>
+            <th class="text-right">Rate</th>
+            <th class="text-right">Commission</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${loadsHtml}
+          ${wrapPdfTableRow(
+            `
+            <td colspan="4">Totals</td>
+            <td class="text-right">${fMoney(settlement.grossAmount)}</td>
+            <td></td>
+            <td class="text-right">${fMoney(settlement.netAmount)}</td>
+          `,
+            7,
+            'totals-row section-total-row',
+          )}
+        </tbody>
+      </table>
+    `;
 
     const htmlContent = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><style>
-  @page { size: A4; margin: 8mm; }
-  * { box-sizing: border-box; }
-  body {
-    font-family: Helvetica, Arial, sans-serif;
-    font-size: 8pt;
-    line-height: 1.35;
-    color: #1e293b;
-    margin: 0;
-    padding: 0;
-  }
-  .title-bar {
-    border-bottom: 2px solid #334155;
-    padding-bottom: 6px;
-    margin-bottom: 8px;
-  }
-  .title-bar h1 {
-    font-size: 11pt;
-    font-weight: 700;
-    margin: 0 0 2px;
-    letter-spacing: 0.02em;
-    color: #0f172a;
-  }
-  .title-bar .sub {
-    font-size: 7.5pt;
-    color: #64748b;
-  }
-  .summary {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    margin-bottom: 8px;
-    padding: 6px 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-  }
-  .summary-item .lbl {
-    display: block;
-    font-size: 6.5pt;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #64748b;
-    margin-bottom: 1px;
-  }
-  .summary-item .val {
-    font-size: 9pt;
-    font-weight: 700;
-    color: #0f172a;
-  }
-  .summary-item.payout .val {
-    font-size: 10pt;
-    color: #0369a1;
-  }
-  .sec h2 {
-    font-size: 7.5pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #334155;
-    background: #f1f5f9;
-    padding: 3px 6px;
-    margin: 0 0 4px;
-    border-left: 3px solid #475569;
-  }
-  table.compact {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 7pt;
-    table-layout: fixed;
-  }
-  table.compact th {
-    background: #e2e8f0;
-    color: #334155;
-    font-weight: 700;
-    text-align: left;
-    padding: 3px 4px;
-    border: 1px solid #cbd5e1;
-  }
-  table.compact td {
-    padding: 3px 4px;
-    border: 1px solid #e2e8f0;
-    vertical-align: top;
-    word-break: break-word;
-  }
-  table.compact tr.totals td {
-    background: #f1f5f9;
-    font-weight: 700;
-    border-top: 2px solid #94a3b8;
-  }
-  .sub { color: #64748b; font-size: 6.5pt; margin-top: 1px; }
-  .num { text-align: right; white-space: nowrap; }
-  .bold { font-weight: 700; }
-  .footer {
-    margin-top: 8px;
-    padding-top: 5px;
-    border-top: 1px solid #cbd5e1;
-    font-size: 6.5pt;
-    color: #64748b;
-    text-align: center;
-  }
-</style></head><body>
-  <div class="title-bar">
-    <h1>Dispatcher Commission Statement</h1>
-    <div class="sub">${esc(dispatcherName)} · ${esc(settlement.company.name)} · ${commissionPct}% commission · ${esc(workPeriod)}</div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Helvetica, Arial, sans-serif; color: #111; margin: 0; padding: 40px; font-size: 11px; line-height: 1.4; }
+    .header-top { margin-bottom: 20px; }
+    .header-top h1 { font-size: 18px; margin: 0 0 5px 0; font-weight: bold; }
+    .header-top p { margin: 3px 0; font-size: 11px; }
+    .summary-section { border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; padding: 15px 0; margin-bottom: 25px; }
+    .row-flex { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+    .row-flex > span:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .font-bold { font-weight: bold; }
+    .font-large { font-size: 14px; font-weight: bold; }
+    .pdf-section { margin-bottom: 28px; }
+    .section-title { font-size: 14px; font-weight: bold; margin: 0 0 10px 0; break-after: avoid-page; page-break-after: avoid; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }
+    thead { display: table-header-group; break-after: avoid; page-break-after: avoid; }
+    th { border-bottom: 2px solid #94a3b8; color: #0284c7; font-weight: 500; text-align: left; padding: 8px 4px; }
+    td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; word-break: break-word; }
+    .text-right { text-align: right; }
+    .sub-text { color: #64748b; font-size: 9px; margin-top: 2px; line-height: 1.2; }
+    .pdf-row, .pdf-row-table, .totals-row, .section-total-row { break-inside: avoid-page; page-break-inside: avoid; }
+    .pdf-row-cell { padding: 0; border-bottom: none; vertical-align: top; }
+    .pdf-row-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    .pdf-row-table td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; }
+    .totals-row { background: #e2e8f0; font-weight: bold; }
+    .totals-row .pdf-row-table td { background: #e2e8f0; border-bottom: none; }
+    .statement-footer { margin-top: 40px; padding-top: 15px; border-top: 2px solid #cbd5e1; text-align: center; font-size: 10px; color: #64748b; }
+    .status-badge { display: inline-block; background: #16a34a; color: white; padding: 3px 12px; border-radius: 4px; font-weight: bold; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header-top">
+    <h1>${esc(dispatcherName)}</h1>
+    <p>Dispatcher Commission Statement</p>
+    <p>Commission rate: ${commissionPct}%</p>
   </div>
 
-  <div class="summary">
-    <div class="summary-item">
-      <span class="lbl">Statement #</span>
-      <span class="val">${esc(statementNo)}</span>
-    </div>
-    <div class="summary-item">
-      <span class="lbl">Loads</span>
-      <span class="val">${settlement.lines.length}</span>
-    </div>
-    <div class="summary-item">
-      <span class="lbl">Total Gross</span>
-      <span class="val">${fMoney(settlement.grossAmount)}</span>
-    </div>
-    <div class="summary-item payout">
-      <span class="lbl">Payout</span>
-      <span class="val">${fMoney(settlement.netAmount)}</span>
-    </div>
+  <div class="summary-section">
+    <div class="row-flex"><span>Statement #</span><span>${esc(statementNo)}</span></div>
+    <div class="row-flex"><span>Work period</span><span>${esc(workPeriod)}</span></div>
+    <div class="row-flex"><span>Booked loads</span><span>${settlement.lines.length}</span></div>
+    <div class="row-flex"><span>Total load gross</span><span>${fMoney(settlement.grossAmount)}</span></div>
+    <div class="row-flex font-large"><span>Payout</span><span>${fMoney(settlement.netAmount)}</span></div>
   </div>
 
-  <section class="sec">
-    <h2>Booked Loads</h2>
-    <table class="compact">
-      <thead>
-        <tr>
-          <th style="width:11%">Load</th>
-          <th style="width:12%">Broker</th>
-          <th style="width:22%">Origin</th>
-          <th style="width:22%">Destination</th>
-          <th style="width:11%" class="num">Gross</th>
-          <th style="width:8%" class="num">Rate</th>
-          <th style="width:14%" class="num">Commission</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${loadsHtml}
-        <tr class="totals">
-          <td colspan="4">Totals</td>
-          <td class="num">${fMoney(settlement.grossAmount)}</td>
-          <td></td>
-          <td class="num">${fMoney(settlement.netAmount)}</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  ${pdfSection('Booked Loads', loadsTable)}
 
-  ${statusNote ? `<div class="footer">${esc(statusNote)}</div>` : ''}
-</body></html>`;
+  ${
+    settlement.status === 'FINALIZED' || settlement.status === 'PAID'
+      ? `<div class="statement-footer"><span class="status-badge">${settlement.status}</span>Statement ${settlement.status === 'PAID' ? 'paid' : 'finalized'}${settlement.finalizedAt ? ` on ${fDate(settlement.finalizedAt)}` : ''}</div>`
+      : ''
+  }
+</body>
+</html>`;
 
     if (settlement.pdfUrl) {
-      try {
-        const previous = this.resolvePdfFilePath(settlement.pdfUrl);
-        if (fs.existsSync(previous)) fs.unlinkSync(previous);
-      } catch {
-        // ignore cleanup errors
-      }
+      this.removePdf(settlement.pdfUrl);
     }
 
     const pdfBuffer = await this.htmlToPdfBuffer(htmlContent);
@@ -278,8 +214,7 @@ export class DispatcherPdfService {
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: { top: '8mm', bottom: '8mm', left: '8mm', right: '8mm' },
-        preferCSSPageSize: true,
+        margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
       });
       await page.close();
       return Buffer.from(pdfBuffer);

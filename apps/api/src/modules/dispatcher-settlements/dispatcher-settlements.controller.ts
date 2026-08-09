@@ -78,6 +78,15 @@ export class DispatcherSettlementsController {
     }
   }
 
+  async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await dispatcherSettlementsService.delete(req.tenantId!, req.params.id as string);
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async generatePdf(req: Request, res: Response, next: NextFunction) {
     try {
       const pdfUrl = await dispatcherPdfService.generatePdf(req.params.id as string, req.tenantId!);

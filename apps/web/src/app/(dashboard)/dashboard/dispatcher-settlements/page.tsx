@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateDispatcherSettlementModal } from '@/components/forms/CreateDispatcherSettlementModal';
+import { DispatcherSettlementDetailModal } from '@/components/settlements/DispatcherSettlementDetailModal';
 import { SettlementStatus } from '@haulyard/shared-types';
 import { Toast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -38,12 +39,12 @@ function StatusBadge({ status }: { status: SettlementStatus }) {
 export default function DispatcherSettlementsPage() {
   const { can } = usePermission();
   const canGenerate = can('dispatcher-settlements:create');
-  const canFinalize = can('dispatcher-settlements:finalize');
   const canList = can('dispatcher-settlements:list');
 
   const [settlements, setSettlements] = useState<DispatcherSettlementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -66,40 +67,6 @@ export default function DispatcherSettlementsPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const finalize = async (id: string) => {
-    try {
-      await api.patch(`/dispatcher-settlements/${id}/approve`);
-      setToast({ type: 'success', message: 'Dispatcher statement finalized' });
-      await load();
-    } catch {
-      setToast({ type: 'error', message: 'Could not finalize statement' });
-    }
-  };
-
-  const markPaid = async (id: string) => {
-    try {
-      await api.patch(`/dispatcher-settlements/${id}/paid`);
-      setToast({ type: 'success', message: 'Marked as paid' });
-      await load();
-    } catch {
-      setToast({ type: 'error', message: 'Could not mark as paid' });
-    }
-  };
-
-  const downloadPdf = async (id: string, statementNumber: string | null) => {
-    try {
-      const res = await api.get(`/dispatcher-settlements/${id}/pdf/download`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `dispatcher_${statementNumber || id}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      setToast({ type: 'error', message: 'PDF not available' });
-    }
-  };
 
   return (
     <div>
@@ -135,34 +102,32 @@ export default function DispatcherSettlementsPage() {
                   <th>Status</th>
                   <th>Payout</th>
                   <th>Loads</th>
-                  <th />
+                  <th>PDF</th>
                 </tr>
               </thead>
               <tbody>
                 {settlements.map((s) => (
-                  <tr key={s.id}>
-                    <td data-label="Statement">{s.statementNumber || s.id.slice(0, 8)}</td>
-                    <td data-label="Dispatcher">{s.dispatcher.firstName} {s.dispatcher.lastName}</td>
-                    <td data-label="Period">{formatDate(s.periodStart)} – {formatDate(s.periodEnd)}</td>
-                    <td data-label="Status"><StatusBadge status={s.status} /></td>
+                  <tr
+                    key={s.id}
+                    className="hover:bg-white/5 cursor-pointer transition"
+                    onClick={() => setDetailId(s.id)}
+                  >
+                    <td data-label="Statement" className="font-medium text-blue-400">
+                      {s.statementNumber || s.id.slice(0, 8)}
+                    </td>
+                    <td data-label="Dispatcher">
+                      {s.dispatcher.firstName} {s.dispatcher.lastName}
+                    </td>
+                    <td data-label="Period">
+                      {formatDate(s.periodStart)} – {formatDate(s.periodEnd)}
+                    </td>
+                    <td data-label="Status">
+                      <StatusBadge status={s.status} />
+                    </td>
                     <td data-label="Payout">{formatCurrency(s.netAmount)}</td>
                     <td data-label="Loads">{s._count?.lines ?? 0}</td>
-                    <td data-label="Actions" className="text-right space-x-2">
-                      {s.pdfUrl ? (
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void downloadPdf(s.id, s.statementNumber)}>
-                          PDF
-                        </button>
-                      ) : null}
-                      {canFinalize && s.status === SettlementStatus.DRAFT ? (
-                        <button type="button" className="btn btn-primary btn-sm" onClick={() => void finalize(s.id)}>
-                          Finalize
-                        </button>
-                      ) : null}
-                      {canFinalize && s.status === SettlementStatus.FINALIZED ? (
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void markPaid(s.id)}>
-                          Mark paid
-                        </button>
-                      ) : null}
+                    <td data-label="PDF" className="text-xs text-gray-500">
+                      {s.pdfUrl ? 'Yes' : '—'}
                     </td>
                   </tr>
                 ))}
@@ -180,6 +145,22 @@ export default function DispatcherSettlementsPage() {
           void load();
         }}
       />
+
+      <DispatcherSettlementDetailModal
+        settlementId={detailId}
+        onClose={() => setDetailId(null)}
+        onUpdated={() => void load()}
+        onDeleted={(statementNumber) => {
+          void load();
+          setToast({
+            type: 'success',
+            message: statementNumber
+              ? `Statement ${statementNumber} deleted`
+              : 'Dispatcher settlement deleted',
+          });
+        }}
+      />
+
       {toast ? <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} /> : null}
     </div>
   );
