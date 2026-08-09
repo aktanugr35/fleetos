@@ -3,7 +3,12 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import type { CreateSettlementInput } from './settlements.schema';
 import { pdfService } from './pdf.service';
-import { getLoadWorkDate, getPeriodBounds, isWithinPeriod } from '../../utils/datePeriod';
+import {
+  getLoadWorkDate,
+  getPeriodBounds,
+  isWithinPeriod,
+  isWithinPeriodInZone,
+} from '../../utils/datePeriod';
 import { notificationsService } from '../notifications/notifications.service';
 import { logger } from '../../utils/logger';
 import {
@@ -348,7 +353,7 @@ export class SettlementsService {
     const candidates = await this.fetchDriverLoadCandidates(tenantId, driverId);
 
     const rawLoads = candidates.filter((load) =>
-      isWithinPeriod(getLoadWorkDate(load), start, end)
+      isWithinPeriodInZone(getLoadWorkDate(load), start, end)
     );
 
     const [allDeductions, allCredits] = await Promise.all([

@@ -1,7 +1,7 @@
 import { LoadStatus, SettlementStatus } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
-import { getLoadWorkDate, getPeriodBounds, isWithinPeriod } from '../../utils/datePeriod';
+import { getLoadWorkDate, getPeriodBounds, isWithinPeriodInZone } from '../../utils/datePeriod';
 import { logger } from '../../utils/logger';
 import { grossRevenueFromLoad } from '../settlements/settlements.eligible';
 import type { CreateDispatcherSettlementInput } from './dispatcher-settlements.schema';
@@ -103,7 +103,7 @@ export class DispatcherSettlementsService {
 
     const loads = candidates
       .filter((load) => !settledLoadIds.has(load.id))
-      .filter((load) => isWithinPeriod(getLoadWorkDate(load), start, end))
+      .filter((load) => isWithinPeriodInZone(getLoadWorkDate(load), start, end))
       .map((load) => {
         const grossRev = grossRevenueFromLoad(load);
         const commissionAmount = dispatcherCommissionCents(grossRev, dispatcher.commissionRate);
