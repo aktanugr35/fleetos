@@ -302,6 +302,42 @@ export class SettlementsService {
     });
   }
 
+  async delete(tenantId: string, settlementId: string) {
+    const existing = await prisma.settlement.findFirst({
+      where: { id: settlementId, companyId: tenantId },
+      include: {
+        deductions: {
+          include: { deduction: { select: { id: true, type: true } } },
+        },
+      },
+    });
+    if (!existing) throw new AppError(404, 'SETTLEMENT_NOT_FOUND', 'Settlement not found');
+
+    const autoCompanyFeeIds = existing.deductions
+      .filter((row) => row.deduction.type === 'COMPANY_FEE')
+      .map((row) => row.deductionId);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.settlement.delete({ where: { id: settlementId } });
+
+      if (autoCompanyFeeIds.length > 0) {
+        const stillLinked = await tx.settlementDeduction.findMany({
+          where: { deductionId: { in: autoCompanyFeeIds } },
+          select: { deductionId: true },
+        });
+        const linkedIds = new Set(stillLinked.map((row) => row.deductionId));
+        const orphanIds = autoCompanyFeeIds.filter((id) => !linkedIds.has(id));
+        if (orphanIds.length > 0) {
+          await tx.deduction.deleteMany({ where: { id: { in: orphanIds } } });
+        }
+      }
+    });
+
+    pdfService.removeSettlementPdf(existing.pdfUrl);
+
+    return { id: settlementId, statementNumber: existing.statementNumber };
+  }
+
   private async fetchDriverLoadCandidates(tenantId: string, driverId: string) {
     const baseWhere = {
       companyId: tenantId,

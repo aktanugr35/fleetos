@@ -158,6 +158,15 @@ export default function SettlementsPage() {
         settlementId={detailId}
         onClose={() => setDetailId(null)}
         onUpdated={() => void load()}
+        onDeleted={(statementNumber) => {
+          void load();
+          setToast({
+            type: 'success',
+            message: statementNumber
+              ? `Statement ${statementNumber} deleted`
+              : 'Settlement deleted',
+          });
+        }}
       />
 
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}

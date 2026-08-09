@@ -53,6 +53,15 @@ export class SettlementsController {
     } catch (error) { next(error); }
   }
 
+  async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await settlementsService.delete(req.tenantId!, req.params.id as string);
+      res.json(successResponse(result));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getEligible(req: Request, res: Response, next: NextFunction) {
     try {
       const raw = { ...(req.query as Record<string, unknown>) };

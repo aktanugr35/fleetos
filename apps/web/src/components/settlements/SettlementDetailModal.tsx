@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { downloadSettlementPdf } from '@/lib/settlements';
 import api from '@/lib/api';
@@ -14,6 +15,7 @@ interface SettlementDetailModalProps {
   settlementId: string | null;
   onClose: () => void;
   onUpdated: () => void;
+  onDeleted?: (statementNumber?: string | null) => void;
 }
 
 function StatusBadge({ status }: { status: SettlementStatus }) {
@@ -29,7 +31,7 @@ function StatusBadge({ status }: { status: SettlementStatus }) {
   );
 }
 
-export function SettlementDetailModal({ settlementId, onClose, onUpdated }: SettlementDetailModalProps) {
+export function SettlementDetailModal({ settlementId, onClose, onUpdated, onDeleted }: SettlementDetailModalProps) {
   const { can } = usePermission();
   const canWrite = can('settlements:create');
   const canFinalize = can('settlements:finalize');
@@ -38,6 +40,7 @@ export function SettlementDetailModal({ settlementId, onClose, onUpdated }: Sett
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const load = useCallback(async () => {
     if (!settlementId) return;
@@ -56,6 +59,7 @@ export function SettlementDetailModal({ settlementId, onClose, onUpdated }: Sett
 
   useEffect(() => {
     void load();
+    setShowDeleteConfirm(false);
   }, [load]);
 
   const runAction = async (key: string, fn: () => Promise<void>) => {
@@ -95,6 +99,33 @@ export function SettlementDetailModal({ settlementId, onClose, onUpdated }: Sett
       if (!settlement) return;
       await downloadSettlementPdf(settlement.id, settlement.statementNumber || settlement.id);
     });
+
+  const handleDelete = async () => {
+    if (!settlementId) return;
+    setActionLoading('delete');
+    setError('');
+    try {
+      const res = await api.delete(`/settlements/${settlementId}`);
+      const deleted = res.data.data as { statementNumber?: string | null };
+      setShowDeleteConfirm(false);
+      onDeleted?.(deleted.statementNumber ?? settlement?.statementNumber);
+      onClose();
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message || 'Could not delete settlement';
+      setError(message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const deleteMessage =
+    settlement?.status === SettlementStatus.PAID
+      ? `Delete statement ${settlement.statementNumber || settlement.id.slice(0, 8)}? It was marked as paid. Loads and deductions will become available again so you can recreate the settlement. This cannot be undone.`
+      : settlement?.status === SettlementStatus.FINALIZED
+        ? `Delete statement ${settlement.statementNumber || settlement.id.slice(0, 8)}? Loads and deductions will become available again so you can recreate the settlement. This cannot be undone.`
+        : `Delete draft statement ${settlement?.statementNumber || settlementId?.slice(0, 8)}? Loads and deductions will become available again. This cannot be undone.`;
 
   return (
     <Modal
@@ -167,6 +198,18 @@ export function SettlementDetailModal({ settlementId, onClose, onUpdated }: Sett
       )}
 
       <ModalFooter>
+        {settlement && canWrite ? (
+          <button
+            type="button"
+            className="btn btn-secondary text-red-400 border-red-500/30 hover:bg-red-500/10 mr-auto"
+            disabled={Boolean(actionLoading)}
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Delete
+          </button>
+        ) : (
+          <span className="mr-auto" />
+        )}
         <button type="button" onClick={onClose} className="btn btn-secondary">
           Close
         </button>
@@ -215,6 +258,17 @@ export function SettlementDetailModal({ settlementId, onClose, onUpdated }: Sett
           </>
         ) : null}
       </ModalFooter>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete statement?"
+        message={deleteMessage}
+        confirmLabel="Delete statement"
+        variant="danger"
+        loading={actionLoading === 'delete'}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </Modal>
   );
 }

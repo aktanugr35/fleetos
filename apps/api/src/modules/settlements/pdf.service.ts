@@ -709,6 +709,18 @@ export class PdfService {
     return pdfUrl;
   }
 
+  removeSettlementPdf(pdfUrl: string | null | undefined): void {
+    if (!pdfUrl) return;
+    try {
+      const filepath = this.resolvePdfFilePath(pdfUrl);
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+      }
+    } catch (err) {
+      logger.warn('Could not remove settlement PDF', { err, pdfUrl });
+    }
+  }
+
   private async htmlToPdfBuffer(htmlContent: string): Promise<Buffer> {
     const browser = await launchPdfBrowser();
     try {

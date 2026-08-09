@@ -40,5 +40,11 @@ router.post(
   settlementsController.approve
 );
 router.patch('/:id/paid', rbacMiddleware([...SETTLEMENT_WRITE_ROLES]), settlementsController.markPaid);
+router.delete(
+  '/:id',
+  rbacMiddleware([...SETTLEMENT_WRITE_ROLES]),
+  auditMiddleware('SETTLEMENT_DELETE', 'Settlement', (req) => req.params.id as string),
+  settlementsController.delete
+);
 
 export default router;
