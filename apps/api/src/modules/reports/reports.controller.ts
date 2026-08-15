@@ -12,6 +12,40 @@ import {
   type DriverLoadExportRow,
 } from './driver-loads.export';
 
+/** Sentinel accepted in place of a driver id to export every driver's loads. */
+export const ALL_DRIVERS = 'all';
+
+interface ExportableLoad {
+  loadNumber: string;
+  pickupDate: Date;
+  pickupLocation: string;
+  deliveryLocation: string;
+  stops: { sequence: number; location: string }[];
+  brokerName: string;
+  driver: { firstName: string; lastName: string };
+  bookedByDispatcher: { firstName: string; lastName: string } | null;
+  rateTotal: number;
+  detentionPay?: number | null;
+  lumperFee?: number | null;
+  tonuAmount?: number | null;
+}
+
+function toExportRow(load: ExportableLoad): DriverLoadExportRow {
+  return {
+    loadNumber: load.loadNumber,
+    pickupDate: load.pickupDate,
+    pickupLocation: load.pickupLocation,
+    deliveryLocation: load.deliveryLocation,
+    stops: load.stops,
+    brokerName: load.brokerName,
+    driverName: `${load.driver.firstName} ${load.driver.lastName}`.trim(),
+    bookedByName: load.bookedByDispatcher
+      ? `${load.bookedByDispatcher.firstName} ${load.bookedByDispatcher.lastName}`.trim()
+      : null,
+    totalCents: grossRevenueFromLoad(load),
+  };
+}
+
 export class ReportsController {
   async getDashboard(req: Request, res: Response, next: NextFunction) {
     try {
@@ -53,33 +87,36 @@ export class ReportsController {
     }
   }
 
-  /** Excel export of the loads a statement would cover for one driver and period. */
+  /**
+   * Excel export of the loads a statement would cover for a period.
+   * `driverId=all` exports the whole fleet instead of a single driver.
+   */
   async exportDriverLoads(req: Request, res: Response, next: NextFunction) {
     try {
       const query = eligibleSettlementQuerySchema.parse(req.query);
-      const { driver, loads, periodStart, periodEnd } = await settlementsService.listDriverLoadsForPeriod(
-        req.tenantId!,
-        query.driverId,
-        query.weekStartDate,
-        query.weekEndDate
-      );
 
-      const rows: DriverLoadExportRow[] = loads.map((load) => ({
-        loadNumber: load.loadNumber,
-        pickupDate: load.pickupDate,
-        pickupLocation: load.pickupLocation,
-        deliveryLocation: load.deliveryLocation,
-        stops: load.stops,
-        brokerName: load.brokerName,
-        driverName: `${load.driver.firstName} ${load.driver.lastName}`.trim(),
-        bookedByName: load.bookedByDispatcher
-          ? `${load.bookedByDispatcher.firstName} ${load.bookedByDispatcher.lastName}`.trim()
-          : null,
-        totalCents: grossRevenueFromLoad(load),
-      }));
+      const result =
+        query.driverId === ALL_DRIVERS
+          ? await settlementsService
+              .listFleetLoadsForPeriod(req.tenantId!, query.weekStartDate, query.weekEndDate)
+              .then((r) => ({ ...r, driverName: 'All drivers' }))
+          : await settlementsService
+              .listDriverLoadsForPeriod(
+                req.tenantId!,
+                query.driverId,
+                query.weekStartDate,
+                query.weekEndDate
+              )
+              .then((r) => ({
+                ...r,
+                driverName: `${r.driver.firstName} ${r.driver.lastName}`.trim(),
+              }));
+
+      const { loads, periodStart, periodEnd } = result;
+      const rows: DriverLoadExportRow[] = loads.map(toExportRow);
 
       const meta = {
-        driverName: `${driver.firstName} ${driver.lastName}`.trim(),
+        driverName: result.driverName,
         periodStart,
         periodEnd,
       };

@@ -181,7 +181,11 @@ export default function ReportsPage() {
         responseType: 'blob',
       });
       const driver = drivers.find((d) => d.id === exportDriverId);
-      const name = driver ? `${driver.firstName}_${driver.lastName}` : 'driver';
+      const name = exportDriverId === 'all'
+        ? 'all_drivers'
+        : driver
+          ? `${driver.firstName}_${driver.lastName}`
+          : 'driver';
       const url = URL.createObjectURL(res.data as Blob);
       const link = document.createElement('a');
       link.href = url;
@@ -313,7 +317,8 @@ export default function ReportsPage() {
         <div>
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">Export driver loads to Excel</h2>
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            Same loads a statement would pick up for that driver and period — load ID, pickup date, route, broker, and total.
+            Same loads a statement would pick up for that period — load ID, pickup date, route, broker, and total.
+            Pick “All drivers” to export the whole fleet, grouped by driver.
           </p>
         </div>
 
@@ -326,6 +331,7 @@ export default function ReportsPage() {
               onChange={(e) => setExportDriverId(e.target.value)}
             >
               <option value="">Select driver</option>
+              <option value="all">All drivers</option>
               {drivers.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.firstName} {d.lastName}

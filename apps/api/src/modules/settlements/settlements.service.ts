@@ -366,6 +366,32 @@ export class SettlementsService {
     return { driver, loads, periodStart: start, periodEnd: end };
   }
 
+  /**
+   * Every load in the period across the fleet, listed once and grouped by driver.
+   * Unlike the per-driver view, an owner-operator's truck does not pull in a load a
+   * second time — that would double count the fleet total.
+   */
+  async listFleetLoadsForPeriod(tenantId: string, periodStart: Date, periodEnd: Date) {
+    const { start, end } = getPeriodBounds(periodStart, periodEnd);
+
+    const candidates = await prisma.load.findMany({
+      where: { companyId: tenantId, status: { notIn: [LoadStatus.CANCELLED] } },
+      include: loadInclude,
+      orderBy: { pickupDate: 'asc' },
+    });
+
+    const loads = candidates
+      .filter((load) => isWithinPeriodInZone(getLoadWorkDate(load), start, end))
+      .sort((a, b) => {
+        const nameA = `${a.driver.lastName} ${a.driver.firstName}`.toLowerCase();
+        const nameB = `${b.driver.lastName} ${b.driver.firstName}`.toLowerCase();
+        if (nameA !== nameB) return nameA < nameB ? -1 : 1;
+        return a.pickupDate.getTime() - b.pickupDate.getTime();
+      });
+
+    return { loads, periodStart: start, periodEnd: end };
+  }
+
   private async fetchDriverLoadCandidates(tenantId: string, driverId: string) {
     const baseWhere = {
       companyId: tenantId,
