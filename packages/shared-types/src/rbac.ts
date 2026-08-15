@@ -11,6 +11,8 @@ export type FleetPermission =
   | 'drivers:write'
   | 'dispatchers:list'
   | 'dispatchers:write'
+  | 'brokers:list'
+  | 'brokers:write'
   | 'equipment:view'
   | 'equipment:write'
   | 'loads:list'
@@ -56,6 +58,8 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'drivers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'dispatchers:list': STAFF_ROLES,
   'dispatchers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
+  'brokers:list': STAFF_ROLES,
+  'brokers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.DISPATCHER],
   'equipment:view': STAFF_ROLES,
   'equipment:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'loads:list': STAFF_ROLES,

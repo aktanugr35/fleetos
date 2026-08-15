@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/utils';
 import { combineDateAndTime24, splitIsoToDateAndTime24 } from '@/lib/us-time';
 import api from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { usePermission } from '@/hooks/usePermission';
 import {
   LoadStopsEditor,
   createEmptyStop,
@@ -78,6 +79,8 @@ const STATUS_OPTIONS = [
 
 export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: CreateLoadModalProps) {
   const isEdit = Boolean(loadId);
+  const { can } = usePermission();
+  const canSaveBrokers = can('brokers:write');
   const [loading, setLoading] = useState(false);
   const [fetchingLoad, setFetchingLoad] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,6 +100,9 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
     pickup: false,
     delivery: false,
   });
+  const [brokerLookup, setBrokerLookup] = useState(false);
+  const [savingBroker, setSavingBroker] = useState(false);
+  const [brokerHint, setBrokerHint] = useState<{ type: 'found' | 'missing'; message: string } | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -107,6 +113,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       setRateConfirmationFile(null);
       setAutoTruckId(null);
       setErrors({});
+      setBrokerHint(null);
       return;
     }
 
@@ -264,6 +271,55 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       }));
     } finally {
       setZipLookup(prev => ({ ...prev, [kind]: false }));
+    }
+  };
+
+  const brokerMcDigits = form.brokerMC.replace(/\D/g, '');
+
+  const lookupBroker = async (options?: { silent?: boolean }) => {
+    if (brokerMcDigits.length < 3) {
+      if (!options?.silent) setBrokerHint({ type: 'missing', message: 'Enter a valid MC number' });
+      return;
+    }
+
+    setBrokerLookup(true);
+    try {
+      const res = await api.get(`/brokers/lookup/${brokerMcDigits}`);
+      const broker = res.data.data as { name: string; mcNumber: string; contactName: string | null };
+      setForm(prev => ({
+        ...prev,
+        brokerMC: broker.mcNumber,
+        brokerName: broker.name,
+        brokerContact: prev.brokerContact || broker.contactName || '',
+      }));
+      setErrors(prev => ({ ...prev, brokerName: '' }));
+      setBrokerHint({ type: 'found', message: `Filled in from saved broker "${broker.name}"` });
+    } catch {
+      setBrokerHint({ type: 'missing', message: 'No saved broker with this MC number' });
+    } finally {
+      setBrokerLookup(false);
+    }
+  };
+
+  const saveBrokerFromForm = async () => {
+    const name = form.brokerName.trim();
+    if (!name || brokerMcDigits.length < 3) return;
+
+    setSavingBroker(true);
+    try {
+      await api.post('/brokers', {
+        name,
+        mcNumber: brokerMcDigits,
+        contactName: form.brokerContact.trim() || undefined,
+      });
+      setBrokerHint({
+        type: 'found',
+        message: `Saved — MC ${brokerMcDigits} will fill in automatically next time`,
+      });
+    } catch (err) {
+      setBrokerHint({ type: 'missing', message: getApiErrorMessage(err, 'Could not save broker') });
+    } finally {
+      setSavingBroker(false);
     }
   };
 
@@ -481,16 +537,54 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       {/* Broker */}
       <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mt-6 mb-3">Broker Information</h4>
       <div className="grid grid-cols-3 gap-4">
+        <FormField label="MC Number">
+          <div className="flex gap-2">
+            <FormInput
+              value={form.brokerMC}
+              onChange={(e) => {
+                set('brokerMC', e.target.value);
+                setBrokerHint(null);
+              }}
+              onBlur={() => {
+                if (brokerMcDigits.length >= 3) void lookupBroker({ silent: true });
+              }}
+              placeholder="MC number"
+              inputMode="numeric"
+            />
+            <button
+              type="button"
+              className="btn btn-secondary shrink-0 px-3"
+              disabled={brokerLookup}
+              onClick={() => void lookupBroker()}
+            >
+              {brokerLookup ? '...' : 'Lookup'}
+            </button>
+          </div>
+        </FormField>
         <FormField label="Broker Name" required error={errors.brokerName}>
           <FormInput value={form.brokerName} onChange={(e) => set('brokerName', e.target.value)} placeholder="Broker name" error={!!errors.brokerName} />
-        </FormField>
-        <FormField label="MC Number">
-          <FormInput value={form.brokerMC} onChange={(e) => set('brokerMC', e.target.value)} placeholder="MC number" />
         </FormField>
         <FormField label="Contact">
           <FormInput value={form.brokerContact} onChange={(e) => set('brokerContact', e.target.value)} placeholder="Contact name" />
         </FormField>
       </div>
+      {brokerHint && (
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+          <span className={brokerHint.type === 'found' ? 'text-green-400' : 'text-amber-300'}>
+            {brokerHint.message}
+          </span>
+          {brokerHint.type === 'missing' && canSaveBrokers && form.brokerName.trim() && brokerMcDigits.length >= 3 && (
+            <button
+              type="button"
+              className="text-blue-400 underline underline-offset-2 hover:text-blue-300 disabled:opacity-50"
+              disabled={savingBroker}
+              onClick={() => void saveBrokerFromForm()}
+            >
+              {savingBroker ? 'Saving…' : 'Save this broker'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Route */}
       <h4 className="text-xs uppercase tracking-wider text-gray-500 font-semibold mt-6 mb-3">Route</h4>

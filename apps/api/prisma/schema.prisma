@@ -48,6 +48,7 @@ model Company {
   complianceSettings    CompanyComplianceSetting[]
   complianceRecords     ComplianceRecord[]
   passwords             CompanyPassword[]
+  brokers               Broker[]
 
   @@map("companies")
 }
@@ -254,6 +255,30 @@ model Trailer {
 
   @@index([companyId])
   @@map("trailers")
+}
+
+// ─── BROKER ───────────────────────────────────────────
+// Directory of brokers we have worked with. `mcNumber` is stored digits-only so
+// it can be used as the lookup key when dispatchers type an MC on a new load.
+model Broker {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  mcNumber    String
+  contactName String?
+  phone       String?
+  email       String?
+  address     String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, mcNumber])
+  @@index([companyId])
+  @@map("brokers")
 }
 
 // ─── LOAD ─────────────────────────────────────────────

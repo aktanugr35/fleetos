@@ -45,4 +45,19 @@ describe('roleHasPermission', () => {
   it('company admin can manage passwords', () => {
     assert.equal(roleHasPermission(UserRole.COMPANY_ADMIN, 'passwords:manage'), true);
   });
+
+  it('dispatcher can add brokers while booking loads', () => {
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'brokers:list'), true);
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'brokers:write'), true);
+  });
+
+  it('accounting can read brokers but not edit them', () => {
+    assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'brokers:list'), true);
+    assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'brokers:write'), false);
+  });
+
+  it('driver cannot access brokers', () => {
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'brokers:list'), false);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'brokers:write'), false);
+  });
 });
