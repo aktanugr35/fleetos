@@ -20,7 +20,9 @@ import {
 
 const loadInclude = {
   truck: true,
-  driver: { select: { payStructure: true, payRate: true } },
+  driver: { select: { firstName: true, lastName: true, payStructure: true, payRate: true } },
+  bookedByDispatcher: { select: { firstName: true, lastName: true } },
+  stops: { select: { sequence: true, location: true }, orderBy: { sequence: 'asc' } },
 } as const;
 
 /** Finalized/paid settlements lock items on approve — not while previewing new drafts. */
@@ -336,6 +338,32 @@ export class SettlementsService {
     pdfService.removeSettlementPdf(existing.pdfUrl);
 
     return { id: settlementId, statementNumber: existing.statementNumber };
+  }
+
+  /**
+   * The same load set a statement would pick up for the period, ordered for reporting.
+   * Shared with the driver load export so both always agree.
+   */
+  async listDriverLoadsForPeriod(
+    tenantId: string,
+    driverId: string,
+    periodStart: Date,
+    periodEnd: Date
+  ) {
+    const { start, end } = getPeriodBounds(periodStart, periodEnd);
+
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!driver) throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
+
+    const candidates = await this.fetchDriverLoadCandidates(tenantId, driverId);
+    const loads = candidates
+      .filter((load) => isWithinPeriodInZone(getLoadWorkDate(load), start, end))
+      .sort((a, b) => a.pickupDate.getTime() - b.pickupDate.getTime());
+
+    return { driver, loads, periodStart: start, periodEnd: end };
   }
 
   private async fetchDriverLoadCandidates(tenantId: string, driverId: string) {

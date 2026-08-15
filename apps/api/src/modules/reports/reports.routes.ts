@@ -14,6 +14,7 @@ router.get('/dashboard', rbacMiddleware(STAFF_ROLES), reportsController.getDashb
 router.get('/revenue-chart', rbacMiddleware(STAFF_ROLES), reportsController.getRevenueChart);
 router.get('/brokers', rbacMiddleware(STAFF_ROLES), reportsController.getBrokerSummary);
 router.get('/operational-analytics', rbacMiddleware(STAFF_ROLES), reportsController.getOperationalAnalytics);
+router.get('/driver-loads/export', rbacMiddleware(STAFF_ROLES), reportsController.exportDriverLoads);
 router.get('/driver-earnings', rbacMiddleware(['DRIVER']), reportsController.getDriverEarningsDashboard);
 
 export default router;

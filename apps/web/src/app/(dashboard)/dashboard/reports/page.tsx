@@ -56,6 +56,12 @@ interface OperationalAnalyticsResponse {
   }[];
 }
 
+interface DriverOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
 const PRESETS: { id: ReportPreset; label: string; hint: string }[] = [
   { id: '30d', label: '30 days', hint: 'Rolling window, UTC' },
   { id: '90d', label: '90 days', hint: 'Default' },
@@ -66,6 +72,21 @@ const PRESETS: { id: ReportPreset; label: string; hint: string }[] = [
 
 function utcDateLabel(iso: string): string {
   return iso.slice(0, 10);
+}
+
+/** Blob downloads deliver error payloads as a Blob, so the JSON has to be read back out. */
+async function getBlobApiErrorMessage(err: unknown, fallback: string): Promise<string> {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      const message = parsed?.error?.message;
+      if (typeof message === 'string' && message.length > 0) return message;
+    } catch {
+      // fall through to the generic message
+    }
+  }
+  return getApiErrorMessage(err, fallback);
 }
 
 function DriverTypePill({ type }: { type: string }) {
@@ -105,6 +126,12 @@ export default function ReportsPage() {
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
+  const [drivers, setDrivers] = useState<DriverOption[]>([]);
+  const [exportDriverId, setExportDriverId] = useState('');
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [exporting, setExporting] = useState(false);
+
   const fetchAnalytics = useCallback(async () => {
     if (!allowed) {
       setLoading(false);
@@ -132,6 +159,44 @@ export default function ReportsPage() {
   useEffect(() => {
     void fetchAnalytics();
   }, [fetchAnalytics]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    api
+      .get('/drivers?limit=200')
+      .then((res) => setDrivers(res.data.data as DriverOption[]))
+      .catch(() => setDrivers([]));
+  }, [allowed]);
+
+  const handleExport = async () => {
+    if (!exportDriverId || !exportFrom || !exportTo) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        driverId: exportDriverId,
+        weekStartDate: exportFrom,
+        weekEndDate: exportTo,
+      });
+      const res = await api.get(`/reports/driver-loads/export?${params.toString()}`, {
+        responseType: 'blob',
+      });
+      const driver = drivers.find((d) => d.id === exportDriverId);
+      const name = driver ? `${driver.firstName}_${driver.lastName}` : 'driver';
+      const url = URL.createObjectURL(res.data as Blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `loads_${name.replace(/[^\w.-]+/g, '_')}_${exportFrom}_${exportTo}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setToast({ type: 'success', message: 'Excel file downloaded' });
+    } catch (err) {
+      setToast({ type: 'error', message: await getBlobApiErrorMessage(err, 'Could not export loads') });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const maxMonthRev = useMemo(() => {
     const arr = data?.revenueByMonth ?? [];
@@ -241,6 +306,63 @@ export default function ReportsPage() {
           </p>
         ) : null}
         <p className="text-[11px] leading-relaxed text-[var(--text-muted)] border-t border-[var(--border-color)] pt-3">{data?.basis}</p>
+      </section>
+
+      {/* Driver load export */}
+      <section className="card space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Export driver loads to Excel</h2>
+          <p className="text-xs text-[var(--text-muted)] mt-1">
+            Same loads a statement would pick up for that driver and period — load ID, pickup date, route, broker, and total.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="space-y-1.5">
+            <span className="block text-xs font-medium text-[var(--text-secondary)]">Driver</span>
+            <select
+              className="input py-2 text-sm w-full"
+              value={exportDriverId}
+              onChange={(e) => setExportDriverId(e.target.value)}
+            >
+              <option value="">Select driver</option>
+              {drivers.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.firstName} {d.lastName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="block text-xs font-medium text-[var(--text-secondary)]">Period start</span>
+            <input
+              type="date"
+              className="input py-2 text-sm w-full"
+              value={exportFrom}
+              onChange={(e) => setExportFrom(e.target.value)}
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="block text-xs font-medium text-[var(--text-secondary)]">Period end</span>
+            <input
+              type="date"
+              className="input py-2 text-sm w-full"
+              min={exportFrom || undefined}
+              value={exportTo}
+              onChange={(e) => setExportTo(e.target.value)}
+            />
+          </label>
+          <div className="flex items-end">
+            <button
+              type="button"
+              className="btn btn-primary text-sm py-2 w-full"
+              disabled={exporting || !exportDriverId || !exportFrom || !exportTo || exportTo < exportFrom}
+              onClick={() => void handleExport()}
+            >
+              {exporting ? 'Preparing…' : 'Export to Excel'}
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Tabs */}
