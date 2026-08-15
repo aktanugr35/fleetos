@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
-import { createBrokerSchema, normalizeMcNumber } from './brokers.schema';
+import { createBrokerAgentSchema, createBrokerSchema, normalizeMcNumber } from './brokers.schema';
 
 describe('normalizeMcNumber', () => {
   it('strips the MC prefix, punctuation and spaces', () => {
@@ -35,10 +35,35 @@ describe('createBrokerSchema', () => {
     const parsed = createBrokerSchema.parse({
       name: 'TQL',
       mcNumber: '123456',
-      contactName: '',
-      phone: '  ',
+      address: '',
+      notes: '  ',
     });
-    assert.equal(parsed.contactName, undefined);
-    assert.equal(parsed.phone, undefined);
+    assert.equal(parsed.address, undefined);
+    assert.equal(parsed.notes, undefined);
+  });
+});
+
+describe('createBrokerAgentSchema', () => {
+  it('trims the agent name and keeps contact details', () => {
+    const parsed = createBrokerAgentSchema.parse({
+      name: '  Mike Ross  ',
+      email: 'mike@tql.com',
+      phone: '555-1234',
+    });
+    assert.equal(parsed.name, 'Mike Ross');
+    assert.equal(parsed.email, 'mike@tql.com');
+    assert.equal(parsed.phone, '555-1234');
+  });
+
+  it('rejects an empty name and an invalid email', () => {
+    assert.equal(createBrokerAgentSchema.safeParse({ name: '  ' }).success, false);
+    assert.equal(
+      createBrokerAgentSchema.safeParse({ name: 'Mike', email: 'not-an-email' }).success,
+      false,
+    );
+  });
+
+  it('accepts an agent with just a name', () => {
+    assert.equal(createBrokerAgentSchema.safeParse({ name: 'Mike Ross' }).success, true);
   });
 });

@@ -25,14 +25,20 @@ const optionalText = (max: number) =>
 export const createBrokerSchema = z.object({
   name: z.string().trim().min(1, 'Broker name is required').max(200),
   mcNumber: mcNumberField,
-  contactName: optionalText(120),
-  phone: optionalText(40),
-  email: z.string().trim().email('Enter a valid email').optional().or(z.literal('')),
   address: optionalText(300),
   notes: optionalText(2000),
 });
 
 export const updateBrokerSchema = createBrokerSchema.partial();
+
+export const createBrokerAgentSchema = z.object({
+  name: z.string().trim().min(1, 'Agent name is required').max(160),
+  email: z.string().trim().email('Enter a valid email').optional().or(z.literal('')),
+  phone: optionalText(40),
+  notes: optionalText(2000),
+});
+
+export const updateBrokerAgentSchema = createBrokerAgentSchema.partial();
 
 export const brokerQuerySchema = z.object({
   status: z.enum(['active', 'inactive', 'all']).optional().default('active'),
@@ -44,3 +50,5 @@ export const brokerQuerySchema = z.object({
 export type CreateBrokerInput = z.infer<typeof createBrokerSchema>;
 export type UpdateBrokerInput = z.infer<typeof updateBrokerSchema>;
 export type BrokerQueryInput = z.infer<typeof brokerQuerySchema>;
+export type CreateBrokerAgentInput = z.infer<typeof createBrokerAgentSchema>;
+export type UpdateBrokerAgentInput = z.infer<typeof updateBrokerAgentSchema>;

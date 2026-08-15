@@ -304,7 +304,7 @@ export default function LoadsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <SearchInput
             wrapperClassName="min-w-[200px] flex-1 sm:max-w-xs"
-            placeholder="Search load #, broker, city…"
+            placeholder="Search load #, PU #, broker, city…"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);

@@ -26,9 +26,12 @@ type LoadForMap = Load & {
   driver?: { id: string; firstName: string; lastName: string } | null;
   truck?: { id: string; unitNumber: string } | null;
   trailer?: { id: string; unitNumber: string } | null;
+  brokerAgent?: { id: string; name: string } | null;
   stops?: LoadStopRow[];
   _count?: { settlementLines: number };
 };
+
+const BROKER_AGENT_SELECT = { select: { id: true, name: true } } as const;
 
 const STOPS_SELECT = {
   select: {
@@ -126,6 +129,7 @@ export class LoadsService {
     if (query.search) {
       where.OR = [
         { loadNumber: { contains: query.search, mode: 'insensitive' } },
+        { puNumber: { contains: query.search, mode: 'insensitive' } },
         { brokerName: { contains: query.search, mode: 'insensitive' } },
         { pickupLocation: { contains: query.search, mode: 'insensitive' } },
         { deliveryLocation: { contains: query.search, mode: 'insensitive' } },
@@ -149,6 +153,7 @@ export class LoadsService {
           truck: { select: { id: true, unitNumber: true } },
           trailer: { select: { id: true, unitNumber: true } },
           bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+          brokerAgent: BROKER_AGENT_SELECT,
           stops: STOPS_SELECT,
         },
       }),
@@ -166,6 +171,7 @@ export class LoadsService {
         truck: { select: { id: true, unitNumber: true, make: true, model: true } },
         trailer: { select: { id: true, unitNumber: true } },
         bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+        brokerAgent: BROKER_AGENT_SELECT,
         stops: STOPS_SELECT,
         _count: { select: { settlementLines: true } },
       },
@@ -174,8 +180,44 @@ export class LoadsService {
     return this.mapLoad(load);
   }
 
+  /**
+   * Ties a load to the broker directory from the MC number that was typed on the form,
+   * so broker and agent reporting works even when the load was entered by hand.
+   */
+  private async resolveBrokerLink(
+    tenantId: string,
+    brokerMC: string | null | undefined,
+    brokerAgentId: string | null | undefined,
+  ): Promise<{ brokerId: string | null; brokerAgentId: string | null }> {
+    const mcNumber = (brokerMC || '').replace(/\D/g, '');
+    const broker = mcNumber
+      ? await prisma.broker.findFirst({
+          where: { companyId: tenantId, mcNumber },
+          select: { id: true },
+        })
+      : null;
+
+    if (!brokerAgentId) {
+      return { brokerId: broker?.id ?? null, brokerAgentId: null };
+    }
+
+    const agent = await prisma.brokerAgent.findFirst({
+      where: { id: brokerAgentId, broker: { companyId: tenantId } },
+      select: { id: true, brokerId: true },
+    });
+    if (!agent) {
+      throw new AppError(400, 'INVALID_BROKER_AGENT', 'Broker agent not found');
+    }
+    if (broker && agent.brokerId !== broker.id) {
+      throw new AppError(400, 'INVALID_BROKER_AGENT', 'That agent belongs to a different broker');
+    }
+
+    return { brokerId: broker?.id ?? agent.brokerId, brokerAgentId: agent.id };
+  }
+
   async create(tenantId: string, input: CreateLoadInput) {
     await this.assertDispatcher(tenantId, input.bookedByDispatcherId);
+    const brokerLink = await this.resolveBrokerLink(tenantId, input.brokerMC, input.brokerAgentId);
 
     const loadNumber = input.loadNumber || await this.generateLoadNumber(tenantId);
     const status = this.inferInitialStatus(input);
@@ -197,6 +239,9 @@ export class LoadsService {
         loadNumber,
         brokerName: input.brokerName,
         brokerMC: input.brokerMC,
+        brokerId: brokerLink.brokerId,
+        brokerAgentId: brokerLink.brokerAgentId,
+        puNumber: input.puNumber?.trim() || null,
         referenceNumber: input.brokerContact,
         pickupLocation: `${input.pickupCity}, ${input.pickupState}`,
         pickupDate: input.pickupDate,
@@ -220,6 +265,7 @@ export class LoadsService {
         truck: { select: { id: true, unitNumber: true } },
         trailer: { select: { id: true, unitNumber: true } },
         bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+        brokerAgent: BROKER_AGENT_SELECT,
         stops: STOPS_SELECT,
       },
     });
@@ -276,6 +322,16 @@ export class LoadsService {
     if (input.brokerName !== undefined) dataToUpdate.brokerName = input.brokerName;
     if (input.brokerMC !== undefined) dataToUpdate.brokerMC = input.brokerMC;
     if (input.brokerContact !== undefined) dataToUpdate.referenceNumber = input.brokerContact;
+    if (input.puNumber !== undefined) dataToUpdate.puNumber = input.puNumber?.trim() || null;
+    if (input.brokerMC !== undefined || input.brokerAgentId !== undefined) {
+      const link = await this.resolveBrokerLink(
+        tenantId,
+        input.brokerMC !== undefined ? input.brokerMC : existing.brokerMC,
+        input.brokerAgentId !== undefined ? input.brokerAgentId : existing.brokerAgentId,
+      );
+      dataToUpdate.brokerId = link.brokerId;
+      dataToUpdate.brokerAgentId = link.brokerAgentId;
+    }
     if (input.pickupCity !== undefined && input.pickupState !== undefined) {
       dataToUpdate.pickupLocation = `${input.pickupCity}, ${input.pickupState}`;
     }
@@ -366,6 +422,7 @@ export class LoadsService {
         truck: { select: { id: true, unitNumber: true } },
         trailer: { select: { id: true, unitNumber: true } },
         bookedByDispatcher: { select: { id: true, firstName: true, lastName: true } },
+        brokerAgent: BROKER_AGENT_SELECT,
         stops: STOPS_SELECT,
       },
     });

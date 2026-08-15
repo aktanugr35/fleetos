@@ -48,7 +48,13 @@ export function LoadRow({
           >
             {load.loadNumber}
           </button>
-          <span className="text-sm text-[var(--text-secondary)]">{load.brokerName}</span>
+          <span className="text-sm text-[var(--text-secondary)]">
+            {load.brokerName}
+            {load.brokerAgent ? ` · ${load.brokerAgent.name}` : ''}
+          </span>
+          {load.puNumber && (
+            <span className="text-xs text-[var(--text-muted)]">PU# {load.puNumber}</span>
+          )}
           {!compact && <LoadStatusBadge status={load.status} />}
         </div>
 

@@ -261,24 +261,43 @@ model Trailer {
 // Directory of brokers we have worked with. `mcNumber` is stored digits-only so
 // it can be used as the lookup key when dispatchers type an MC on a new load.
 model Broker {
-  id          String   @id @default(uuid())
-  companyId   String
-  name        String
-  mcNumber    String
-  contactName String?
-  phone       String?
-  email       String?
-  address     String?
-  notes       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  companyId String
+  name      String
+  mcNumber  String
+  address   String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id])
+  company Company       @relation(fields: [companyId], references: [id])
+  agents  BrokerAgent[]
+  loads   Load[]
 
   @@unique([companyId, mcNumber])
   @@index([companyId])
   @@map("brokers")
+}
+
+// Brokers route loads through individual agents/reps, so pay attribution is per agent.
+model BrokerAgent {
+  id        String   @id @default(uuid())
+  brokerId  String
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  broker Broker @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  loads  Load[]
+
+  @@unique([brokerId, name])
+  @@index([brokerId])
+  @@map("broker_agents")
 }
 
 // ─── LOAD ─────────────────────────────────────────────
@@ -301,6 +320,9 @@ model Load {
   loadNumber           String     @unique
   brokerName           String
   brokerMC             String?
+  brokerId             String?
+  brokerAgentId        String?
+  puNumber             String? // Pickup number from the rate confirmation
   referenceNumber      String?
   status               LoadStatus @default(PENDING)
 
@@ -331,6 +353,8 @@ model Load {
   truck                     Truck                      @relation(fields: [truckId], references: [id])
   trailer                   Trailer?                   @relation(fields: [trailerId], references: [id])
   bookedByDispatcher        Dispatcher?                @relation(fields: [bookedByDispatcherId], references: [id])
+  broker                    Broker?                    @relation(fields: [brokerId], references: [id])
+  brokerAgent               BrokerAgent?               @relation(fields: [brokerAgentId], references: [id])
   documents                 Document[]
   settlementLines           SettlementLine[]
   dispatcherSettlementLines DispatcherSettlementLine[]
@@ -339,6 +363,8 @@ model Load {
   @@index([companyId])
   @@index([driverId])
   @@index([bookedByDispatcherId])
+  @@index([brokerId])
+  @@index([brokerAgentId])
   @@index([status])
   @@map("loads")
 }

@@ -18,6 +18,8 @@ export interface LoadListItem {
   loadNumber: string;
   status: LoadStatus;
   brokerName: string;
+  puNumber?: string | null;
+  brokerAgent?: { id: string; name: string } | null;
   pickupCity: string;
   pickupState: string;
   deliveryCity: string;

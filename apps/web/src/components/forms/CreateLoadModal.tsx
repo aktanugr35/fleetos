@@ -32,7 +32,7 @@ function splitDateTime(iso: string | Date | null | undefined) {
 const EMPTY_FORM = {
   driverId: '', bookedByDispatcherId: '', truckId: '', trailerId: '', trailerMode: 'company' as 'company' | 'hook_drop',
   externalTrailerRef: '',
-  brokerName: '', brokerMC: '', brokerContact: '',
+  brokerName: '', brokerMC: '', brokerAgentId: '', puNumber: '',
   pickupZip: '', pickupAddress: '', pickupCity: '', pickupState: 'TX', pickupDate: '', pickupTime: '08:00',
   deliveryZip: '', deliveryAddress: '', deliveryCity: '', deliveryState: 'IL', deliveryDate: '', deliveryTime: '17:00',
   commodity: '', weight: '', loadedMiles: '', deadheadMiles: '',
@@ -68,6 +68,8 @@ interface TruckApiResponse {
   ownerDriverId?: string | null;
 }
 interface Trailer { id: string; unitNumber: string; }
+interface BrokerAgent { id: string; name: string; }
+interface BrokerLookupResult { id: string; name: string; mcNumber: string; agents?: BrokerAgent[]; }
 
 const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Pending / Planned' },
@@ -103,6 +105,11 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
   const [brokerLookup, setBrokerLookup] = useState(false);
   const [savingBroker, setSavingBroker] = useState(false);
   const [brokerHint, setBrokerHint] = useState<{ type: 'found' | 'missing'; message: string } | null>(null);
+  const [brokerId, setBrokerId] = useState<string | null>(null);
+  const [brokerAgents, setBrokerAgents] = useState<BrokerAgent[]>([]);
+  const [newAgentName, setNewAgentName] = useState('');
+  const [addingAgent, setAddingAgent] = useState(false);
+  const [savingAgent, setSavingAgent] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -114,6 +121,10 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       setAutoTruckId(null);
       setErrors({});
       setBrokerHint(null);
+      setBrokerId(null);
+      setBrokerAgents([]);
+      setNewAgentName('');
+      setAddingAgent(false);
       return;
     }
 
@@ -154,7 +165,8 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           externalTrailerRef: load.externalTrailerRef || '',
           brokerName: load.brokerName || '',
           brokerMC: load.brokerMC || '',
-          brokerContact: load.referenceNumber || '',
+          brokerAgentId: load.brokerAgentId || load.brokerAgent?.id || '',
+          puNumber: load.puNumber || '',
           pickupZip: '',
           pickupAddress: load.pickupLocation || '',
           pickupCity: load.pickupCity || '',
@@ -192,6 +204,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
             };
           }),
         );
+        if (load.brokerMC) void loadBrokerAgents(load.brokerMC);
       })
       .catch(() => {
         setErrors({ _form: 'Failed to load details' });
@@ -276,6 +289,21 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
 
   const brokerMcDigits = form.brokerMC.replace(/\D/g, '');
 
+  /** Fills the agent list for a load that already has a broker, without touching the form. */
+  const loadBrokerAgents = async (rawMc: string) => {
+    const mc = rawMc.replace(/\D/g, '');
+    if (mc.length < 3) return;
+    try {
+      const res = await api.get(`/brokers/lookup/${mc}`);
+      const broker = res.data.data as BrokerLookupResult;
+      setBrokerId(broker.id);
+      setBrokerAgents(broker.agents ?? []);
+    } catch {
+      setBrokerId(null);
+      setBrokerAgents([]);
+    }
+  };
+
   const lookupBroker = async (options?: { silent?: boolean }) => {
     if (brokerMcDigits.length < 3) {
       if (!options?.silent) setBrokerHint({ type: 'missing', message: 'Enter a valid MC number' });
@@ -285,16 +313,22 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
     setBrokerLookup(true);
     try {
       const res = await api.get(`/brokers/lookup/${brokerMcDigits}`);
-      const broker = res.data.data as { name: string; mcNumber: string; contactName: string | null };
+      const broker = res.data.data as BrokerLookupResult;
+      const agents = broker.agents ?? [];
+      setBrokerId(broker.id);
+      setBrokerAgents(agents);
       setForm(prev => ({
         ...prev,
         brokerMC: broker.mcNumber,
         brokerName: broker.name,
-        brokerContact: prev.brokerContact || broker.contactName || '',
+        brokerAgentId: agents.some((a) => a.id === prev.brokerAgentId) ? prev.brokerAgentId : '',
       }));
       setErrors(prev => ({ ...prev, brokerName: '' }));
       setBrokerHint({ type: 'found', message: `Filled in from saved broker "${broker.name}"` });
     } catch {
+      setBrokerId(null);
+      setBrokerAgents([]);
+      setForm(prev => ({ ...prev, brokerAgentId: '' }));
       setBrokerHint({ type: 'missing', message: 'No saved broker with this MC number' });
     } finally {
       setBrokerLookup(false);
@@ -307,11 +341,10 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
 
     setSavingBroker(true);
     try {
-      await api.post('/brokers', {
-        name,
-        mcNumber: brokerMcDigits,
-        contactName: form.brokerContact.trim() || undefined,
-      });
+      const res = await api.post('/brokers', { name, mcNumber: brokerMcDigits });
+      const broker = res.data.data as BrokerLookupResult;
+      setBrokerId(broker.id);
+      setBrokerAgents([]);
       setBrokerHint({
         type: 'found',
         message: `Saved — MC ${brokerMcDigits} will fill in automatically next time`,
@@ -320,6 +353,26 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       setBrokerHint({ type: 'missing', message: getApiErrorMessage(err, 'Could not save broker') });
     } finally {
       setSavingBroker(false);
+    }
+  };
+
+  const saveAgent = async () => {
+    const name = newAgentName.trim();
+    if (!brokerId || !name) return;
+
+    setSavingAgent(true);
+    try {
+      const res = await api.post(`/brokers/${brokerId}/agents`, { name });
+      const agent = res.data.data as BrokerAgent;
+      setBrokerAgents(prev => [...prev, agent].sort((a, b) => a.name.localeCompare(b.name)));
+      setForm(prev => ({ ...prev, brokerAgentId: agent.id }));
+      setNewAgentName('');
+      setAddingAgent(false);
+      setBrokerHint({ type: 'found', message: `Agent "${agent.name}" added to this broker` });
+    } catch (err) {
+      setBrokerHint({ type: 'missing', message: getApiErrorMessage(err, 'Could not add agent') });
+    } finally {
+      setSavingAgent(false);
     }
   };
 
@@ -403,7 +456,8 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
           form.trailerMode === 'hook_drop' ? form.externalTrailerRef.trim() : null,
         brokerName: form.brokerName,
         brokerMC: form.brokerMC || undefined,
-        brokerContact: form.brokerContact || undefined,
+        brokerAgentId: form.brokerAgentId || null,
+        puNumber: form.puNumber.trim() || null,
         pickupAddress: form.pickupAddress || form.pickupCity,
         pickupCity: form.pickupCity,
         pickupState: form.pickupState,
@@ -564,10 +618,54 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
         <FormField label="Broker Name" required error={errors.brokerName}>
           <FormInput value={form.brokerName} onChange={(e) => set('brokerName', e.target.value)} placeholder="Broker name" error={!!errors.brokerName} />
         </FormField>
-        <FormField label="Contact">
-          <FormInput value={form.brokerContact} onChange={(e) => set('brokerContact', e.target.value)} placeholder="Contact name" />
+        <FormField label="PU Number">
+          <FormInput value={form.puNumber} onChange={(e) => set('puNumber', e.target.value)} placeholder="Pickup # from the rate con" />
         </FormField>
       </div>
+      <div className="grid grid-cols-3 gap-4 mt-3">
+        <FormField label="Agent" className="col-span-2">
+          {brokerId ? (
+            <div className="flex gap-2">
+              <FormSelect
+                value={form.brokerAgentId}
+                onChange={(e) => set('brokerAgentId', e.target.value)}
+                placeholder={brokerAgents.length ? 'No agent selected' : 'No agents saved yet'}
+                options={brokerAgents.map((a) => ({ value: a.id, label: a.name }))}
+              />
+              {canSaveBrokers && (
+                <button
+                  type="button"
+                  className="btn btn-secondary shrink-0 px-3"
+                  onClick={() => setAddingAgent((v) => !v)}
+                >
+                  {addingAgent ? 'Cancel' : '+ New'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500 pt-2">
+              Look up the broker by MC number to pick the agent you booked with.
+            </p>
+          )}
+        </FormField>
+      </div>
+      {brokerId && addingAgent && (
+        <div className="mt-2 flex gap-2">
+          <FormInput
+            value={newAgentName}
+            onChange={(e) => setNewAgentName(e.target.value)}
+            placeholder="Agent name"
+          />
+          <button
+            type="button"
+            className="btn btn-secondary shrink-0 px-3"
+            disabled={savingAgent || !newAgentName.trim()}
+            onClick={() => void saveAgent()}
+          >
+            {savingAgent ? 'Saving…' : 'Add agent'}
+          </button>
+        </div>
+      )}
       {brokerHint && (
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
           <span className={brokerHint.type === 'found' ? 'text-green-400' : 'text-amber-300'}>

@@ -16,9 +16,6 @@ interface CreateBrokerModalProps {
 const emptyForm = {
   name: '',
   mcNumber: '',
-  contactName: '',
-  phone: '',
-  email: '',
   address: '',
   notes: '',
 };
@@ -51,9 +48,6 @@ export function CreateBrokerModal({
         setForm({
           name: b.name || '',
           mcNumber: b.mcNumber || '',
-          contactName: b.contactName || '',
-          phone: b.phone || '',
-          email: b.email || '',
           address: b.address || '',
           notes: b.notes || '',
         });
@@ -81,9 +75,6 @@ export function CreateBrokerModal({
     const payload = {
       name: form.name.trim(),
       mcNumber: mcDigits,
-      contactName: form.contactName.trim() || undefined,
-      phone: form.phone.trim() || undefined,
-      email: form.email.trim() || undefined,
       address: form.address.trim() || undefined,
       notes: form.notes.trim() || undefined,
     };
@@ -130,25 +121,10 @@ export function CreateBrokerModal({
                 />
               </FormField>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField label="Contact">
-                <FormInput
-                  value={form.contactName}
-                  onChange={(e) => set('contactName', e.target.value)}
-                  placeholder="Contact name"
-                />
-              </FormField>
-              <FormField label="Phone">
-                <FormInput value={form.phone} onChange={(e) => set('phone', e.target.value)} />
-              </FormField>
-            </div>
-            <FormField label="Email">
-              <FormInput
-                type="email"
-                value={form.email}
-                onChange={(e) => set('email', e.target.value)}
-              />
-            </FormField>
+            <p className="text-xs text-[var(--text-muted)]">
+              Add the people you book with as agents on the broker page — each load can then be
+              credited to the agent who gave it to you.
+            </p>
             <FormField label="Address">
               <FormInput value={form.address} onChange={(e) => set('address', e.target.value)} />
             </FormField>

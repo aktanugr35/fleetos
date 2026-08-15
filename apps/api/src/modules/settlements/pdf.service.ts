@@ -130,7 +130,7 @@ export class PdfService {
       return wrapPdfTableRow(`
             <td>
                 ${load.loadNumber}
-                <div class="sub-text">${load.referenceNumber || 'N/A'}</div>
+                <div class="sub-text">${load.puNumber || load.referenceNumber || 'N/A'}</div>
             </td>
             <td>
                 ${load.pickupLocation}

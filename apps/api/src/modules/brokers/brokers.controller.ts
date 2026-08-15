@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { brokersService } from './brokers.service';
-import { brokerQuerySchema, createBrokerSchema, updateBrokerSchema } from './brokers.schema';
+import {
+  brokerQuerySchema,
+  createBrokerAgentSchema,
+  createBrokerSchema,
+  updateBrokerAgentSchema,
+  updateBrokerSchema,
+} from './brokers.schema';
 import { successResponse, buildPaginationMeta } from '../../utils/pagination';
 
 export class BrokersController {
@@ -63,6 +69,55 @@ export class BrokersController {
     try {
       await brokersService.delete(req.tenantId!, req.params.id as string);
       res.json(successResponse({ message: 'Broker deactivated' }));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const summary = await brokersService.getSummary(req.tenantId!, req.params.id as string);
+      res.json(successResponse(summary));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createAgent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = createBrokerAgentSchema.parse(req.body);
+      const agent = await brokersService.createAgent(req.tenantId!, req.params.id as string, input);
+      res.status(201).json(successResponse(agent));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateAgent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = updateBrokerAgentSchema.parse(req.body);
+      const agent = await brokersService.updateAgent(
+        req.tenantId!,
+        req.params.id as string,
+        req.params.agentId as string,
+        input,
+      );
+      res.json(successResponse(agent));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteAgent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await brokersService.deleteAgent(
+        req.tenantId!,
+        req.params.id as string,
+        req.params.agentId as string,
+      );
+      res.json(
+        successResponse({ message: result.removed ? 'Agent removed' : 'Agent deactivated' }),
+      );
     } catch (error) {
       next(error);
     }

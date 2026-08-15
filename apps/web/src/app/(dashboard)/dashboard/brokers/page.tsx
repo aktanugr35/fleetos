@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateBrokerModal } from '@/components/forms/CreateBrokerModal';
 import { Toast } from '@/components/ui/Toast';
@@ -15,10 +16,8 @@ interface Broker {
   id: string;
   name: string;
   mcNumber: string;
-  contactName: string | null;
-  phone: string | null;
-  email: string | null;
   isActive: boolean;
+  _count?: { agents: number; loads: number };
 }
 
 export default function BrokersPage() {
@@ -79,7 +78,7 @@ export default function BrokersPage() {
       <div className="card mb-4 p-4">
         <SearchInput
           wrapperClassName="max-w-sm"
-          placeholder="Search by name or MC…"
+          placeholder="Search by name, agent or MC…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -104,20 +103,28 @@ export default function BrokersPage() {
                 <tr>
                   <th>Broker</th>
                   <th>MC #</th>
-                  <th>Contact</th>
-                  <th>Phone</th>
-                  <th>Email</th>
+                  <th className="text-right">Agents</th>
+                  <th className="text-right">Loads</th>
                   {manage ? <th /> : null}
                 </tr>
               </thead>
               <tbody>
                 {brokers.map((b) => (
                   <tr key={b.id}>
-                    <td data-label="Broker">{b.name}</td>
+                    <td data-label="Broker">
+                      <Link
+                        href={`/dashboard/brokers/${b.id}`}
+                        className="font-medium text-blue-400 hover:text-blue-300"
+                      >
+                        {b.name}
+                      </Link>
+                      {!b.isActive ? (
+                        <span className="ml-2 text-xs text-[var(--text-muted)]">Inactive</span>
+                      ) : null}
+                    </td>
                     <td data-label="MC #" className="font-mono">MC {b.mcNumber}</td>
-                    <td data-label="Contact">{b.contactName || '—'}</td>
-                    <td data-label="Phone">{b.phone || '—'}</td>
-                    <td data-label="Email">{b.email || '—'}</td>
+                    <td data-label="Agents" className="text-right tabular-nums">{b._count?.agents ?? 0}</td>
+                    <td data-label="Loads" className="text-right tabular-nums">{b._count?.loads ?? 0}</td>
                     {manage ? (
                       <td data-label="Actions" className="text-right space-x-2">
                         <button

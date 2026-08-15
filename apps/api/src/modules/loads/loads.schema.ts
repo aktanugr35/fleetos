@@ -29,6 +29,10 @@ export const createLoadSchema = z.object({
   brokerName: z.string().min(1, 'Broker name is required'),
   brokerMC: z.string().optional(),
   brokerContact: z.string().optional(),
+  /** Agent at the broker who gave us the load; links the load to the broker directory. */
+  brokerAgentId: z.string().optional().nullable(),
+  /** Pickup number from the rate confirmation. */
+  puNumber: z.string().max(60).optional().nullable(),
   pickupAddress: z.string().min(1, 'Pickup address is required'),
   pickupCity: z.string().min(1, 'Pickup city is required'),
   pickupState: z.string().length(2).toUpperCase(),
