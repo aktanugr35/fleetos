@@ -91,7 +91,7 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
     if (!form.unitNumber.trim()) e.unitNumber = 'Required';
     if (!form.make.trim()) e.make = 'Required';
     if (!form.model.trim()) e.model = 'Required';
-    if (!isEdit && (!form.vin.trim() || form.vin.length < 11)) e.vin = 'VIN must be 11-17 chars';
+    if (form.vin.trim().length < 11) e.vin = 'VIN must be 11-17 chars';
     if (!form.licensePlate.trim()) e.licensePlate = 'Required';
     if (!form.dotInspectionExpiry) e.dotInspectionExpiry = 'Required';
     if (!form.irpExpiry) e.irpExpiry = 'Required';
@@ -107,6 +107,7 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
     try {
       const payload = {
         ...form,
+        vin: form.vin.trim(),
         year: parseInt(form.year, 10),
         ownerDriverId: form.ownerDriverId || null,
       };
@@ -164,8 +165,8 @@ export function CreateTruckModal({ isOpen, truckId, onClose, onSuccess }: Create
             <FormField label="Year">
               <FormInput type="number" value={form.year} onChange={(e) => set('year', e.target.value)} />
             </FormField>
-            <FormField label="VIN" required={!isEdit} error={errors.vin}>
-              <FormInput value={form.vin} onChange={(e) => set('vin', e.target.value.toUpperCase())} placeholder="VIN" error={!!errors.vin} maxLength={17} disabled={isEdit} />
+            <FormField label="VIN" required error={errors.vin}>
+              <FormInput value={form.vin} onChange={(e) => set('vin', e.target.value.toUpperCase())} placeholder="VIN" error={!!errors.vin} maxLength={17} />
             </FormField>
             <FormField label="Owner Driver">
               <FormSelect value={form.ownerDriverId} onChange={(e) => set('ownerDriverId', e.target.value)}
