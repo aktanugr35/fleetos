@@ -155,6 +155,49 @@ html[data-theme="light"] .text-slate-300 {
   color: var(--text-muted) !important;
 }
 
+/* ─── Public driver application ──────────────────────── */
+/* Applicants open this on their own device, so the page ignores the dashboard
+   theme and stays a fixed light document. These rules outrank the remapping
+   above, which would otherwise paint light text onto the light page. */
+.intake-page {
+  color-scheme: light;
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 520px at 12% -8%, #e5edfb 0%, rgba(229, 237, 251, 0) 60%),
+    radial-gradient(900px 460px at 92% 4%, #e8eefc 0%, rgba(232, 238, 252, 0) 62%),
+    linear-gradient(180deg, #f7f9fd 0%, #eef2f9 100%);
+  color: #0f172a;
+}
+
+html[data-theme] .intake-page .text-slate-900 {
+  color: #0f172a !important;
+}
+
+html[data-theme] .intake-page .text-slate-800 {
+  color: #1e293b !important;
+}
+
+html[data-theme] .intake-page .text-slate-700 {
+  color: #334155 !important;
+}
+
+html[data-theme] .intake-page .text-slate-600 {
+  color: #475569 !important;
+}
+
+html[data-theme] .intake-page .text-slate-500 {
+  color: #576375 !important;
+}
+
+html[data-theme] .intake-page .text-slate-400,
+html[data-theme] .intake-page .text-slate-300 {
+  color: #64748b !important;
+}
+
+html[data-theme] .intake-page .text-white {
+  color: #ffffff !important;
+}
+
 /* Sidebar nav — extra contrast in both themes */
 html[data-theme="dark"] .app-sidebar .text-gray-400 {
   color: #c5d2e4 !important;

@@ -18,13 +18,6 @@ interface CompanyInfo {
   logoUrl?: string | null;
 }
 
-interface DriverHint {
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-}
-
 interface Props {
   token: string;
 }
@@ -40,19 +33,19 @@ function YesNoGroup({
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-sm text-slate-700 mb-3">{label}</p>
+      <p className="text-sm font-medium text-slate-900 mb-3">{label}</p>
       <div className="flex gap-3">
         {(['NO', 'YES'] as YesNo[]).map((opt) => (
           <button
             key={opt}
             type="button"
             onClick={() => onChange(opt)}
-            className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-colors ${
               value === opt
                 ? opt === 'YES'
-                  ? 'bg-amber-50 border-amber-300 text-amber-900'
-                  : 'bg-sky-50 border-sky-400 text-sky-900'
-                : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                  ? 'bg-amber-50 border-amber-400 text-amber-950'
+                  : 'bg-sky-50 border-sky-500 text-sky-950'
+                : 'bg-white border-slate-300 text-slate-800 hover:border-slate-400'
             }`}
           >
             {opt === 'YES' ? 'Yes' : 'No'}
@@ -76,7 +69,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+      <label className="block text-sm font-semibold text-slate-900 mb-1.5">
         {label}
         {required ? <span className="text-red-500 ml-0.5">*</span> : null}
       </label>
@@ -87,7 +80,7 @@ function Field({
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500';
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500';
 
 type Phase = 'form' | 'documents' | 'done';
 
@@ -111,7 +104,7 @@ export function DriverApplicationWizard({ token }: Props) {
         setCompany(data.company);
         setExpiresAt(data.expiresAt);
         setRequiredDocuments(data.requiredDocuments ?? []);
-        setForm(createEmptyDriverIntakeForm(data.driverHint));
+        setForm(createEmptyDriverIntakeForm());
         if (data.formSubmitted) setPhase('documents');
       })
       .catch((err) => setError(getApiErrorMessage(err, 'This application link is invalid or expired')))
@@ -275,7 +268,7 @@ export function DriverApplicationWizard({ token }: Props) {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
               Driver Application for DOT Certification
             </h1>
-            <p className="text-slate-600 mt-1 text-sm">{company?.name}</p>
+            <p className="text-slate-700 mt-1 text-sm font-medium">{company?.name}</p>
           </div>
           {company?.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -286,19 +279,19 @@ export function DriverApplicationWizard({ token }: Props) {
         <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-sky-500 to-blue-600 transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
-        <div className="flex justify-between mt-3 text-xs text-slate-500">
+        <div className="flex justify-between mt-3 text-xs font-medium text-slate-700">
           <span>Step {step + 1} of {WIZARD_STEPS.length}</span>
           <span>{WIZARD_STEPS[step].title}</span>
         </div>
         {expiresAt ? (
-          <p className="text-xs text-slate-400 mt-2">Link expires {new Date(expiresAt).toLocaleDateString()}</p>
+          <p className="text-xs text-slate-600 mt-2">Link expires {new Date(expiresAt).toLocaleDateString()}</p>
         ) : null}
       </header>
 
       <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 md:p-8">
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-slate-900">{WIZARD_STEPS[step].title}</h2>
-          <p className="text-sm text-slate-500">{WIZARD_STEPS[step].subtitle}</p>
+          <p className="text-sm text-slate-700 font-medium">{WIZARD_STEPS[step].subtitle}</p>
         </div>
 
         {error ? (
@@ -323,8 +316,8 @@ export function DriverApplicationWizard({ token }: Props) {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">Residency (past 3 years)</h3>
-              <p className="text-xs text-slate-500 mb-3">
+              <h3 className="text-sm font-semibold text-slate-900 mb-1">Residency (past 3 years)</h3>
+              <p className="text-xs text-slate-700 mb-3">
                 Address 1 is required. Add addresses 2 and 3 only if you lived elsewhere during the past 3 years.
               </p>
               <div className="space-y-4">
@@ -332,7 +325,7 @@ export function DriverApplicationWizard({ token }: Props) {
                   const optional = i > 0;
                   return (
                   <div key={i} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-700 mb-3">
                       Address {i + 1}{optional ? ' (optional)' : ''}
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -408,18 +401,44 @@ export function DriverApplicationWizard({ token }: Props) {
                 <input type="date" className={inputClass} value={form.dateOfBirth} onChange={(e) => patch('dateOfBirth', e.target.value)} />
               </Field>
               <Field label="Social Security Number" required error={fieldErrors.socialSecurityNumber}>
-                <input className={inputClass} value={form.socialSecurityNumber} onChange={(e) => patch('socialSecurityNumber', e.target.value)} placeholder="XXX-XX-XXXX" />
+                <input
+                  className={inputClass}
+                  value={form.socialSecurityNumber}
+                  onChange={(e) => patch('socialSecurityNumber', e.target.value)}
+                  placeholder="XXX-XX-XXXX"
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label="EIN (Employer Identification Number)" error={fieldErrors.employerIdentificationNumber}>
+                <input
+                  className={inputClass}
+                  value={form.employerIdentificationNumber}
+                  onChange={(e) => patch('employerIdentificationNumber', e.target.value)}
+                  placeholder="XX-XXXXXXX"
+                  autoComplete="off"
+                />
               </Field>
               <Field label="Telephone" required error={fieldErrors.telephone}>
-                <input className={inputClass} value={form.telephone} onChange={(e) => patch('telephone', e.target.value)} />
+                <input
+                  className={inputClass}
+                  value={form.telephone}
+                  onChange={(e) => patch('telephone', e.target.value)}
+                  autoComplete="off"
+                />
               </Field>
               <Field label="Email" required error={fieldErrors.email}>
-                <input type="email" className={inputClass} value={form.email} onChange={(e) => patch('email', e.target.value)} />
+                <input
+                  type="email"
+                  className={inputClass}
+                  value={form.email}
+                  onChange={(e) => patch('email', e.target.value)}
+                  autoComplete="off"
+                />
               </Field>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-3">Emergency contact</h3>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Emergency contact</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Name" required error={fieldErrors.emergencyContactName}>
                   <input className={inputClass} value={form.emergencyContactName} onChange={(e) => patch('emergencyContactName', e.target.value)} />
@@ -440,7 +459,7 @@ export function DriverApplicationWizard({ token }: Props) {
 
         {step === 1 && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="text-sm text-slate-800 font-medium mb-4">
               Answer each question honestly. If you answer Yes to any item, an explanation is required below.
             </p>
             <YesNoGroup label="A. Have you ever been denied a license, permit, or privilege to operate a motor vehicle?" value={form.requiredQuestions.deniedLicense} onChange={(v) => patch('requiredQuestions', { ...form.requiredQuestions, deniedLicense: v })} />
@@ -462,7 +481,7 @@ export function DriverApplicationWizard({ token }: Props) {
 
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-800 leading-relaxed font-medium">
               I certify that I have read and understand the driver license requirements in 49 CFR Parts 383 and 391.
               The license information below is the only license I will possess.
             </p>
@@ -492,7 +511,7 @@ export function DriverApplicationWizard({ token }: Props) {
                 checked={form.licenseCertificationAccepted}
                 onChange={(e) => patch('licenseCertificationAccepted', e.target.checked)}
               />
-              <span className="text-sm text-slate-700">I certify the above license information is accurate and complete.</span>
+              <span className="text-sm font-medium text-slate-900">I certify the above license information is accurate and complete.</span>
             </label>
             {fieldErrors.licenseCertificationAccepted ? (
               <p className="text-xs text-red-600">{fieldErrors.licenseCertificationAccepted}</p>
@@ -504,7 +523,7 @@ export function DriverApplicationWizard({ token }: Props) {
           <div className="space-y-6">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-slate-800">Driving experience</h3>
+                <h3 className="text-sm font-semibold text-slate-900">Driving experience</h3>
                 <button
                   type="button"
                   className="text-xs text-sky-700 font-medium"
@@ -556,7 +575,7 @@ export function DriverApplicationWizard({ token }: Props) {
                   checked={form.noAccidents}
                   onChange={(e) => patch('noAccidents', e.target.checked)}
                 />
-                <span className="text-sm font-medium text-slate-800">No accidents in the past 3 years</span>
+                <span className="text-sm font-semibold text-slate-900">No accidents in the past 3 years</span>
               </label>
               {!form.noAccidents && (
                 <>
@@ -612,7 +631,7 @@ export function DriverApplicationWizard({ token }: Props) {
                   checked={form.noConvictions}
                   onChange={(e) => patch('noConvictions', e.target.checked)}
                 />
-                <span className="text-sm font-medium text-slate-800">No traffic convictions in the past 3 years</span>
+                <span className="text-sm font-semibold text-slate-900">No traffic convictions in the past 3 years</span>
               </label>
               {!form.noConvictions && (
                 <>
@@ -670,7 +689,7 @@ export function DriverApplicationWizard({ token }: Props) {
             {form.employments.map((emp, i) => (
               <div key={i} className="rounded-xl border border-slate-200 p-4 bg-slate-50/50 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Employer {i + 1}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Employer {i + 1}</p>
                   {form.employments.length > 1 ? (
                     <button
                       type="button"
@@ -774,7 +793,7 @@ export function DriverApplicationWizard({ token }: Props) {
 
         {step === 5 && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-700 leading-relaxed">
+            <div className="rounded-xl bg-slate-50 border border-slate-300 p-4 text-sm text-slate-900 leading-relaxed font-medium">
               <p className="mb-2">
                 I authorize {company?.name} and its agents to obtain Motor Vehicle Records, PSP reports,
                 and employment history as required by 49 CFR 391.23 and §40.25(g).
@@ -785,12 +804,12 @@ export function DriverApplicationWizard({ token }: Props) {
             </div>
             <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-slate-200 p-4">
               <input type="checkbox" className="mt-1" checked={form.authorizationAccepted} onChange={(e) => patch('authorizationAccepted', e.target.checked)} />
-              <span className="text-sm text-slate-700">I authorize the inquiries described above.</span>
+              <span className="text-sm font-medium text-slate-900">I authorize the inquiries described above.</span>
             </label>
             {fieldErrors.authorizationAccepted ? <p className="text-xs text-red-600">{fieldErrors.authorizationAccepted}</p> : null}
             <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-slate-200 p-4">
               <input type="checkbox" className="mt-1" checked={form.finalCertificationAccepted} onChange={(e) => patch('finalCertificationAccepted', e.target.checked)} />
-              <span className="text-sm text-slate-700">I certify this application is truthful and complete.</span>
+              <span className="text-sm font-medium text-slate-900">I certify this application is truthful and complete.</span>
             </label>
             {fieldErrors.finalCertificationAccepted ? <p className="text-xs text-red-600">{fieldErrors.finalCertificationAccepted}</p> : null}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

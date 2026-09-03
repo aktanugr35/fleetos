@@ -243,6 +243,7 @@ export class DriverIntakePdfService {
       ${field('Name', dash(fullName))}
       ${field('DOB', fmtDate(form.dateOfBirth))}
       ${field('SSN', dash(form.socialSecurityNumber))}
+      ${field('EIN', dash(form.employerIdentificationNumber))}
       ${field('Phone', dash(form.telephone))}
       ${field('Email', dash(form.email))}
       ${field('Maiden', dash(form.maidenName))}

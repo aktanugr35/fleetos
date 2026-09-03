@@ -84,7 +84,7 @@ export function DocumentUploadStep({
       <header className="mb-6">
         <p className="text-xs uppercase tracking-wider text-sky-700 font-semibold mb-1">Final step</p>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Upload your documents</h1>
-        <p className="text-slate-600 mt-1 text-sm">
+        <p className="text-slate-800 mt-1 text-sm font-medium">
           {driverName ? `${driverName}, ` : ''}please add clear photos of the documents below
           {companyName ? ` for ${companyName}` : ''}. All are required.
         </p>
@@ -94,7 +94,7 @@ export function DocumentUploadStep({
             style={{ width: `${(completed / docs.length) * 100}%` }}
           />
         </div>
-        <p className="text-xs text-slate-500 mt-2">{completed} of {docs.length} added</p>
+        <p className="text-xs font-medium text-slate-700 mt-2">{completed} of {docs.length} added</p>
       </header>
 
       {error ? (
@@ -125,7 +125,7 @@ export function DocumentUploadStep({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-900">{d.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-700 mt-0.5">
                     {selected ? files[d.category]?.name : 'JPG or PNG · a phone photo is fine'}
                   </p>
                 </div>

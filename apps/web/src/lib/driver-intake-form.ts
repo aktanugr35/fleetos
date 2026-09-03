@@ -53,6 +53,7 @@ export interface DriverIntakeForm {
   residency: ResidencyEntry[];
   dateOfBirth: string;
   socialSecurityNumber: string;
+  employerIdentificationNumber: string;
   telephone: string;
   email: string;
   emergencyContactName: string;
@@ -123,22 +124,19 @@ const emptyEmployment = (): EmploymentEntry => ({
   previousEmployerPhone: '',
 });
 
-export function createEmptyDriverIntakeForm(hint?: {
-  firstName?: string | null;
-  lastName?: string | null;
-  email?: string | null;
-  phone?: string | null;
-}): DriverIntakeForm {
+/** Applicants fill every field themselves — nothing is pre-filled from our records. */
+export function createEmptyDriverIntakeForm(): DriverIntakeForm {
   return {
-    firstName: hint?.firstName || '',
+    firstName: '',
     middleName: '',
     maidenName: '',
-    lastName: hint?.lastName || '',
+    lastName: '',
     residency: [emptyResidency(), emptyResidency(), emptyResidency()],
     dateOfBirth: '',
     socialSecurityNumber: '',
-    telephone: hint?.phone || '',
-    email: hint?.email || '',
+    employerIdentificationNumber: '',
+    telephone: '',
+    email: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     emergencyContactEmail: '',
