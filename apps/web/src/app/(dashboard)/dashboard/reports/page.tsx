@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Toast } from '@/components/ui/Toast';
+import { MonthlyGrossChart } from '@/components/reports/MonthlyGrossChart';
 import { formatCurrency } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { usePermission } from '@/hooks/usePermission';
@@ -201,11 +202,6 @@ export default function ReportsPage() {
       setExporting(false);
     }
   };
-
-  const maxMonthRev = useMemo(() => {
-    const arr = data?.revenueByMonth ?? [];
-    return Math.max(1, ...arr.map((m) => m.revenueCents));
-  }, [data]);
 
   if (!allowed) {
     return (
@@ -475,26 +471,7 @@ export default function ReportsPage() {
             {!data?.revenueByMonth.length ? (
               <p className="text-sm text-[var(--text-muted)] py-8 text-center">No delivered revenue in this range.</p>
             ) : (
-              <div className="flex items-end gap-2 h-52 px-1">
-                {data.revenueByMonth.map((row, i) => {
-                  const h = (row.revenueCents / maxMonthRev) * 100;
-                  const last = i === data.revenueByMonth.length - 1;
-                  return (
-                    <div key={row.monthKey} className="flex-1 flex flex-col items-center gap-1 min-w-0 group/bar">
-                      <div className="text-[10px] text-[var(--text-muted)] opacity-0 group-hover/bar:opacity-100 transition truncate max-w-full">
-                        {formatCurrency(row.revenueCents)}
-                      </div>
-                      <div
-                        className={`w-full max-w-[3rem] mx-auto rounded-t-md transition ${
-                          last ? 'bg-blue-600' : 'bg-blue-500/50 dark:bg-blue-500/40'
-                        }`}
-                        style={{ height: `${Math.max(4, h)}%` }}
-                      />
-                      <div className="text-[10px] text-[var(--text-muted)] truncate max-w-full text-center">{row.label}</div>
-                    </div>
-                  );
-                })}
-              </div>
+              <MonthlyGrossChart data={data.revenueByMonth} />
             )}
           </div>
         </div>

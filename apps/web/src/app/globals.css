@@ -606,6 +606,69 @@ html[data-theme="light"] .dashboard-hero {
   cursor: pointer;
 }
 
+.report-chart-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--haulyard-primary) 4%, var(--bg-secondary)), var(--bg-secondary));
+}
+
+.report-chart-svg {
+  display: block;
+  width: 100%;
+  /* The viewBox is sized from the measured width, so 1 unit == 1 CSS pixel. */
+  height: 280px;
+  overflow: visible;
+}
+
+.report-chart-grid {
+  stroke: color-mix(in srgb, var(--border-color) 85%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.report-chart-axis {
+  stroke: var(--border-color);
+  stroke-width: 1;
+}
+
+.report-chart-axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.report-chart-month {
+  fill: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.report-chart-month.is-active {
+  fill: var(--haulyard-primary);
+  font-weight: 700;
+}
+
+.report-chart-value {
+  fill: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-chart-band {
+  fill: var(--surface-hover);
+}
+
+.report-chart-bar {
+  transition: filter 0.15s ease;
+}
+
+.report-chart-bar.is-active {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--haulyard-primary) 45%, transparent));
+}
+
+.report-chart-slot {
+  cursor: pointer;
+}
+
 .dashboard-compliance-bar {
   height: 6px;
   border-radius: 999px;
