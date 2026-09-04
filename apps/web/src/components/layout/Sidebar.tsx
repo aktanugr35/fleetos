@@ -40,6 +40,28 @@ const navigation: NavItem[] = [
     ),
   },
   {
+    label: 'My Pay',
+    href: '/dashboard/my-statements',
+    permission: 'portal:my-statements',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" />
+        <path d="M7 12h.01" /><path d="M17 12h.01" />
+      </svg>
+    ),
+  },
+  {
+    label: 'My Documents',
+    href: '/dashboard/my-compliance',
+    permission: 'portal:my-compliance',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5" /><path d="M9 13h6" /><path d="M9 17h4" />
+      </svg>
+    ),
+  },
+  {
     label: 'My Fuel',
     href: '/dashboard/my-fuel',
     permission: 'portal:my-fuel',
@@ -215,7 +237,9 @@ const bottomNavigation: NavItem[] = [
 const mobilePrimaryRoutes = new Set([
   '/dashboard',
   '/dashboard/my-loads',
+  '/dashboard/my-statements',
   '/dashboard/my-fuel',
+  '/dashboard/my-compliance',
   '/dashboard/loads',
   '/dashboard/drivers',
   '/dashboard/settlements',

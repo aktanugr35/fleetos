@@ -61,7 +61,21 @@ export interface DriverFuelWeek {
   entries: DriverFuelEntry[];
 }
 
+export interface DriverWeekTotals {
+  weekStart: string;
+  weekEnd: string;
+  loadCount: number;
+  totalMiles: number;
+  grossCents: number;
+}
+
 export interface DriverPortalSummary {
+  driver: { id: string; firstName: string; lastName: string };
+  currentWeek: DriverWeekTotals & { paidLoadCount: number };
+  last4Weeks: DriverWeekTotals;
+}
+
+export interface DriverStatements {
   driver: { id: string; firstName: string; lastName: string };
   totals: { last4WeeksCents: number; ytdCents: number; allTimeCents: number };
   lastStatement: {
@@ -76,14 +90,6 @@ export interface DriverPortalSummary {
     netCents: number;
     loadCount: number;
   } | null;
-  currentWeek: {
-    weekStart: string;
-    weekEnd: string;
-    loadCount: number;
-    totalMiles: number;
-    grossCents: number;
-    paidLoadCount: number;
-  } | null;
   weeklyEarnings: Array<{
     settlementId: string;
     statementNumber: string | null;
@@ -94,11 +100,49 @@ export interface DriverPortalSummary {
   }>;
 }
 
+export type DriverComplianceStatus = 'VALID' | 'DUE_SOON' | 'EXPIRED' | 'MISSING' | 'NA';
+
+export interface DriverComplianceItem {
+  key: string;
+  label: string;
+  category: string;
+  detail: string | null;
+  expiryDate: string | null;
+  status: DriverComplianceStatus;
+  daysRemaining: number | null;
+}
+
+export interface DriverCompliance {
+  driver: { id: string; firstName: string; lastName: string; cdlNumber: string; cdlState: string };
+  items: DriverComplianceItem[];
+}
+
 export const WEEK_RANGE_OPTIONS = [4, 8, 12, 26, 52];
 
 export async function fetchDriverSummary(): Promise<DriverPortalSummary> {
   const res = await api.get('/driver-portal/summary');
   return res.data.data;
+}
+
+export async function fetchDriverStatements(): Promise<DriverStatements> {
+  const res = await api.get('/driver-portal/statements');
+  return res.data.data;
+}
+
+export async function fetchDriverCompliance(): Promise<DriverCompliance> {
+  const res = await api.get('/driver-portal/compliance');
+  return res.data.data;
+}
+
+/** US formatting regardless of the phone's locale, matching the rest of the app's currency. */
+export function formatMiles(miles: number): string {
+  return miles.toLocaleString('en-US');
+}
+
+/** Revenue per mile — the number drivers actually compare loads on. */
+export function ratePerMile(grossCents: number, miles: number): number | null {
+  if (!miles) return null;
+  return grossCents / 100 / miles;
 }
 
 export async function fetchDriverLoadWeeks(weeks: number): Promise<DriverLoadWeek[]> {

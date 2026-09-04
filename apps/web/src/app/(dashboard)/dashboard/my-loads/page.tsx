@@ -11,6 +11,7 @@ import { logErrorDev } from '@/lib/logger';
 import {
   WEEK_RANGE_OPTIONS,
   fetchDriverLoadWeeks,
+  formatMiles,
   formatWeekRange,
   type DriverLoad,
   type DriverLoadWeek,
@@ -71,8 +72,8 @@ function LoadCard({ load }: { load: DriverLoad }) {
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
         <span className="text-[var(--text-muted)]">
-          {formatDate(workDate)} · {load.totalMiles.toLocaleString()} mi
-          {load.deadheadMiles > 0 ? ` (${load.deadheadMiles.toLocaleString()} deadhead)` : ''}
+          {formatDate(workDate)} · {formatMiles(load.totalMiles)} mi
+          {load.deadheadMiles > 0 ? ` (${formatMiles(load.deadheadMiles)} deadhead)` : ''}
         </span>
         <span className="font-semibold text-[var(--text-primary)]">
           {formatCurrency(load.grossCents)}
@@ -92,7 +93,7 @@ function WeekCard({ week }: { week: DriverLoadWeek }) {
           </p>
           <p className="text-xs text-[var(--text-muted)]">
             {week.loadCount} load{week.loadCount === 1 ? '' : 's'} ·{' '}
-            {week.totalMiles.toLocaleString()} mi
+            {formatMiles(week.totalMiles)} mi
             {week.paidLoadCount < week.loadCount
               ? ` · ${week.loadCount - week.paidLoadCount} awaiting payout`
               : ''}

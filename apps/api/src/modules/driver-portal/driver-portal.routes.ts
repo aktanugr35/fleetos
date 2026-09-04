@@ -10,6 +10,8 @@ const router = Router();
 router.use(authMiddleware, tenantMiddleware, linkedDriverMiddleware, rbacMiddleware(['DRIVER']));
 
 router.get('/summary', driverPortalController.getSummary);
+router.get('/statements', driverPortalController.getStatements);
+router.get('/compliance', driverPortalController.getCompliance);
 router.get('/loads', driverPortalController.getLoads);
 router.get('/fuel', driverPortalController.getFuel);
 

@@ -8,6 +8,8 @@ export type FleetPermission =
   | 'fleet:dashboard'
   | 'portal:my-loads'
   | 'portal:my-fuel'
+  | 'portal:my-statements'
+  | 'portal:my-compliance'
   | 'company:write'
   | 'drivers:list'
   | 'drivers:write'
@@ -58,6 +60,8 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   // Driver-only self-service pages; office staff read the same data from the fleet pages.
   'portal:my-loads': [UserRole.DRIVER],
   'portal:my-fuel': [UserRole.DRIVER],
+  'portal:my-statements': [UserRole.DRIVER],
+  'portal:my-compliance': [UserRole.DRIVER],
   'company:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'drivers:list': STAFF_ROLES,
   'drivers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],

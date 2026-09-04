@@ -1,4 +1,4 @@
-import type { LoadStatus, LoadStopType } from '@prisma/client';
+import type { ComplianceStatus, LoadStatus, LoadStopType } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { calendarDayInZone, getLoadWorkDate } from '../../utils/datePeriod';
@@ -139,6 +139,41 @@ function rangeStart(weeks: number): { cutoffDay: string; queryFrom: Date } {
   const cutoffDay = addDays(weekStartOf(today()), -7 * (weeks - 1));
   return { cutoffDay, queryFrom: isoDayToUtcDate(addDays(cutoffDay, -1)) };
 }
+
+export interface DriverComplianceItem {
+  key: string;
+  label: string;
+  category: string;
+  detail: string | null;
+  expiryDate: Date | null;
+  status: ComplianceStatus;
+  daysRemaining: number | null;
+}
+
+/** Same 30-day warning window the office compliance board uses. */
+const COMPLIANCE_WARN_DAYS = 30;
+
+function expiryStatus(expiry: Date | null): {
+  status: ComplianceStatus;
+  daysRemaining: number | null;
+} {
+  if (!expiry) return { status: 'MISSING', daysRemaining: null };
+  const days = Math.floor((expiry.getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return { status: 'EXPIRED', daysRemaining: days };
+  if (days <= COMPLIANCE_WARN_DAYS) return { status: 'DUE_SOON', daysRemaining: days };
+  return { status: 'VALID', daysRemaining: days };
+}
+
+const STATUS_RANK: Record<ComplianceStatus, number> = {
+  EXPIRED: 0,
+  DUE_SOON: 1,
+  MISSING: 2,
+  VALID: 3,
+  NA: 4,
+};
+
+/** CDL and the medical card live on the driver row, so their records would be duplicates. */
+const DRIVER_ROW_TYPE_KEYS = new Set(['DRIVER_CDL', 'DRIVER_MEDICAL_CARD']);
 
 export class DriverPortalService {
   private async requireDriver(tenantId: string, driverId: string) {
@@ -336,7 +371,120 @@ export class DriverPortalService {
     return [...buckets.values()].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
   }
 
+  /** Read-only compliance view: the driver can watch their own expiry dates but not edit them. */
+  async getCompliance(tenantId: string, driverId: string) {
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId, isActive: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        cdlNumber: true,
+        cdlState: true,
+        cdlExpiryDate: true,
+        medicalCardExpiry: true,
+      },
+    });
+    if (!driver) {
+      throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
+    }
+
+    const records = await prisma.complianceRecord.findMany({
+      where: { companyId: tenantId, driverId, status: { not: 'NA' } },
+      select: {
+        expiryDate: true,
+        nextDueAt: true,
+        referenceNumber: true,
+        complianceType: { select: { key: true, label: true, category: true } },
+      },
+    });
+
+    const items: DriverComplianceItem[] = [
+      {
+        key: 'DRIVER_CDL',
+        label: 'CDL License',
+        category: 'Licensing',
+        detail: `${driver.cdlNumber} · ${driver.cdlState}`,
+        expiryDate: driver.cdlExpiryDate,
+        ...expiryStatus(driver.cdlExpiryDate),
+      },
+      {
+        key: 'DRIVER_MEDICAL_CARD',
+        label: 'Medical Card (DOT Physical)',
+        category: 'Medical',
+        detail: null,
+        expiryDate: driver.medicalCardExpiry,
+        ...expiryStatus(driver.medicalCardExpiry),
+      },
+    ];
+
+    for (const record of records) {
+      if (DRIVER_ROW_TYPE_KEYS.has(record.complianceType.key)) continue;
+      const expiry = record.expiryDate ?? record.nextDueAt;
+      items.push({
+        key: record.complianceType.key,
+        label: record.complianceType.label,
+        category: record.complianceType.category,
+        detail: record.referenceNumber,
+        expiryDate: expiry,
+        ...expiryStatus(expiry),
+      });
+    }
+
+    items.sort((a, b) => {
+      const rank = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+      if (rank !== 0) return rank;
+      return (a.daysRemaining ?? Number.POSITIVE_INFINITY) - (b.daysRemaining ?? Number.POSITIVE_INFINITY);
+    });
+
+    return {
+      driver: {
+        id: driver.id,
+        firstName: driver.firstName,
+        lastName: driver.lastName,
+        cdlNumber: driver.cdlNumber,
+        cdlState: driver.cdlState,
+      },
+      items,
+    };
+  }
+
+  /** Home screen: how the week in progress is going, next to the last four weeks. */
   async getSummary(tenantId: string, driverId: string) {
+    const driver = await this.requireDriver(tenantId, driverId);
+    const weeks = await this.getWeeklyLoads(tenantId, driverId, 4);
+
+    const currentWeekStart = weekStartOf(today());
+    const current = weeks.find((week) => week.weekStart === currentWeekStart);
+    const range = weeks.reduce(
+      (acc, week) => ({
+        loadCount: acc.loadCount + week.loadCount,
+        totalMiles: acc.totalMiles + week.totalMiles,
+        grossCents: acc.grossCents + week.grossCents,
+      }),
+      { loadCount: 0, totalMiles: 0, grossCents: 0 },
+    );
+
+    return {
+      driver,
+      currentWeek: {
+        weekStart: currentWeekStart,
+        weekEnd: weekEndOf(currentWeekStart),
+        loadCount: current?.loadCount ?? 0,
+        paidLoadCount: current?.paidLoadCount ?? 0,
+        totalMiles: current?.totalMiles ?? 0,
+        grossCents: current?.grossCents ?? 0,
+      },
+      last4Weeks: {
+        weekStart: addDays(currentWeekStart, -21),
+        weekEnd: weekEndOf(currentWeekStart),
+        ...range,
+      },
+    };
+  }
+
+  /** Statements screen: what was actually paid out, week by week. */
+  async getStatements(tenantId: string, driverId: string) {
     const driver = await this.requireDriver(tenantId, driverId);
 
     const settlements = await prisma.settlement.findMany({
@@ -370,7 +518,6 @@ export class DriverPortalService {
     });
 
     const latest = settlements[0];
-    const currentWeek = (await this.getWeeklyLoads(tenantId, driverId, 1))[0] ?? null;
 
     return {
       driver,
@@ -387,16 +534,6 @@ export class DriverPortalService {
             creditCents: latest.creditTotal,
             netCents: latest.netAmount,
             loadCount: latest._count.lines,
-          }
-        : null,
-      currentWeek: currentWeek
-        ? {
-            weekStart: currentWeek.weekStart,
-            weekEnd: currentWeek.weekEnd,
-            loadCount: currentWeek.loadCount,
-            totalMiles: currentWeek.totalMiles,
-            grossCents: currentWeek.grossCents,
-            paidLoadCount: currentWeek.paidLoadCount,
           }
         : null,
       weeklyEarnings: settlements.map((settlement) => ({

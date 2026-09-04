@@ -22,6 +22,24 @@ export const driverPortalController = {
     }
   },
 
+  async getStatements(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await driverPortalService.getStatements(req.tenantId!, requireLinkedDriver(req));
+      res.json(successResponse(data));
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getCompliance(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await driverPortalService.getCompliance(req.tenantId!, requireLinkedDriver(req));
+      res.json(successResponse(data));
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getLoads(req: Request, res: Response, next: NextFunction) {
     try {
       const { weeks } = driverPortalWeeksSchema.parse(req.query);

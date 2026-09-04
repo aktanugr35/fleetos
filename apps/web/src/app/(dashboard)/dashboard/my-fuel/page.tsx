@@ -16,7 +16,7 @@ import {
 } from '@/lib/driver-portal';
 
 function formatGallons(gallons: number): string {
-  return `${gallons.toLocaleString(undefined, { maximumFractionDigits: 1 })} gal`;
+  return `${gallons.toLocaleString('en-US', { maximumFractionDigits: 1 })} gal`;
 }
 
 function WeekCard({ week }: { week: DriverFuelWeek }) {

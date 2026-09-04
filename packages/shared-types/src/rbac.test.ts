@@ -28,6 +28,8 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.DRIVER, 'fleet:dashboard'), true);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'portal:my-loads'), true);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'portal:my-fuel'), true);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'portal:my-statements'), true);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'portal:my-compliance'), true);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:dispatch'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:list'), false);
@@ -38,6 +40,7 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.COMPANY_ADMIN, 'portal:my-loads'), false);
     assert.equal(roleHasPermission(UserRole.DISPATCHER, 'portal:my-loads'), false);
     assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'portal:my-fuel'), false);
+    assert.equal(roleHasPermission(UserRole.COMPANY_ADMIN, 'portal:my-compliance'), false);
   });
 
   it('driver cannot view passwords', () => {
