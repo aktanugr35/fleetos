@@ -20,6 +20,11 @@ import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
 import type { DashboardLoadRow, DashboardSummary, RevenueChartPoint } from '@/lib/dashboard-types';
 import { useAuthStore } from '@/store/authStore';
+import {
+  fetchDriverSummary,
+  formatWeekRange,
+  type DriverPortalSummary,
+} from '@/lib/driver-portal';
 import api from '@/lib/api';
 
 function StatusBadge({ status }: { status: string }) {
@@ -39,28 +44,23 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function Figure({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-gray-500">{label}</p>
+      <p className={`mt-0.5 ${strong ? 'text-lg font-semibold text-gray-100' : 'font-medium text-gray-300'}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 interface ComplianceSummary {
   expired: number;
   warning: number;
   valid: number;
 }
 
-interface DriverEarningsDashboard {
-  driver: { id: string; firstName: string; lastName: string };
-  totals: {
-    last4WeeksCents: number;
-    ytdCents: number;
-    allTimeCents: number;
-  };
-  weeklyEarnings: Array<{
-    settlementId: string;
-    statementNumber: string | null;
-    periodStart: string;
-    periodEnd: string;
-    status: string;
-    netAmountCents: number;
-  }>;
-}
 
 interface StatCardProps {
   label: string;
@@ -147,7 +147,7 @@ export default function DashboardPage() {
   const [compliance, setCompliance] = useState<ComplianceSummary>({ expired: 0, warning: 0, valid: 0 });
   const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
   const [recentLoads, setRecentLoads] = useState<DashboardLoadRow[]>([]);
-  const [driverDashboard, setDriverDashboard] = useState<DriverEarningsDashboard | null>(null);
+  const [driverDashboard, setDriverDashboard] = useState<DriverPortalSummary | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const todayLabel = useMemo(
@@ -192,8 +192,7 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setFetchError(null);
-      const res = await api.get('/reports/driver-earnings');
-      setDriverDashboard(res.data.data);
+      setDriverDashboard(await fetchDriverSummary());
     } catch (err) {
       logErrorDev('driver-dashboard', err);
       const message = getApiErrorMessage(err, 'Failed to load earnings dashboard');
@@ -255,6 +254,71 @@ export default function DashboardPage() {
             accentColor="var(--haulyard-secondary)"
           />
         </div>
+
+        {driverDashboard?.lastStatement ? (
+          <div className="card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="dashboard-section-title">Last statement</h3>
+                <p className="text-xs text-gray-500">
+                  {formatDate(driverDashboard.lastStatement.periodStart)} —{' '}
+                  {formatDate(driverDashboard.lastStatement.periodEnd)}
+                  {driverDashboard.lastStatement.statementNumber
+                    ? ` · ${driverDashboard.lastStatement.statementNumber}`
+                    : ''}
+                </p>
+              </div>
+              <StatusBadge status={driverDashboard.lastStatement.status} />
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Figure label="Gross" value={formatCurrency(driverDashboard.lastStatement.grossCents)} />
+              <Figure
+                label="Deductions"
+                value={`−${formatCurrency(driverDashboard.lastStatement.deductionCents)}`}
+              />
+              <Figure
+                label="Reimbursements"
+                value={formatCurrency(driverDashboard.lastStatement.creditCents)}
+              />
+              <Figure label="Net paid" value={formatCurrency(driverDashboard.lastStatement.netCents)} strong />
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              {driverDashboard.lastStatement.loadCount} load
+              {driverDashboard.lastStatement.loadCount === 1 ? '' : 's'} on this statement
+            </p>
+          </div>
+        ) : null}
+
+        {driverDashboard?.currentWeek ? (
+          <div className="card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="dashboard-section-title">This week</h3>
+                <p className="text-xs text-gray-500">
+                  {formatWeekRange(
+                    driverDashboard.currentWeek.weekStart,
+                    driverDashboard.currentWeek.weekEnd,
+                  )}
+                </p>
+              </div>
+              <Link href="/dashboard/my-loads" className="text-sm font-medium text-blue-400">
+                View loads
+              </Link>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <Figure label="Loads" value={String(driverDashboard.currentWeek.loadCount)} />
+              <Figure
+                label="Miles"
+                value={driverDashboard.currentWeek.totalMiles.toLocaleString()}
+              />
+              <Figure
+                label="Gross"
+                value={formatCurrency(driverDashboard.currentWeek.grossCents)}
+                strong
+              />
+            </div>
+          </div>
+        ) : null}
 
         <div className="card">
           <div className="mb-4 flex items-center justify-between gap-3">

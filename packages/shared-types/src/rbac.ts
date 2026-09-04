@@ -6,6 +6,8 @@ import { UserRole } from './enums';
  */
 export type FleetPermission =
   | 'fleet:dashboard'
+  | 'portal:my-loads'
+  | 'portal:my-fuel'
   | 'company:write'
   | 'drivers:list'
   | 'drivers:write'
@@ -53,6 +55,9 @@ export const STAFF_ROLES: UserRole[] = [
  */
 export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'fleet:dashboard': [...STAFF_ROLES, UserRole.DRIVER],
+  // Driver-only self-service pages; office staff read the same data from the fleet pages.
+  'portal:my-loads': [UserRole.DRIVER],
+  'portal:my-fuel': [UserRole.DRIVER],
   'company:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'drivers:list': STAFF_ROLES,
   'drivers:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],

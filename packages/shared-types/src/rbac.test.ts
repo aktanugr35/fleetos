@@ -24,12 +24,20 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'loads:dispatch'), false);
   });
 
-  it('DRIVER can only access driver dashboard', () => {
+  it('DRIVER can only access the self-service portal', () => {
     assert.equal(roleHasPermission(UserRole.DRIVER, 'fleet:dashboard'), true);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'portal:my-loads'), true);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'portal:my-fuel'), true);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'loads:dispatch'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'settlements:create'), false);
+  });
+
+  it('office staff do not get the driver portal pages', () => {
+    assert.equal(roleHasPermission(UserRole.COMPANY_ADMIN, 'portal:my-loads'), false);
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'portal:my-loads'), false);
+    assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'portal:my-fuel'), false);
   });
 
   it('driver cannot view passwords', () => {
