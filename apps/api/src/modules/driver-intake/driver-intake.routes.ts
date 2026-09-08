@@ -21,7 +21,7 @@ const publicIntakeLimiter = rateLimit({
 
 const intakeUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024, files: REQUIRED_INTAKE_DOCUMENTS.length },
+  limits: { fileSize: 2 * 1024 * 1024, files: REQUIRED_INTAKE_DOCUMENTS.length },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);

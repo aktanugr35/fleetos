@@ -6,9 +6,10 @@ server {
     listen 80;
     server_name panel.valleytransusa.com;
 
-    # certbot --nginx will add SSL and redirect
-
-    client_max_body_size 12M;
+    # certbot --nginx will add SSL and redirect. Copy the next line into the
+    # `listen 443` server block it creates — otherwise HTTPS keeps nginx's 1m
+    # default and driver application photos fail with 413.
+    client_max_body_size 25M;
 
     location /api/ {
         proxy_pass http://127.0.0.1:3001;

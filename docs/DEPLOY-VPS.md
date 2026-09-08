@@ -67,6 +67,12 @@ sudo nano /etc/nginx/sites-available/haulyard   # set server_name
 sudo ln -sf /etc/nginx/sites-available/haulyard /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d panel.valleytransusa.com
+
+# After certbot, confirm the body-size limit is on the HTTPS server too.
+# Missing this is what makes driver application photo uploads return 413.
+sudo nginx -T | grep client_max_body_size
+# If empty, add `client_max_body_size 25M;` inside the `listen 443 ssl` server
+# block in /etc/nginx/sites-available/haulyard, then: sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## 5. First use

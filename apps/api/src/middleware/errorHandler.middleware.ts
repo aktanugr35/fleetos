@@ -69,6 +69,24 @@ export function errorHandler(
     );
   }
 
+  // Multer rejects oversized or unexpected uploads before the route handler runs.
+  if ((err as any).name === 'MulterError') {
+    const code = (err as any).code;
+    if (code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json(
+        errorResponse('FILE_TOO_LARGE', 'That file is too large. Please upload a smaller photo.')
+      );
+    }
+    return res.status(400).json(errorResponse('UPLOAD_REJECTED', err.message));
+  }
+
+  // body-parser signals a JSON body over the configured limit.
+  if ((err as any).type === 'entity.too.large') {
+    return res.status(413).json(
+      errorResponse('PAYLOAD_TOO_LARGE', 'The request is too large to process.')
+    );
+  }
+
   // Prisma known error codes
   if ((err as any).code === 'P2002') {
     return res.status(409).json(

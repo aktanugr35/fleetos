@@ -278,26 +278,23 @@ export class DriverIntakeService {
       throw new AppError(400, 'FORM_NOT_SUBMITTED', 'Complete the application form before uploading documents');
     }
 
-    const byCategory = new Map<IntakeDocCategory, Buffer>();
-    for (const file of files) {
-      byCategory.set(file.category, file.buffer);
+    const incoming = files
+      .map((file) => {
+        const def = REQUIRED_INTAKE_DOCUMENTS.find((d) => d.category === file.category);
+        return def ? { def, buffer: file.buffer } : null;
+      })
+      .filter((row): row is { def: (typeof REQUIRED_INTAKE_DOCUMENTS)[number]; buffer: Buffer } => Boolean(row));
+
+    if (incoming.length === 0) {
+      throw new AppError(400, 'MISSING_DOCUMENTS', 'Attach at least one photo.');
     }
 
-    const missing = REQUIRED_INTAKE_DOCUMENTS.filter((d) => !byCategory.get(d.category)?.length);
-    if (missing.length > 0) {
-      throw new AppError(
-        400,
-        'MISSING_DOCUMENTS',
-        `Missing required photos: ${missing.map((d) => d.title).join(', ')}`,
-      );
-    }
-
-    // Remove any prior intake photos so re-submission keeps a single clean set.
+    // Replace only the types in this request so photos can arrive one at a time.
     const priorDocs = await prisma.document.findMany({
       where: {
         driverId: record.driverId,
         companyId: record.companyId,
-        type: { in: REQUIRED_INTAKE_DOCUMENTS.map((d) => d.type) },
+        type: { in: incoming.map((row) => row.def.type) },
       },
       select: { id: true },
     });
@@ -305,9 +302,8 @@ export class DriverIntakeService {
       await documentsService.delete(record.companyId, doc.id).catch(() => undefined);
     }
 
-    for (const def of REQUIRED_INTAKE_DOCUMENTS) {
-      const raw = byCategory.get(def.category)!;
-      const png = await sharp(raw).rotate().png({ quality: 90 }).toBuffer();
+    for (const { def, buffer } of incoming) {
+      const png = await sharp(buffer).rotate().png({ quality: 90 }).toBuffer();
       const filename = `${def.type.toLowerCase()}_${record.driverId}_${Date.now()}.png`;
       const fileUrl = await documentsService.saveUploadedFile(
         record.companyId,
@@ -326,12 +322,29 @@ export class DriverIntakeService {
       });
     }
 
-    await prisma.driverIntakeToken.update({
-      where: { id: record.id },
-      data: { usedAt: new Date() },
+    const stored = await prisma.document.findMany({
+      where: {
+        driverId: record.driverId,
+        companyId: record.companyId,
+        type: { in: REQUIRED_INTAKE_DOCUMENTS.map((d) => d.type) },
+      },
+      select: { type: true },
     });
+    const storedTypes = new Set(stored.map((doc) => doc.type));
+    const missing = REQUIRED_INTAKE_DOCUMENTS.filter((d) => !storedTypes.has(d.type));
 
-    return { success: true };
+    if (missing.length === 0) {
+      await prisma.driverIntakeToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      });
+    }
+
+    return {
+      success: true,
+      complete: missing.length === 0,
+      missing: missing.map((d) => d.category),
+    };
   }
 }
 

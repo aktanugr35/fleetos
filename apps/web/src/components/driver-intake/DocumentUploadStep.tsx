@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import publicApi from '@/lib/public-api';
 import { getApiErrorMessage } from '@/lib/api-errors';
+import { compressImageFile, formatFileSize, ImageCompressionError } from '@/lib/image-compression';
 
 export interface RequiredDocument {
   category: string;
@@ -16,6 +17,9 @@ interface Props {
   requiredDocuments: RequiredDocument[];
   onComplete: () => void;
 }
+
+/** Kept under nginx's default 1 MB body limit even when photos are sent one at a time. */
+const MAX_FILE_BYTES = 800 * 1024;
 
 const DEFAULT_DOCS: RequiredDocument[] = [
   { category: 'driverLicenseFront', title: "Driver's License (Front)" },
@@ -35,22 +39,53 @@ export function DocumentUploadStep({
   const docs = requiredDocuments.length > 0 ? requiredDocuments : DEFAULT_DOCS;
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [preparing, setPreparing] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const allSelected = useMemo(
     () => docs.every((d) => Boolean(files[d.category])),
     [docs, files],
   );
+  const busy = submitting || Object.values(preparing).some(Boolean);
 
-  const handleFile = (category: string, fileList: FileList | null) => {
-    const file = fileList?.[0] ?? null;
+  const handleFile = async (category: string, fileList: FileList | null) => {
+    const picked = fileList?.[0] ?? null;
     setError(null);
-    setFiles((prev) => ({ ...prev, [category]: file }));
-    setPreviews((prev) => {
-      if (prev[category]) URL.revokeObjectURL(prev[category]);
-      return { ...prev, [category]: file ? URL.createObjectURL(file) : '' };
-    });
+
+    if (!picked) {
+      setFiles((prev) => ({ ...prev, [category]: null }));
+      setPreviews((prev) => {
+        if (prev[category]) URL.revokeObjectURL(prev[category]);
+        return { ...prev, [category]: '' };
+      });
+      return;
+    }
+
+    setPreparing((prev) => ({ ...prev, [category]: true }));
+    try {
+      const file = await compressImageFile(picked);
+      if (file.size > MAX_FILE_BYTES) {
+        setError(
+          `“${docs.find((d) => d.category === category)?.title ?? 'This photo'}” is still too large (${formatFileSize(file.size)}). Please retake it.`,
+        );
+        return;
+      }
+      setFiles((prev) => ({ ...prev, [category]: file }));
+      setPreviews((prev) => {
+        if (prev[category]) URL.revokeObjectURL(prev[category]);
+        return { ...prev, [category]: URL.createObjectURL(file) };
+      });
+    } catch (err) {
+      setError(
+        err instanceof ImageCompressionError
+          ? err.message
+          : 'Could not prepare that photo. Please try a different picture.',
+      );
+    } finally {
+      setPreparing((prev) => ({ ...prev, [category]: false }));
+    }
   };
 
   const handleSubmit = async () => {
@@ -58,22 +93,34 @@ export function DocumentUploadStep({
       setError('Please add a photo for every document.');
       return;
     }
+    const selected = docs.map((d) => files[d.category]).filter((f): f is File => Boolean(f));
+    const oversized = selected.find((file) => file.size > MAX_FILE_BYTES);
+    if (oversized) {
+      setError(
+        `One of the photos is still too large (${formatFileSize(oversized.size)}). Please retake it with a lower camera resolution.`,
+      );
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
-      const formData = new FormData();
-      for (const d of docs) {
+      // One photo per request. Five originals in a single POST is what nginx rejects with 413.
+      for (let i = 0; i < docs.length; i += 1) {
+        const d = docs[i];
         const file = files[d.category];
-        if (file) formData.append(d.category, file);
+        if (!file) continue;
+        setUploadProgress(`Uploading ${i + 1} of ${docs.length}…`);
+        const formData = new FormData();
+        formData.append(d.category, file);
+        await publicApi.post(`/public/driver-intake/${token}/documents`, formData);
       }
-      await publicApi.post(`/public/driver-intake/${token}/documents`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
       onComplete();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not upload documents'));
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -104,7 +151,9 @@ export function DocumentUploadStep({
       <div className="space-y-4">
         {docs.map((d) => {
           const preview = previews[d.category];
-          const selected = Boolean(files[d.category]);
+          const file = files[d.category];
+          const selected = Boolean(file);
+          const isPreparing = Boolean(preparing[d.category]);
           return (
             <div
               key={d.category}
@@ -125,8 +174,12 @@ export function DocumentUploadStep({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-900">{d.title}</p>
-                  <p className="text-xs text-slate-700 mt-0.5">
-                    {selected ? files[d.category]?.name : 'JPG or PNG · a phone photo is fine'}
+                  <p className="text-xs text-slate-700 mt-0.5 truncate">
+                    {isPreparing
+                      ? 'Preparing photo…'
+                      : file
+                        ? `${file.name} · ${formatFileSize(file.size)}`
+                        : 'JPG or PNG · a phone photo is fine'}
                   </p>
                 </div>
                 <label className="shrink-0 cursor-pointer">
@@ -144,7 +197,7 @@ export function DocumentUploadStep({
                     accept="image/*"
                     capture="environment"
                     className="hidden"
-                    onChange={(e) => handleFile(d.category, e.target.files)}
+                    onChange={(e) => void handleFile(d.category, e.target.files)}
                   />
                 </label>
               </div>
@@ -158,10 +211,10 @@ export function DocumentUploadStep({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={busy}
             className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm disabled:opacity-60"
           >
-            {submitting ? 'Uploading…' : 'Finish & submit'}
+            {uploadProgress ?? (submitting ? 'Uploading…' : 'Finish & submit')}
           </button>
         </div>
       </div>
