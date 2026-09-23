@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import api from '@/lib/api';
 
 export function SetupRegistrationForm() {
-  const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const [loading, setLoading] = useState(false);
@@ -59,8 +57,7 @@ export function SetupRegistrationForm() {
 
       const { user } = res.data.data;
       setAuth(user);
-      await router.refresh();
-      router.push('/dashboard');
+      window.location.assign('/dashboard');
     } catch (err) {
       setError(getApiErrorMessage(err, 'Registration failed. Please try again.'));
     } finally {

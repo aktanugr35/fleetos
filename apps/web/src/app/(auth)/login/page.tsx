@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { clearLegacyAccessTokenStorage } from '@/lib/auth-cookies';
@@ -9,7 +9,6 @@ import api from '@/lib/api';
 import { BrandWordmark } from '@/components/layout/BrandWordmark';
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -37,8 +36,7 @@ function LoginForm() {
 
       clearLegacyAccessTokenStorage();
       setAuth(user);
-      await router.refresh();
-      router.push(getRedirectPath());
+      window.location.assign(getRedirectPath());
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data

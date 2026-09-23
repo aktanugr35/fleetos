@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuthStore } from '@/store/authStore';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getInitials } from '@/lib/utils';
 import api from '@/lib/api';
@@ -15,7 +14,6 @@ import { useSidebar } from '@/components/layout/DashboardShell';
 export function Header() {
   const { user, clearAuth } = useAuthStore();
   const { mobileOpen, setMobileOpen } = useSidebar();
-  const router = useRouter();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +34,7 @@ export function Header() {
       /* ignore */
     }
     clearAuth();
-    router.push('/login');
+    window.location.replace('/login');
   };
 
   const initials = user ? getInitials(user.firstName, user.lastName) : 'U';

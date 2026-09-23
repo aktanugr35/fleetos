@@ -1,10 +1,24 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+function resolveApiBase(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_API_URL || '';
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      // Production / VPS: always same-origin through nginx /api so cookies attach.
+      return '';
+    }
+  }
+  return fromEnv || 'http://localhost:3001';
+}
 
+const API_BASE_URL = resolveApiBase();
+
+/** Login / refresh / logout must not trigger another refresh retry. /auth/me may. */
 function isAuthEndpoint(url?: string): boolean {
-  return Boolean(url?.includes('/auth/'));
+  if (!url) return false;
+  return /\/auth\/(login|refresh|logout)(\?|$|\/)/.test(url);
 }
 
 /**
@@ -67,7 +81,10 @@ api.interceptors.response.use(
       } catch (refreshError) {
         if (typeof window !== 'undefined') {
           useAuthStore.getState().clearAuth();
-          window.location.href = '/login';
+          if (!window.location.pathname.startsWith('/login')) {
+            const redirect = encodeURIComponent(window.location.pathname || '/dashboard');
+            window.location.replace(`/login?redirect=${redirect}`);
+          }
         }
         return Promise.reject(refreshError);
       }

@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import { env } from '../../config/env';
 import { authService } from './auth.service';
 import { loginSchema, changePasswordSchema } from './auth.schema';
+import { verifyAccessToken } from './auth.tokens';
 import { successResponse } from '../../utils/pagination';
 import {
   accessTokenCookieOptions,
@@ -34,15 +36,31 @@ export class AuthController {
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
       const refreshToken = req.cookies?.haulyard_refresh_token;
-      const userId = req.user?.userId;
+      let userId = req.user?.userId;
+      let accessJti = req.user?.jti;
+
+      if (!userId && typeof req.cookies?.haulyard_access_token === 'string') {
+        try {
+          const decoded = verifyAccessToken(req.cookies.haulyard_access_token, env.JWT_ACCESS_SECRET);
+          userId = decoded.userId;
+          accessJti = decoded.jti;
+        } catch {
+          // expired / invalid access cookie — still drop session cookies
+        }
+      }
 
       if (userId) {
-        await authService.logout(refreshToken, userId, req.user?.jti);
+        try {
+          await authService.logout(refreshToken ?? '', userId, accessJti);
+        } catch {
+          // revocation is best-effort; cookies must still clear
+        }
       }
 
       clearSessionCookies(res);
       res.json(successResponse({ message: 'Logged out successfully' }));
     } catch (error) {
+      clearSessionCookies(res);
       next(error);
     }
   }

@@ -39,6 +39,21 @@ export const authLimiter = rateLimit({
   },
 });
 
+/** Refresh is a normal session heartbeat — do not share the login limiter. */
+export const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many session refresh attempts. Please try again shortly.',
+    },
+  },
+});
+
 /**
  * Password reset rate limiter
  * 3 requests per hour per IP

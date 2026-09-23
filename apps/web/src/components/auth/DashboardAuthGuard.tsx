@@ -1,24 +1,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { clearLegacyAccessTokenStorage } from '@/lib/auth-cookies';
 import api from '@/lib/api';
 
 export function DashboardAuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const { setAuth, clearAuth, setSuperAdminTenantId, setSuperAdminCompanies } = useAuthStore();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
+    const rejectToLogin = async () => {
+      try {
+        await api.post('/auth/logout');
+      } catch {
+        // cookies may already be invalid
+      }
+      clearAuth();
+      if (cancelled) return;
+      const redirect = encodeURIComponent(window.location.pathname || '/dashboard');
+      window.location.replace(`/login?redirect=${redirect}`);
+    };
+
     const verify = async () => {
       clearLegacyAccessTokenStorage();
       try {
-        const res = await api.get('/auth/me');
+        const res = await api.get('/auth/me', { timeout: 12000 });
         const me = res.data.data;
         if (cancelled) return;
 
@@ -62,8 +71,7 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
         }
       } catch {
         if (!cancelled) {
-          clearAuth();
-          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+          await rejectToLogin();
         }
       }
     };
@@ -73,7 +81,7 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [pathname, router, setAuth, clearAuth, setSuperAdminTenantId, setSuperAdminCompanies]);
+  }, [setAuth, clearAuth, setSuperAdminTenantId, setSuperAdminCompanies]);
 
   if (!ready) {
     return (
