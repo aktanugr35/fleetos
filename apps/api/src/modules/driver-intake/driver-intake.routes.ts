@@ -34,6 +34,11 @@ const intakeUpload = multer({
 const router = Router();
 
 router.get(
+  '/public/driver-intake/:token/logo',
+  publicIntakeLimiter,
+  driverIntakeController.getPublicLogo,
+);
+router.get(
   '/public/driver-intake/:token',
   publicIntakeLimiter,
   driverIntakeController.getPublicContext,

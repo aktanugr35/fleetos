@@ -51,6 +51,7 @@ export class DispatcherSettlementsService {
                 deliveryLocation: true,
                 pickupDate: true,
                 deliveryDate: true,
+                driver: { select: { id: true, firstName: true, lastName: true } },
               },
             },
           },

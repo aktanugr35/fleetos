@@ -86,6 +86,16 @@ describe('buildDriverLoadsWorkbook', () => {
     assert.equal(cell.toISOString(), '2026-08-13T00:00:00.000Z');
   });
 
+  it('neutralizes formula-like text in cells', () => {
+    const workbook = buildDriverLoadsWorkbook(
+      [row({ brokerName: '=HYPERLINK("http://evil")', loadNumber: '+1+1' })],
+      meta,
+    );
+    const sheet = workbook.getWorksheet('Loads')!;
+    assert.equal(sheet.getRow(2).getCell(1).value, "'+1+1");
+    assert.equal(sheet.getRow(2).getCell(4).value, '\'=HYPERLINK("http://evil")');
+  });
+
   it('handles an empty period', () => {
     const workbook = buildDriverLoadsWorkbook([], meta);
     const totals = workbook.getWorksheet('Loads')!.getRow(2);

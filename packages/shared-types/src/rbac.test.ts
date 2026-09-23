@@ -48,8 +48,8 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.DRIVER, 'passwords:manage'), false);
   });
 
-  it('dispatcher can view but not manage passwords', () => {
-    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'passwords:view'), true);
+  it('dispatcher cannot view the credential vault', () => {
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'passwords:view'), false);
     assert.equal(roleHasPermission(UserRole.DISPATCHER, 'passwords:manage'), false);
   });
 

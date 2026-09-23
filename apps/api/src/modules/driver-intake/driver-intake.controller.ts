@@ -7,6 +7,14 @@ import {
 import { successResponse } from '../../utils/pagination';
 
 export class DriverIntakeController {
+  async getPublicLogo(req: Request, res: Response, next: NextFunction) {
+    try {
+      await driverIntakeService.sendPublicLogo(req.params.token as string, res);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getPublicContext(req: Request, res: Response, next: NextFunction) {
     try {
       const data = await driverIntakeService.getPublicContext(req.params.token as string);

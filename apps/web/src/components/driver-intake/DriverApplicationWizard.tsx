@@ -15,8 +15,10 @@ import { DocumentUploadStep, type RequiredDocument } from './DocumentUploadStep'
 interface CompanyInfo {
   name: string;
   dotNumber: string;
-  logoUrl?: string | null;
+  hasLogo?: boolean;
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface Props {
   token: string;
@@ -270,9 +272,13 @@ export function DriverApplicationWizard({ token }: Props) {
             </h1>
             <p className="text-slate-700 mt-1 text-sm font-medium">{company?.name}</p>
           </div>
-          {company?.logoUrl ? (
+          {company?.hasLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={company.logoUrl} alt="" className="h-12 w-auto object-contain rounded" />
+            <img
+              src={`${API_BASE_URL}/api/v1/public/driver-intake/${token}/logo`}
+              alt=""
+              className="h-12 w-auto object-contain rounded"
+            />
           ) : null}
         </div>
 

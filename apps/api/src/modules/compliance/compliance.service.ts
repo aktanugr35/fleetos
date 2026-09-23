@@ -486,6 +486,14 @@ export class ComplianceService {
       throw new AppError(400, 'ENTITY_REQUIRED', 'Entity id is required for this compliance type');
     }
     await this.assertEntity(tenantId, entityType, entityId);
+    if (input.documentId) {
+      const document = await prisma.document.findFirst({
+        where: { id: input.documentId, companyId: tenantId },
+      });
+      if (!document) {
+        throw new AppError(400, 'INVALID_DOCUMENT', 'Document not found');
+      }
+    }
 
     // Resolve cadence (company override or type default)
     const setting = await prisma.companyComplianceSetting.findUnique({

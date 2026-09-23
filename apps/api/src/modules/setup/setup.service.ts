@@ -24,20 +24,21 @@ export class SetupService {
   }
 
   async bootstrap(input: SetupInput) {
-    const required = await this.isSetupRequired();
-    if (!required) {
-      throw new AppError(403, 'SETUP_COMPLETE', 'System setup has already been completed');
-    }
-
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
     let slug = slugifyCompanyName(input.companyName);
 
-    const existingSlug = await prisma.company.findUnique({ where: { slug } });
-    if (existingSlug) {
-      slug = `${slug}-${Date.now().toString(36)}`;
-    }
-
     const { company, user } = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(872341556)`;
+      const userCount = await tx.user.count();
+      if (userCount > 0) {
+        throw new AppError(403, 'SETUP_COMPLETE', 'System setup has already been completed');
+      }
+
+      const existingSlug = await tx.company.findUnique({ where: { slug } });
+      if (existingSlug) {
+        slug = `${slug}-${Date.now().toString(36)}`;
+      }
+
       const company = await tx.company.create({
         data: {
           name: input.companyName,

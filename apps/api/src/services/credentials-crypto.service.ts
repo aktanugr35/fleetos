@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { env } from '../config/env';
+import { env, isProdLikeEnv } from '../config/env';
 import { logger } from '../utils/logger';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -7,6 +7,10 @@ const IV_LENGTH = 12;
 let warnedAboutFallbackKey = false;
 
 function resolveKey(): Buffer {
+  if (!env.CREDENTIALS_ENCRYPTION_KEY && isProdLikeEnv()) {
+    throw new Error('CREDENTIALS_ENCRYPTION_KEY is required in staging/production');
+  }
+
   const raw = env.CREDENTIALS_ENCRYPTION_KEY ?? env.JWT_ACCESS_SECRET;
 
   if (!env.CREDENTIALS_ENCRYPTION_KEY && !warnedAboutFallbackKey) {

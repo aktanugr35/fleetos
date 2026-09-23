@@ -27,6 +27,7 @@ interface EligibleLoad {
   deliveryDate?: string | null;
   totalRevenueCents: number;
   commissionAmount: number;
+  driver?: { firstName: string; lastName: string } | null;
 }
 
 export function CreateDispatcherSettlementModal({
@@ -166,6 +167,7 @@ export function CreateDispatcherSettlementModal({
                 <tr>
                   <th />
                   <th>Load</th>
+                  <th>Driver</th>
                   <th>Broker</th>
                   <th>Delivery</th>
                   <th>Gross</th>
@@ -187,6 +189,11 @@ export function CreateDispatcherSettlementModal({
                       />
                     </td>
                     <td>{load.loadNumber}</td>
+                    <td>
+                      {load.driver
+                        ? `${load.driver.firstName} ${load.driver.lastName}`
+                        : '—'}
+                    </td>
                     <td>{load.brokerName}</td>
                     <td>{load.deliveryDate ? formatDate(load.deliveryDate) : '—'}</td>
                     <td>{formatCurrency(load.totalRevenueCents)}</td>

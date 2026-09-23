@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { setupService } from './setup.service';
 import { setupSchema } from './setup.schema';
+import { assertSetupAuthorized } from './setup-auth';
 import { successResponse } from '../../utils/pagination';
+import {
+  accessTokenCookieOptions,
+  refreshTokenCookieOptions,
+} from '../../utils/cookie-options';
 
 export class SetupController {
   /** GET /api/v1/setup/status */
@@ -17,20 +22,15 @@ export class SetupController {
   /** POST /api/v1/setup */
   async setup(req: Request, res: Response, next: NextFunction) {
     try {
+      assertSetupAuthorized(req);
       const input = setupSchema.parse(req.body);
       const result = await setupService.bootstrap(input);
 
-      res.cookie('haulyard_refresh_token', result.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/api/v1/auth',
-      });
+      res.cookie('haulyard_refresh_token', result.refreshToken, refreshTokenCookieOptions());
+      res.cookie('haulyard_access_token', result.accessToken, accessTokenCookieOptions());
 
       res.status(201).json(
         successResponse({
-          accessToken: result.accessToken,
           user: result.user,
           company: result.company,
         })

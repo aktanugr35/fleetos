@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { env } from '../config/env';
+import { env, isProdLikeEnv } from '../config/env';
 import { logger } from '../utils/logger';
 import { errorResponse } from '../utils/pagination';
+import { redactSensitive } from '../utils/redact';
 
 async function captureServerError(err: Error): Promise<void> {
   if (!env.SENTRY_DSN) {
@@ -53,8 +54,8 @@ export function errorHandler(
 ) {
   // Log the error
   logger.error(`${req.method} ${req.originalUrl} — ${err.message}`, {
-    stack: err.stack,
-    body: req.body,
+    stack: isProdLikeEnv() ? undefined : err.stack,
+    body: redactSensitive(req.body),
   });
 
   const appStatus = err instanceof AppError ? err.statusCode : undefined;
@@ -90,9 +91,11 @@ export function errorHandler(
   // Prisma known error codes
   if ((err as any).code === 'P2002') {
     return res.status(409).json(
-      errorResponse('DUPLICATE_ENTRY', 'A record with this value already exists', {
-        target: (err as any).meta?.target,
-      })
+      errorResponse(
+        'DUPLICATE_ENTRY',
+        'A record with this value already exists',
+        isProdLikeEnv() ? undefined : { target: (err as any).meta?.target },
+      )
     );
   }
 
@@ -104,16 +107,17 @@ export function errorHandler(
 
   if (err instanceof ZodError) {
     return res.status(400).json(
-      errorResponse('VALIDATION_ERROR', 'Invalid request data', err.issues)
+      errorResponse(
+        'VALIDATION_ERROR',
+        'Invalid request data',
+        isProdLikeEnv() ? undefined : err.issues,
+      )
     );
   }
 
   // Unknown error
   const httpStatus = (err as { statusCode?: number }).statusCode || 500;
-  const message =
-    process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message;
+  const message = isProdLikeEnv() ? 'Internal server error' : err.message;
 
   return res.status(httpStatus).json(
     errorResponse('INTERNAL_ERROR', message)

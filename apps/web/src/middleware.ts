@@ -4,36 +4,20 @@ import { ACCESS_TOKEN_COOKIE } from '@/lib/auth-cookies';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // Access token is httpOnly and set by the API. On a split localhost setup
+  // (web:3000 / api:3001) the cookie is not visible here — DashboardAuthGuard
+  // verifies the session against /auth/me instead.
   const token = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
-
-  if (pathname.startsWith('/dashboard')) {
-    if (!token) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-    return NextResponse.next();
-  }
 
   if (pathname === '/setup') {
     return NextResponse.redirect(new URL('/signup', request.url));
   }
 
-  if (pathname === '/signup') {
-    if (token) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  if (pathname === '/login') {
-    if (token) {
-      const redirect = request.nextUrl.searchParams.get('redirect');
-      const dest =
-        redirect && redirect.startsWith('/dashboard') ? redirect : '/dashboard';
-      return NextResponse.redirect(new URL(dest, request.url));
-    }
-    return NextResponse.next();
+  if ((pathname === '/signup' || pathname === '/login') && token) {
+    const redirect = request.nextUrl.searchParams.get('redirect');
+    const dest =
+      redirect && redirect.startsWith('/dashboard') ? redirect : '/dashboard';
+    return NextResponse.redirect(new URL(dest, request.url));
   }
 
   return NextResponse.next();

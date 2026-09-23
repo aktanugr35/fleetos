@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { getAccessTokenFromStorage } from '@/lib/auth-cookies';
+import { clearLegacyAccessTokenStorage } from '@/lib/auth-cookies';
 import api from '@/lib/api';
 
 export function DashboardAuthGuard({ children }: { children: React.ReactNode }) {
@@ -16,30 +16,20 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
     let cancelled = false;
 
     const verify = async () => {
-      const token = getAccessTokenFromStorage();
-
-      if (!token) {
-        clearAuth();
-        router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
-        return;
-      }
-
+      clearLegacyAccessTokenStorage();
       try {
         const res = await api.get('/auth/me');
         const me = res.data.data;
         if (cancelled) return;
 
-        setAuth(
-          {
-            id: me.id,
-            email: me.email,
-            firstName: me.firstName,
-            lastName: me.lastName,
-            role: me.role,
-            companyId: me.companyId,
-          },
-          token
-        );
+        setAuth({
+          id: me.id,
+          email: me.email,
+          firstName: me.firstName,
+          lastName: me.lastName,
+          role: me.role,
+          companyId: me.companyId,
+        });
 
         if (me.role === 'SUPER_ADMIN') {
           try {

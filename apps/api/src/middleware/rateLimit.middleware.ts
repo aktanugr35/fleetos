@@ -58,6 +58,23 @@ export const passwordResetLimiter = rateLimit({
 });
 
 /**
+ * First-time setup — 5 attempts per hour per IP.
+ */
+export const setupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many setup attempts. Please try again later.',
+    },
+  },
+});
+
+/**
  * Report endpoints rate limiter
  * 20 requests per minute per user (heavy queries)
  */

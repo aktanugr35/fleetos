@@ -1,6 +1,8 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '../../config/database';
+import { escapeHtml } from '../../utils/html';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { formatMoneyCents } from '../../utils/money';
 import { launchPdfBrowser, PDF_PAGE_TIMEOUT_MS } from '../../utils/puppeteer';
@@ -39,11 +41,11 @@ export class PdfService {
     };
   }
 
-  async generateSettlementPdf(settlementId: string, tenantId?: string): Promise<string> {
+  async generateSettlementPdf(settlementId: string, tenantId: string): Promise<string> {
     const settlement = await prisma.settlement.findFirst({
       where: {
         id: settlementId,
-        ...(tenantId ? { companyId: tenantId } : {}),
+        companyId: tenantId,
       },
       include: {
         company: true,
@@ -71,6 +73,7 @@ export class PdfService {
       throw new AppError(404, 'COMPANY_NOT_FOUND', 'Company not found');
     }
 
+    const e = escapeHtml;
     const fMoney = formatMoneyCents;
     const fDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const fDateTime = (date: Date) =>
@@ -129,15 +132,15 @@ export class PdfService {
 
       return wrapPdfTableRow(`
             <td>
-                ${load.loadNumber}
-                <div class="sub-text">${load.puNumber || load.referenceNumber || 'N/A'}</div>
+                ${e(load.loadNumber)}
+                <div class="sub-text">${e(load.puNumber || load.referenceNumber || 'N/A')}</div>
             </td>
             <td>
-                ${load.pickupLocation}
+                ${e(load.pickupLocation)}
                 <div class="sub-text">${fDateTime(load.pickupDate)}</div>
             </td>
             <td>
-                ${load.deliveryLocation}
+                ${e(load.deliveryLocation)}
                 <div class="sub-text">${load.deliveryDate ? fDateTime(load.deliveryDate) : 'N/A'}</div>
             </td>
             <td>
@@ -149,8 +152,8 @@ export class PdfService {
                 <div class="sub-text">$${ratePerMile} /mi</div>
             </td>
             <td>
-                ${formatCommissionLabel(line.commissionRate)}
-                <div class="sub-text">${company.name}</div>
+                ${e(formatCommissionLabel(line.commissionRate))}
+                <div class="sub-text">${e(company.name)}</div>
             </td>
             <td class="text-right font-bold">${fMoney(line.netAmount)}</td>
       `, 7);
@@ -176,8 +179,8 @@ export class PdfService {
               <td>Diesel</td>
               <td>${fFuelDate(tx.date)}</td>
               <td class="fuel-merchant">
-                  ${tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card'}
-                  <div class="sub-text">Truck ${tx.truck.unitNumber}${tx.reference ? ` · ${tx.reference}` : ''}</div>
+                  ${e(tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card')}
+                  <div class="sub-text">Truck ${e(tx.truck.unitNumber)}${tx.reference ? ` · ${e(tx.reference)}` : ''}</div>
               </td>
               <td class="fuel-qty">${qty ? `${qty} gal` : '—'}</td>
               <td>${fMoney(gross)}</td>
@@ -198,8 +201,8 @@ export class PdfService {
             <td>Diesel</td>
             <td>${fFuelDate(d.date)}</td>
             <td class="fuel-merchant">
-                ${metadata.merchant || 'Fuel Stop'}
-                <div class="sub-text">${d.description}</div>
+                ${e(String(metadata.merchant || 'Fuel Stop'))}
+                <div class="sub-text">${e(d.description)}</div>
             </td>
             <td class="fuel-qty">${qty ? `${qty} gal` : '—'}</td>
             <td>${fMoney(gross)}</td>
@@ -214,22 +217,22 @@ export class PdfService {
         const tx = t.tollTransaction;
         return wrapPdfTableRow(`
               <td>${tx.date.toLocaleDateString()}</td>
-              <td>${tx.agency || tx.tollDevice.provider || 'Toll'}</td>
-              <td>${tx.location || tx.description || '—'}<div class="sub-text">Truck ${tx.truck.unitNumber}${tx.reference ? ` · ${tx.reference}` : ''}</div></td>
+              <td>${e(tx.agency || tx.tollDevice.provider || 'Toll')}</td>
+              <td>${e(tx.location || tx.description || '—')}<div class="sub-text">Truck ${e(tx.truck.unitNumber)}${tx.reference ? ` · ${e(tx.reference)}` : ''}</div></td>
               <td class="text-right font-bold">${fMoney(t.amount)}</td>
         `, 4);
       }),
       ...legacyTolls.map(t => wrapPdfTableRow(`
             <td>${t.deduction.date.toLocaleDateString()}</td>
             <td>Toll</td>
-            <td>${t.deduction.description}</td>
+            <td>${e(t.deduction.description)}</td>
             <td class="text-right font-bold">${fMoney(t.amount)}</td>
       `, 4)),
     ].join('');
 
     const deductionRowsHtml = trueDeductions.map(d => wrapPdfTableRow(`
-          <td>${d.deduction.type.replace('_', ' ')}</td>
-          <td>${d.deduction.description}</td>
+          <td>${e(d.deduction.type.replace('_', ' '))}</td>
+          <td>${e(d.deduction.description)}</td>
           <td>${d.deduction.date.toLocaleDateString()}</td>
           <td class="text-right font-bold">${fMoney(d.amount)}</td>
     `, 4)).join('');
@@ -245,7 +248,7 @@ export class PdfService {
     
     // CREDITS
     const reimbursementsHtml = settlement.credits.map(c => wrapPdfTableRow(`
-                <td>${c.credit.description || c.credit.type}</td>
+                <td>${e(c.credit.description || c.credit.type)}</td>
                 <td><span class="badge-green">Reimbursement</span></td>
                 <td>${c.credit.date.toLocaleDateString()}</td>
                 <td class="text-right font-bold">${fMoney(c.amount)}</td>
@@ -439,13 +442,13 @@ export class PdfService {
     <body>
         <div class="header-top">
             <div class="header-left">
-                <h1>${driver.firstName} ${driver.lastName}</h1>
-                <p>${driver.address || ''}</p>
-                <p>${driver.city || ''}, ${driver.state || ''} ${driver.zip || ''}</p>
-                <h2>${driver.llcName || ''}</h2>
-                <p>${driver.driverType.replace('_', ' ')}</p>
-                <p>${driver.payStructure.replace('_', ' ')} ${formatPayRate()}</p>
-                <p style="margin-top: 8px;">Truck <span class="badge">${truck?.unitNumber || 'N/A'}</span></p>
+                <h1>${e(driver.firstName)} ${e(driver.lastName)}</h1>
+                <p>${e(driver.address || '')}</p>
+                <p>${e(driver.city || '')}, ${e(driver.state || '')} ${e(driver.zip || '')}</p>
+                <h2>${e(driver.llcName || '')}</h2>
+                <p>${e(driver.driverType.replace('_', ' '))}</p>
+                <p>${e(driver.payStructure.replace('_', ' '))} ${e(formatPayRate())}</p>
+                <p style="margin-top: 8px;">Truck <span class="badge">${e(truck?.unitNumber || 'N/A')}</span></p>
             </div>
             <div class="header-right">
                 <div class="company-brand">
@@ -453,9 +456,9 @@ export class PdfService {
                         ${companyLogoHtml}
                     </div>
                     <div class="company-details">
-                        <h1>${company.name}</h1>
-                        <p>${company.address || ''}</p>
-                        <p>${company.phone || ''}</p>
+                        <h1>${e(company.name)}</h1>
+                        <p>${e(company.address || '')}</p>
+                        <p>${e(company.phone || '')}</p>
                     </div>
                 </div>
             </div>
@@ -471,15 +474,15 @@ export class PdfService {
             <div class="summary-col-2">
                 <div class="row-flex">
                     <span>Statement #</span>
-                    <span>${statementNo}</span>
+                    <span>${e(statementNo)}</span>
                 </div>
                 <div class="row-flex">
                     <span>Payroll ID</span>
-                    <span>${payrollId}</span>
+                    <span>${e(payrollId)}</span>
                 </div>
                 <div class="row-flex">
                     <span>Work Period</span>
-                    <span>${workPeriod}</span>
+                    <span>${e(workPeriod)}</span>
                 </div>
                 <div class="row-flex">
                     <span>Total Trips</span>
@@ -696,7 +699,7 @@ export class PdfService {
       fs.mkdirSync(SETTLEMENTS_DIR, { recursive: true });
     }
 
-    const filename = `settlement_${statementNo}_${Date.now()}.pdf`;
+    const filename = `${crypto.randomUUID()}.pdf`;
     const filepath = path.join(SETTLEMENTS_DIR, filename);
     fs.writeFileSync(filepath, pdfBuffer);
 

@@ -1,10 +1,10 @@
 import crypto from 'crypto';
-import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 import { documentsService } from './documents.service';
 import { listDocumentsSchema, uploadDocumentSchema } from './documents.schema';
 import { successResponse, buildPaginationMeta } from '../../utils/pagination';
 import { AppError } from '../../middleware/errorHandler.middleware';
+import { assertSafeUpload } from '../../utils/upload-type';
 
 export class DocumentsController {
   async upload(req: Request, res: Response, next: NextFunction) {
@@ -15,20 +15,21 @@ export class DocumentsController {
 
       const body = uploadDocumentSchema.parse(req.body);
       const tenantId = req.tenantId!;
-      const filename = `${crypto.randomUUID()}${path.extname(req.file.originalname).toLowerCase()}`;
+      const detected = assertSafeUpload(req.file.buffer);
+      const filename = `${crypto.randomUUID()}${detected.ext}`;
       const fileUrl = await documentsService.saveUploadedFile(
         tenantId,
         filename,
         req.file.buffer,
-        req.file.mimetype
+        detected.mime
       );
 
       const document = await documentsService.create(tenantId, {
         type: body.type,
         title: body.title || req.file.originalname,
         fileUrl,
-        fileSize: req.file.size,
-        mimeType: req.file.mimetype,
+        fileSize: req.file.buffer.length,
+        mimeType: detected.mime,
         expiryDate: body.expiryDate,
         uploadedById: req.user!.userId,
         driverId: body.driverId,

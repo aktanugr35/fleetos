@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
+import { clearLegacyAccessTokenStorage } from '@/lib/auth-cookies';
 import api from '@/lib/api';
 import { BrandWordmark } from '@/components/layout/BrandWordmark';
 
@@ -32,9 +33,10 @@ function LoginForm() {
 
     try {
       const res = await api.post('/auth/login', { email, password });
-      const { accessToken, user } = res.data.data;
+      const { user } = res.data.data;
 
-      setAuth(user, accessToken);
+      clearLegacyAccessTokenStorage();
+      setAuth(user);
       await router.refresh();
       router.push(getRedirectPath());
     } catch (err: unknown) {

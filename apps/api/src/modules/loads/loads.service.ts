@@ -217,6 +217,11 @@ export class LoadsService {
 
   async create(tenantId: string, input: CreateLoadInput) {
     await this.assertDispatcher(tenantId, input.bookedByDispatcherId);
+    await this.assertFleetAssignments(tenantId, {
+      driverId: input.driverId,
+      truckId: input.truckId,
+      trailerId: input.externalTrailerRef ? undefined : input.trailerId ?? undefined,
+    });
     const brokerLink = await this.resolveBrokerLink(tenantId, input.brokerMC, input.brokerAgentId);
 
     const loadNumber = input.loadNumber || await this.generateLoadNumber(tenantId);
@@ -271,10 +276,7 @@ export class LoadsService {
     });
 
     if (input.rateConfirmationDocumentId) {
-      await prisma.document.update({
-        where: { id: input.rateConfirmationDocumentId },
-        data: { loadId: load.id },
-      });
+      await this.attachRateConfirmation(tenantId, load.id, input.rateConfirmationDocumentId);
     }
 
     return this.mapLoad(load);
@@ -284,23 +286,13 @@ export class LoadsService {
     const existing = await prisma.load.findFirst({ where: { id: loadId, companyId: tenantId } });
     if (!existing) throw new AppError(404, 'LOAD_NOT_FOUND', 'Load not found');
 
-    if (input.driverId !== undefined) {
-      const driver = await prisma.driver.findFirst({
-        where: { id: input.driverId, companyId: tenantId, isActive: true },
-      });
-      if (!driver) {
-        throw new AppError(400, 'INVALID_DRIVER', 'Driver not found or inactive');
-      }
-    }
-
-    if (input.truckId !== undefined) {
-      const truck = await prisma.truck.findFirst({
-        where: { id: input.truckId, companyId: tenantId, isActive: true },
-      });
-      if (!truck) {
-        throw new AppError(400, 'INVALID_TRUCK', 'Truck not found or inactive');
-      }
-    }
+    await this.assertFleetAssignments(tenantId, {
+      ...(input.driverId !== undefined ? { driverId: input.driverId } : {}),
+      ...(input.truckId !== undefined ? { truckId: input.truckId } : {}),
+      ...(!input.externalTrailerRef && input.trailerId
+        ? { trailerId: input.trailerId }
+        : {}),
+    });
 
     if (input.bookedByDispatcherId !== undefined) {
       await this.assertDispatcher(tenantId, input.bookedByDispatcherId);
@@ -428,10 +420,7 @@ export class LoadsService {
     });
 
     if (input.rateConfirmationDocumentId) {
-      await prisma.document.update({
-        where: { id: input.rateConfirmationDocumentId },
-        data: { loadId: updatedLoad.id },
-      });
+      await this.attachRateConfirmation(tenantId, updatedLoad.id, input.rateConfirmationDocumentId);
     }
 
     return this.mapLoad(updatedLoad);
@@ -500,6 +489,49 @@ export class LoadsService {
     if (!dispatcher) {
       throw new AppError(400, 'INVALID_DISPATCHER', 'Dispatcher not found or inactive');
     }
+  }
+
+  private async assertFleetAssignments(
+    tenantId: string,
+    input: { driverId?: string | null; truckId?: string | null; trailerId?: string | null },
+  ) {
+    if (input.driverId) {
+      const driver = await prisma.driver.findFirst({
+        where: { id: input.driverId, companyId: tenantId, isActive: true },
+      });
+      if (!driver) {
+        throw new AppError(400, 'INVALID_DRIVER', 'Driver not found or inactive');
+      }
+    }
+    if (input.truckId) {
+      const truck = await prisma.truck.findFirst({
+        where: { id: input.truckId, companyId: tenantId, isActive: true },
+      });
+      if (!truck) {
+        throw new AppError(400, 'INVALID_TRUCK', 'Truck not found or inactive');
+      }
+    }
+    if (input.trailerId) {
+      const trailer = await prisma.trailer.findFirst({
+        where: { id: input.trailerId, companyId: tenantId, isActive: true },
+      });
+      if (!trailer) {
+        throw new AppError(400, 'INVALID_TRAILER', 'Trailer not found or inactive');
+      }
+    }
+  }
+
+  private async attachRateConfirmation(tenantId: string, loadId: string, documentId: string) {
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, companyId: tenantId },
+    });
+    if (!document) {
+      throw new AppError(400, 'INVALID_DOCUMENT', 'Rate confirmation document not found');
+    }
+    await prisma.document.update({
+      where: { id: document.id },
+      data: { loadId },
+    });
   }
 
   /**

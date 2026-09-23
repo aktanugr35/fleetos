@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
+import { redactSensitive } from '../utils/redact';
 
 /**
  * Audit log middleware
@@ -32,7 +33,7 @@ export function auditMiddleware(
               entityType,
               entityId,
               oldValue: undefined, // Could be populated with pre-update data
-              newValue: req.body || undefined,
+              newValue: (redactSensitive(req.body) as object) || undefined,
               ipAddress: req.ip || null,
               userAgent: req.headers['user-agent'] || null,
             },

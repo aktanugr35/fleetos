@@ -1,10 +1,10 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../../config/database';
-import { redis } from '../../config/redis';
 import { env } from '../../config/env';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { logger } from '../../utils/logger';
+import { redisSetStrict } from '../../utils/redis-strict';
 import type { LoginInput, ChangePasswordInput } from './auth.schema';
 import { signAccessToken, type AccessTokenPayload } from './auth.tokens';
 
@@ -139,7 +139,7 @@ export class AuthService {
   /**
    * Logout — revoke refresh token
    */
-  async logout(refreshTokenValue: string, userId: string) {
+  async logout(refreshTokenValue: string, userId: string, accessJti?: string) {
     if (refreshTokenValue) {
       await prisma.refreshToken.updateMany({
         where: { token: refreshTokenValue, userId },
@@ -147,11 +147,8 @@ export class AuthService {
       });
     }
 
-    // Blacklist current access token in Redis (optional extra security)
-    try {
-      await redis.set(`blacklist:${userId}:${Date.now()}`, '1', 'EX', 900); // 15 min
-    } catch {
-      // Redis might not be available in dev
+    if (accessJti) {
+      await redisSetStrict(`jwt:bl:${accessJti}`, '1', 900);
     }
 
     logger.info(`User logged out: ${userId}`);
@@ -259,6 +256,8 @@ export class AuthService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    await redisSetStrict(`jwt:epoch:${userId}`, String(Date.now()), 7 * 24 * 60 * 60);
 
     logger.info(`Password changed for user: ${user.email}`);
   }

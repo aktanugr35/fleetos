@@ -9,8 +9,6 @@ import { getApiErrorMessage } from '@/lib/api-errors';
 import { usePermission } from '@/hooks/usePermission';
 import api from '@/lib/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 export default function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const { can } = usePermission();
@@ -24,7 +22,8 @@ export default function SettingsPage() {
   const [companyPhone, setCompanyPhone] = useState('');
   const [commissionRate, setCommissionRate] = useState('12');
   const [companyFee, setCompanyFee] = useState('0');
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [hasLogo, setHasLogo] = useState(false);
+  const [logoPreviewSrc, setLogoPreviewSrc] = useState<string | null>(null);
   const [logoVersion, setLogoVersion] = useState(0);
   const [savingCompany, setSavingCompany] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -42,22 +41,41 @@ export default function SettingsPage() {
         setCompanyPhone(c.phone || '');
         setCommissionRate(c.defaultOOCommissionRate ? (c.defaultOOCommissionRate / 100).toString() : '12');
         setCompanyFee(c.weeklyCompanyFee ? (c.weeklyCompanyFee / 100).toFixed(2) : '0');
-        setLogoUrl(c.logoUrl || null);
+        setHasLogo(Boolean(c.hasLogo || c.logoUrl));
       }
     }).catch(() => {});
   }, []);
 
-  const logoPreviewSrc = logoUrl ? `${API_BASE_URL}${logoUrl}?v=${logoVersion}` : null;
+  useEffect(() => {
+    if (!hasLogo) {
+      setLogoPreviewSrc(null);
+      return;
+    }
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    api
+      .get('/companies/me/logo', { responseType: 'blob' })
+      .then((res) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(res.data);
+        setLogoPreviewSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setLogoPreviewSrc(null);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [hasLogo, logoVersion]);
 
   const handleLogoUpload = async (file: File) => {
     setUploadingLogo(true);
     try {
       const formData = new FormData();
       formData.append('logo', file);
-      const res = await api.post('/companies/me/logo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setLogoUrl(res.data.data.logoUrl || null);
+      await api.post('/companies/me/logo', formData);
+      setHasLogo(true);
       setLogoVersion((v) => v + 1);
       setToast({ type: 'success', message: 'Company logo uploaded!' });
     } catch {
@@ -72,7 +90,8 @@ export default function SettingsPage() {
     setUploadingLogo(true);
     try {
       await api.delete('/companies/me/logo');
-      setLogoUrl(null);
+      setHasLogo(false);
+      setLogoPreviewSrc(null);
       setLogoVersion((v) => v + 1);
       setToast({ type: 'success', message: 'Company logo removed' });
     } catch {
@@ -145,7 +164,7 @@ export default function SettingsPage() {
 
           <div className="mb-6 pb-6 border-b border-[var(--border-color)]">
             <label className="block text-sm text-gray-400 mb-2">Company Logo</label>
-            <p className="text-xs text-gray-500 mb-3">Shown on settlement statement PDFs (PNG, JPG, WEBP, GIF, or SVG, max 2MB)</p>
+            <p className="text-xs text-gray-500 mb-3">Shown on settlement statement PDFs (PNG, JPG, or WEBP, max 2MB)</p>
             <div className="flex flex-wrap items-start gap-4">
               <div className="w-36 h-20 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] flex items-center justify-center overflow-hidden">
                 {logoPreviewSrc ? (
@@ -159,7 +178,7 @@ export default function SettingsPage() {
                 <input
                   ref={logoInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                  accept="image/png,image/jpeg,image/webp"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -172,9 +191,9 @@ export default function SettingsPage() {
                   onClick={() => logoInputRef.current?.click()}
                   className="btn btn-secondary text-sm"
                 >
-                  {uploadingLogo ? 'Uploading...' : logoUrl ? 'Replace Logo' : 'Upload Logo'}
+                  {uploadingLogo ? 'Uploading...' : hasLogo ? 'Replace Logo' : 'Upload Logo'}
                 </button>
-                {logoUrl && (
+                {hasLogo && (
                   <button
                     type="button"
                     disabled={uploadingLogo}

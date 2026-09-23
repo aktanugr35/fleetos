@@ -1,5 +1,4 @@
 import express from 'express';
-import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -11,9 +10,9 @@ import { logger } from './utils/logger';
 import { prisma } from './config/database';
 import { redis } from './config/redis';
 import { generalLimiter } from './middleware/rateLimit.middleware';
+import { csrfCookieGuard } from './middleware/csrf.middleware';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.middleware';
 import { successResponse } from './utils/pagination';
-import { UPLOADS_DIR } from './config/paths';
 import authRoutes from './modules/auth/auth.routes';
 import driverRoutes from './modules/drivers/drivers.routes';
 import dispatcherRoutes from './modules/dispatchers/dispatchers.routes';
@@ -58,6 +57,7 @@ function getCorsOrigins(): string[] {
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    referrerPolicy: { policy: 'no-referrer' },
   }),
 );
 app.use(
@@ -65,6 +65,10 @@ app.use(
     origin(origin, callback) {
       if (!origin) {
         callback(null, true);
+        return;
+      }
+      if (origin === 'null') {
+        callback(new Error('CORS blocked: null origin'));
         return;
       }
       const allowed = getCorsOrigins();
@@ -81,37 +85,32 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+  csrfCookieGuard(req, res, next);
+});
 app.use(morgan('combined', {
   stream: { write: (message: string) => logger.info(message.trim()) },
 }));
 app.use(generalLimiter);
 
-// ─── Static Files ───────────────────────────────────────
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Files are served only through authenticated download routes. Never expose /uploads.
 
 // ─── Health Check ───────────────────────────────────────
 app.get('/health', async (_req, res) => {
   try {
-    // Check DB connection
     await prisma.$queryRaw`SELECT 1`;
-
-    // Check Redis connection
     const redisPing = await redis.ping();
+    if (redisPing !== 'PONG') {
+      throw new Error('redis');
+    }
 
-    res.json(successResponse({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      services: {
-        database: 'connected',
-        redis: redisPing === 'PONG' ? 'connected' : 'disconnected',
-      },
-    }));
-  } catch (error) {
-    res.status(503).json(successResponse({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: (error as Error).message,
-    }));
+    res.json(successResponse({ status: 'healthy' }));
+  } catch {
+    res.status(503).json(successResponse({ status: 'unhealthy' }));
   }
 });
 

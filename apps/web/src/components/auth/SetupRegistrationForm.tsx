@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
@@ -25,6 +25,7 @@ export function SetupRegistrationForm() {
     mcNumber: '',
     companyAddress: '',
     companyPhone: '',
+    setupSecret: '',
   });
 
   const set = (field: string, value: string) => {
@@ -53,10 +54,11 @@ export function SetupRegistrationForm() {
         mcNumber: form.mcNumber,
         companyAddress: form.companyAddress || undefined,
         companyPhone: form.companyPhone || undefined,
+        setupSecret: form.setupSecret || undefined,
       });
 
-      const { accessToken, user } = res.data.data;
-      setAuth(user, accessToken);
+      const { user } = res.data.data;
+      setAuth(user);
       await router.refresh();
       router.push('/dashboard');
     } catch (err) {
@@ -147,6 +149,19 @@ export function SetupRegistrationForm() {
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Phone (optional)</label>
                 <input className="input" value={form.companyPhone} onChange={(e) => set('companyPhone', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Setup key</label>
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="off"
+                  value={form.setupSecret}
+                  onChange={(e) => set('setupSecret', e.target.value)}
+                />
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Matches SETUP_SECRET on the API. Required on a public server; local loopback can leave this blank.
+                </p>
               </div>
             </div>
           </div>

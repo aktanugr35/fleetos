@@ -24,10 +24,7 @@ export class CreditsService {
   }
 
   async create(tenantId: string, input: CreateCreditInput) {
-    const driver = await prisma.driver.findFirst({
-      where: { id: input.driverId, companyId: tenantId },
-    });
-    if (!driver) throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
+    await this.assertDriver(tenantId, input.driverId);
 
     return prisma.credit.create({
       data: {
@@ -48,7 +45,21 @@ export class CreditsService {
       where: { id, companyId: tenantId },
     });
     if (!existing) throw new AppError(404, 'CREDIT_NOT_FOUND', 'Credit not found');
-    return prisma.credit.update({ where: { id }, data: input });
+    if (input.driverId !== undefined) {
+      await this.assertDriver(tenantId, input.driverId);
+    }
+    return prisma.credit.update({
+      where: { id },
+      data: {
+        ...(input.driverId !== undefined && { driverId: input.driverId }),
+        ...(input.type !== undefined && { type: input.type }),
+        ...(input.amount !== undefined && { amount: input.amount }),
+        ...(input.description !== undefined && { description: input.description }),
+        ...(input.isRecurring !== undefined && { isRecurring: input.isRecurring }),
+        ...(input.date !== undefined && { date: input.date }),
+      },
+      include: { driver: { select: { id: true, firstName: true, lastName: true } } },
+    });
   }
 
   async delete(tenantId: string, id: string) {
@@ -61,6 +72,13 @@ export class CreditsService {
       throw new AppError(409, 'ALREADY_APPLIED', 'Cannot delete a credit that is on a settlement');
     }
     await prisma.credit.delete({ where: { id } });
+  }
+
+  private async assertDriver(tenantId: string, driverId: string) {
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId },
+    });
+    if (!driver) throw new AppError(404, 'DRIVER_NOT_FOUND', 'Driver not found');
   }
 }
 

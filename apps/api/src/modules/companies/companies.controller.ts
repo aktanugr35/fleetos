@@ -1,12 +1,23 @@
 import fs from 'fs';
-import { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import { Request, Response, NextFunction } from 'express';
+import sharp from 'sharp';
 import { prisma } from '../../config/database';
+import { LOGOS_DIR } from '../../config/paths';
 import { successResponse } from '../../utils/pagination';
 import { AppError } from '../../middleware/errorHandler.middleware';
-import { deleteCompanyLogoFiles, resolveLogoFilePath } from '../../utils/companyLogo';
+import { deleteCompanyLogoFiles, sendLogoFile } from '../../utils/companyLogo';
 import { companiesService } from './companies.service';
 import { createCompanySchema, updateCompanySchema } from './companies.schema';
+import { assertSafeUpload } from '../../utils/upload-type';
+
+function toCompanyResponse(company: { logoUrl?: string | null } & Record<string, unknown>) {
+  return {
+    ...company,
+    hasLogo: Boolean(company.logoUrl),
+    logoUrl: company.logoUrl ? '/api/v1/companies/me/logo' : null,
+  };
+}
 
 export class CompaniesController {
   /** SUPER_ADMIN only — no tenant context */
@@ -40,7 +51,22 @@ export class CompaniesController {
         where: { id: req.tenantId! },
       });
       if (!company) throw new AppError(404, 'COMPANY_NOT_FOUND', 'Company not found');
-      res.json(successResponse(company));
+      res.json(successResponse(toCompanyResponse(company)));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLogo(req: Request, res: Response, next: NextFunction) {
+    try {
+      const company = await prisma.company.findUnique({
+        where: { id: req.tenantId! },
+        select: { logoUrl: true },
+      });
+      if (!company?.logoUrl) {
+        throw new AppError(404, 'LOGO_NOT_FOUND', 'No logo uploaded');
+      }
+      sendLogoFile(res, company.logoUrl);
     } catch (error) {
       next(error);
     }
@@ -53,7 +79,7 @@ export class CompaniesController {
         where: { id: req.tenantId! },
         data: parsed,
       });
-      res.json(successResponse(company));
+      res.json(successResponse(toCompanyResponse(company)));
     } catch (error) {
       next(error);
     }
@@ -69,20 +95,24 @@ export class CompaniesController {
       const existing = await prisma.company.findUnique({ where: { id: tenantId } });
       if (!existing) throw new AppError(404, 'COMPANY_NOT_FOUND', 'Company not found');
 
-      if (existing.logoUrl) {
-        const oldPath = resolveLogoFilePath(existing.logoUrl);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
-      }
+      assertSafeUpload(req.file.buffer, true);
+      const png = await sharp(req.file.buffer).rotate().png().toBuffer();
 
-      const logoUrl = `/uploads/logos/${req.file.filename}`;
+      if (!fs.existsSync(LOGOS_DIR)) {
+        fs.mkdirSync(LOGOS_DIR, { recursive: true });
+      }
+      deleteCompanyLogoFiles(tenantId);
+
+      const filename = `company-${tenantId}.png`;
+      fs.writeFileSync(path.join(LOGOS_DIR, filename), png);
+
+      const logoUrl = `/uploads/logos/${filename}`;
       const company = await prisma.company.update({
         where: { id: tenantId },
         data: { logoUrl },
       });
 
-      res.json(successResponse(company));
+      res.json(successResponse(toCompanyResponse(company)));
     } catch (error) {
       next(error);
     }
@@ -101,7 +131,7 @@ export class CompaniesController {
         data: { logoUrl: null },
       });
 
-      res.json(successResponse(company));
+      res.json(successResponse(toCompanyResponse(company)));
     } catch (error) {
       next(error);
     }

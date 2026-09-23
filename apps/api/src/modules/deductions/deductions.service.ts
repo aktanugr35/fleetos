@@ -34,6 +34,7 @@ export class DeductionsService {
   }
 
   async create(tenantId: string, input: CreateDeductionInput) {
+    await this.assertDriver(tenantId, input.driverId);
     const metadata = buildFuelMetadata(input);
 
     return prisma.deduction.create({
@@ -56,6 +57,9 @@ export class DeductionsService {
       where: { id, companyId: tenantId },
     });
     if (!existing) throw new AppError(404, 'DEDUCTION_NOT_FOUND', 'Deduction not found');
+    if (input.driverId !== undefined) {
+      await this.assertDriver(tenantId, input.driverId);
+    }
 
     const type = input.type ?? existing.type;
     const merged: CreateDeductionInput = {
@@ -99,6 +103,15 @@ export class DeductionsService {
       );
     }
     await prisma.deduction.delete({ where: { id } });
+  }
+
+  private async assertDriver(tenantId: string, driverId: string) {
+    const driver = await prisma.driver.findFirst({
+      where: { id: driverId, companyId: tenantId },
+    });
+    if (!driver) {
+      throw new AppError(400, 'INVALID_DRIVER', 'Driver not found');
+    }
   }
 }
 

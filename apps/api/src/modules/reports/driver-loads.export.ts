@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { calendarDayInZone } from '../../utils/datePeriod';
+import { excelSafeText } from '../../utils/excel-text';
 
 export interface DriverLoadExportRow {
   loadNumber: string;
@@ -72,12 +73,12 @@ export function buildDriverLoadsWorkbook(
 
   for (const row of rows) {
     const added = sheet.addRow([
-      row.loadNumber,
+      excelSafeText(row.loadNumber),
       excelDate(row.pickupDate),
-      formatLoadRoute(row),
-      row.brokerName,
-      row.driverName,
-      row.bookedByName || '—',
+      excelSafeText(formatLoadRoute(row)),
+      excelSafeText(row.brokerName),
+      excelSafeText(row.driverName),
+      excelSafeText(row.bookedByName || '—'),
       row.totalCents / 100,
     ]);
     added.eachCell((cell) => {

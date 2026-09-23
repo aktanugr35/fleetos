@@ -1,14 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import type { Response } from 'express';
 import { LOGOS_DIR, resolveUploadUrl } from '../config/paths';
+import { AppError } from '../middleware/errorHandler.middleware';
+import { escapeHtml } from './html';
 
 const MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
 };
 
 export function resolveLogoFilePath(logoUrl: string): string {
@@ -47,10 +48,14 @@ function buildLogoPlaceholder(companyName: string): string {
   return `<div class="logo-placeholder">${escapeHtml(companyName || 'Insert Logo')}</div>`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+export function sendLogoFile(res: Response, logoUrl: string): void {
+  const filepath = resolveLogoFilePath(logoUrl);
+  if (!fs.existsSync(filepath)) {
+    throw new AppError(404, 'LOGO_NOT_FOUND', 'Logo file is missing');
+  }
+  const ext = path.extname(filepath).toLowerCase();
+  res.setHeader('Content-Type', MIME_BY_EXT[ext] || 'image/png');
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.sendFile(path.resolve(filepath));
 }

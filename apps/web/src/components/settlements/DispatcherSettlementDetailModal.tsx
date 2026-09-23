@@ -18,6 +18,7 @@ interface DispatcherSettlementLine {
     brokerName: string;
     pickupLocation: string;
     deliveryLocation: string;
+    driver?: { firstName: string; lastName: string } | null;
   };
 }
 
@@ -224,6 +225,12 @@ export function DispatcherSettlementDetailModal({
                     <div className="min-w-0">
                       <p className="text-blue-400 font-medium">
                         {line.load?.loadNumber || line.description}
+                        {line.load?.driver ? (
+                          <span className="text-gray-300 font-normal">
+                            {' '}
+                            · {line.load.driver.firstName} {line.load.driver.lastName}
+                          </span>
+                        ) : null}
                       </p>
                       {line.load ? (
                         <p className="text-xs text-gray-500 truncate">

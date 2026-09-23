@@ -5,10 +5,11 @@ import { tenantMiddleware } from '../../middleware/tenant.middleware';
 import { rbacMiddleware } from '../../middleware/rbac.middleware';
 import { STAFF_ROLES } from '../../middleware/rbac.middleware';
 import { linkedDriverMiddleware } from '../../middleware/linkedDriver.middleware';
+import { reportLimiter } from '../../middleware/rateLimit.middleware';
 
 const router = Router();
 
-router.use(authMiddleware, tenantMiddleware, linkedDriverMiddleware);
+router.use(authMiddleware, tenantMiddleware, linkedDriverMiddleware, reportLimiter);
 
 router.get('/dashboard', rbacMiddleware(STAFF_ROLES), reportsController.getDashboard);
 router.get('/revenue-chart', rbacMiddleware(STAFF_ROLES), reportsController.getRevenueChart);

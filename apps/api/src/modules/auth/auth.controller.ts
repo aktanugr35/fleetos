@@ -3,53 +3,50 @@ import { authService } from './auth.service';
 import { loginSchema, changePasswordSchema } from './auth.schema';
 import { successResponse } from '../../utils/pagination';
 import {
+  accessTokenCookieOptions,
+  clearAccessTokenCookieOptions,
   clearRefreshTokenCookieOptions,
   refreshTokenCookieOptions,
 } from '../../utils/cookie-options';
 
+function setSessionCookies(res: Response, accessToken: string, refreshToken: string) {
+  res.cookie('haulyard_refresh_token', refreshToken, refreshTokenCookieOptions());
+  res.cookie('haulyard_access_token', accessToken, accessTokenCookieOptions());
+}
+
+function clearSessionCookies(res: Response) {
+  res.clearCookie('haulyard_refresh_token', clearRefreshTokenCookieOptions());
+  res.clearCookie('haulyard_access_token', clearAccessTokenCookieOptions());
+}
+
 export class AuthController {
-  /**
-   * POST /api/v1/auth/login
-   */
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const input = loginSchema.parse(req.body);
       const result = await authService.login(input);
-
-      // Set refresh token as httpOnly cookie
-      res.cookie('haulyard_refresh_token', result.refreshToken, refreshTokenCookieOptions());
-
-      res.json(successResponse({
-        accessToken: result.accessToken,
-        user: result.user,
-      }));
+      setSessionCookies(res, result.accessToken, result.refreshToken);
+      res.json(successResponse({ user: result.user }));
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * POST /api/v1/auth/logout
-   */
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
       const refreshToken = req.cookies?.haulyard_refresh_token;
       const userId = req.user?.userId;
 
       if (userId) {
-        await authService.logout(refreshToken, userId);
+        await authService.logout(refreshToken, userId, req.user?.jti);
       }
 
-      res.clearCookie('haulyard_refresh_token', clearRefreshTokenCookieOptions());
+      clearSessionCookies(res);
       res.json(successResponse({ message: 'Logged out successfully' }));
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * POST /api/v1/auth/refresh
-   */
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
       const refreshToken = req.cookies?.haulyard_refresh_token;
@@ -62,22 +59,13 @@ export class AuthController {
       }
 
       const result = await authService.refresh(refreshToken);
-
-      // Set new refresh token cookie
-      res.cookie('haulyard_refresh_token', result.refreshToken, refreshTokenCookieOptions());
-
-      res.json(successResponse({
-        accessToken: result.accessToken,
-        user: result.user,
-      }));
+      setSessionCookies(res, result.accessToken, result.refreshToken);
+      res.json(successResponse({ user: result.user }));
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * GET /api/v1/auth/me
-   */
   async getMe(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
@@ -88,16 +76,12 @@ export class AuthController {
     }
   }
 
-  /**
-   * PATCH /api/v1/auth/me/password
-   */
   async changePassword(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
       const input = changePasswordSchema.parse(req.body);
       await authService.changePassword(userId, input);
-
-      res.clearCookie('haulyard_refresh_token', clearRefreshTokenCookieOptions());
+      clearSessionCookies(res);
       res.json(successResponse({ message: 'Password changed successfully. Please login again.' }));
     } catch (error) {
       next(error);

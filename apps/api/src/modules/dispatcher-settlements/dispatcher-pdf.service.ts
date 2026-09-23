@@ -1,5 +1,7 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { escapeHtml } from '../../utils/html';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { formatMoneyCents } from '../../utils/money';
@@ -9,11 +11,7 @@ import { SETTLEMENTS_DIR, resolveUploadUrl } from '../../config/paths';
 import { pdfSection, wrapPdfTableRow } from '../settlements/pdf.layout';
 
 function esc(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return escapeHtml(value);
 }
 
 export class DispatcherPdfService {
@@ -54,15 +52,23 @@ export class DispatcherPdfService {
     }
   }
 
-  async generatePdf(settlementId: string, tenantId?: string): Promise<string> {
+  async generatePdf(settlementId: string, tenantId: string): Promise<string> {
     const settlement = await prisma.dispatcherSettlement.findFirst({
       where: {
         id: settlementId,
-        ...(tenantId ? { companyId: tenantId } : {}),
+        companyId: tenantId,
       },
       include: {
         dispatcher: true,
-        lines: { include: { load: true } },
+        lines: {
+          include: {
+            load: {
+              include: {
+                driver: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -81,9 +87,13 @@ export class DispatcherPdfService {
     const loadsHtml = settlement.lines
       .map((line) => {
         const load = line.load;
+        const driverName = load.driver
+          ? `${load.driver.firstName} ${load.driver.lastName}`.trim()
+          : '—';
         return wrapPdfTableRow(
           `
         <td>${esc(load.loadNumber)}</td>
+        <td>${esc(driverName)}</td>
         <td>${esc(load.brokerName)}</td>
         <td>${esc(load.pickupLocation)}<div class="sub-text">${fDate(load.pickupDate)}</div></td>
         <td>${esc(load.deliveryLocation)}<div class="sub-text">${load.deliveryDate ? fDate(load.deliveryDate) : '—'}</div></td>
@@ -91,7 +101,7 @@ export class DispatcherPdfService {
         <td class="text-right">${commissionPct}%</td>
         <td class="text-right font-bold">${fMoney(line.netAmount)}</td>
       `,
-          7,
+          8,
         );
       })
       .join('');
@@ -101,6 +111,7 @@ export class DispatcherPdfService {
         <thead>
           <tr>
             <th>Load</th>
+            <th>Driver</th>
             <th>Broker</th>
             <th>Origin</th>
             <th>Destination</th>
@@ -113,12 +124,12 @@ export class DispatcherPdfService {
           ${loadsHtml}
           ${wrapPdfTableRow(
             `
-            <td colspan="4">Totals</td>
+            <td colspan="5">Totals</td>
             <td class="text-right">${fMoney(settlement.grossAmount)}</td>
             <td></td>
             <td class="text-right">${fMoney(settlement.netAmount)}</td>
           `,
-            7,
+            8,
             'totals-row section-total-row',
           )}
         </tbody>
@@ -191,7 +202,7 @@ export class DispatcherPdfService {
       fs.mkdirSync(SETTLEMENTS_DIR, { recursive: true });
     }
 
-    const filename = `dispatcher_${settlement.statementNumber || settlementId}_${Date.now()}.pdf`;
+    const filename = `${crypto.randomUUID()}.pdf`;
     const filepath = path.join(SETTLEMENTS_DIR, filename);
     fs.writeFileSync(filepath, pdfBuffer);
 

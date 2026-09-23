@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import sharp from 'sharp';
+import type { Response } from 'express';
 import { DocumentType } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
@@ -7,6 +8,8 @@ import { env } from '../../config/env';
 import { documentsService } from '../documents/documents.service';
 import { driverIntakeFormSchema, type DriverIntakeFormInput } from './driver-intake.schema';
 import { driverIntakePdfService } from './driver-intake-pdf.service';
+import { sendLogoFile } from '../../utils/companyLogo';
+import { assertSafeUpload } from '../../utils/upload-type';
 
 const TOKEN_TTL_DAYS = 30;
 
@@ -161,12 +164,8 @@ export class DriverIntakeService {
       include: {
         company: {
           select: {
-            id: true,
             name: true,
             dotNumber: true,
-            address: true,
-            phone: true,
-            email: true,
             logoUrl: true,
           },
         },
@@ -175,8 +174,6 @@ export class DriverIntakeService {
             id: true,
             firstName: true,
             lastName: true,
-            email: true,
-            phone: true,
           },
         },
       },
@@ -195,15 +192,25 @@ export class DriverIntakeService {
     return record;
   }
 
+  async sendPublicLogo(token: string, res: Response) {
+    const record = await this.resolveToken(token);
+    if (!record.company.logoUrl) {
+      throw new AppError(404, 'LOGO_NOT_FOUND', 'No logo uploaded');
+    }
+    sendLogoFile(res, record.company.logoUrl);
+  }
+
   async getPublicContext(token: string) {
     const record = await this.resolveToken(token);
     return {
-      company: record.company,
+      company: {
+        name: record.company.name,
+        dotNumber: record.company.dotNumber,
+        hasLogo: Boolean(record.company.logoUrl),
+      },
       driverHint: {
         firstName: record.driver.firstName,
         lastName: record.driver.lastName,
-        email: record.driver.email,
-        phone: record.driver.phone,
       },
       formSubmitted: Boolean(record.formSubmittedAt),
       requiredDocuments: REQUIRED_INTAKE_DOCUMENTS.map((d) => ({
@@ -216,10 +223,13 @@ export class DriverIntakeService {
 
   async submitPublicForm(token: string, rawBody: unknown) {
     const record = await this.resolveToken(token);
+    if (record.formSubmittedAt) {
+      throw new AppError(409, 'FORM_ALREADY_SUBMITTED', 'This application form has already been submitted');
+    }
     const form = driverIntakeFormSchema.parse(rawBody);
 
     const pdfBuffer = await driverIntakePdfService.generatePdfBuffer(record.company, form);
-    const filename = `driver_application_${record.driverId}_${Date.now()}.pdf`;
+    const filename = `${crypto.randomUUID()}.pdf`;
     const fileUrl = await documentsService.saveUploadedFile(
       record.companyId,
       filename,
@@ -303,8 +313,9 @@ export class DriverIntakeService {
     }
 
     for (const { def, buffer } of incoming) {
+      assertSafeUpload(buffer, true);
       const png = await sharp(buffer).rotate().png({ quality: 90 }).toBuffer();
-      const filename = `${def.type.toLowerCase()}_${record.driverId}_${Date.now()}.png`;
+      const filename = `${crypto.randomUUID()}.png`;
       const fileUrl = await documentsService.saveUploadedFile(
         record.companyId,
         filename,

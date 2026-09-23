@@ -74,6 +74,12 @@ const envSchema = z
       (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
       z.string().min(32).optional(),
     ),
+
+    /** One-time bootstrap key for POST /setup. Required in staging/production if the users table is still empty. */
+    SETUP_SECRET: z.preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+      z.string().min(16).optional(),
+    ),
   })
   .superRefine((data, ctx) => {
     if (!isProdLike(data.NODE_ENV)) {
@@ -121,6 +127,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['SEED_DEMO'],
         message: 'Demo seed must not be enabled in staging/production',
+      });
+    }
+    if (!data.CREDENTIALS_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['CREDENTIALS_ENCRYPTION_KEY'],
+        message: 'Required in staging/production for the credential vault',
       });
     }
   });

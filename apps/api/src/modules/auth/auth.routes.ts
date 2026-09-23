@@ -1,17 +1,16 @@
 import { Router } from 'express';
 import { authController } from './auth.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
-import { authLimiter } from '../../middleware/rateLimit.middleware';
+import { csrfCookieGuard } from '../../middleware/csrf.middleware';
+import { authLimiter, passwordResetLimiter } from '../../middleware/rateLimit.middleware';
 
 const router = Router();
 
-// Public routes
 router.post('/login', authLimiter, authController.login);
-router.post('/refresh', authController.refresh);
+router.post('/refresh', csrfCookieGuard, authLimiter, authController.refresh);
 
-// Protected routes
-router.post('/logout', authMiddleware, authController.logout);
+router.post('/logout', csrfCookieGuard, authMiddleware, authController.logout);
 router.get('/me', authMiddleware, authController.getMe);
-router.patch('/me/password', authMiddleware, authController.changePassword);
+router.patch('/me/password', authMiddleware, passwordResetLimiter, authController.changePassword);
 
 export default router;
