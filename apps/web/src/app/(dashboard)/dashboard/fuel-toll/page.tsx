@@ -63,7 +63,7 @@ interface TollTransaction {
 }
 
 const today = () => new Date().toISOString().split('T')[0];
-const emptyFuelTx = () => ({ fuelCardId: '', date: today(), merchant: '', gallons: '', grossAmount: '', discount: '' });
+const emptyFuelTx = () => ({ fuelCardId: '', date: today(), merchant: '', gallons: '', retailPrice: '', totalPaid: '' });
 const emptyTollTx = () => ({ tollDeviceId: '', date: today(), agency: '', location: '', description: '', amount: '' });
 
 function dollarsToCents(value: string): number {
@@ -114,6 +114,21 @@ export default function FuelTollPage() {
     label: `${d.displayName || d.provider || 'Toll Device'} · ${d.deviceNumber} · Truck ${d.truck.unitNumber}`,
   }));
 
+  const fuelCalc = useMemo(() => {
+    const gallons = parseFloat(fuelTxForm.gallons) || 0;
+    const price = parseFloat(fuelTxForm.retailPrice) || 0;
+    const paidCents = dollarsToCents(fuelTxForm.totalPaid);
+    const retailCents = Math.round(gallons * price * 100);
+    const discountCents = retailCents - paidCents;
+    let error: string | null = null;
+    if (gallons <= 0 || price <= 0 || paidCents < 1) {
+      error = 'Enter gallons, retail price per gallon, and the total you paid';
+    } else if (discountCents < 0) {
+      error = 'Total paid is higher than the retail total — check the numbers';
+    }
+    return { gallons, retailCents, paidCents, discountCents, error };
+  }, [fuelTxForm.gallons, fuelTxForm.retailPrice, fuelTxForm.totalPaid]);
+
   const fuelTotal = useMemo(() => fuelTransactions.reduce((sum, tx) => sum + tx.netAmount, 0), [fuelTransactions]);
   const tollTotal = useMemo(() => tollTransactions.reduce((sum, tx) => sum + tx.amount, 0), [tollTransactions]);
 
@@ -151,8 +166,8 @@ export default function FuelTollPage() {
       date: toDateInputValue(tx.date),
       merchant: tx.merchant || '',
       gallons: tx.gallons != null ? String(tx.gallons) : '',
-      grossAmount: centsToDollars(tx.grossAmount),
-      discount: centsToDollars(tx.discount),
+      retailPrice: tx.gallons ? (tx.grossAmount / 100 / tx.gallons).toFixed(3) : '',
+      totalPaid: centsToDollars(tx.netAmount),
     });
   };
 
@@ -210,17 +225,15 @@ export default function FuelTollPage() {
   };
 
   const submitFuelTransaction = async () => {
-    const grossAmount = dollarsToCents(fuelTxForm.grossAmount);
-    const discount = dollarsToCents(fuelTxForm.discount);
-    if (!fuelTxForm.fuelCardId || grossAmount < 1 || grossAmount - discount < 1) return;
+    if (!fuelTxForm.fuelCardId || fuelCalc.error || fuelCalc.retailCents < 1) return;
     setSaving('fuel-tx');
     const payload = {
       fuelCardId: fuelTxForm.fuelCardId,
       date: fuelTxForm.date,
       merchant: fuelTxForm.merchant,
-      gallons: fuelTxForm.gallons ? parseFloat(fuelTxForm.gallons) : undefined,
-      grossAmount,
-      discount,
+      gallons: fuelCalc.gallons,
+      grossAmount: fuelCalc.retailCents,
+      discount: fuelCalc.discountCents,
     };
     try {
       if (editingFuelId) {
@@ -390,18 +403,37 @@ export default function FuelTollPage() {
               <FormField label="Merchant">
                 <FormInput value={fuelTxForm.merchant} onChange={(e) => setFuelTxForm((p) => ({ ...p, merchant: e.target.value }))} placeholder="Merchant" />
               </FormField>
-              <FormField label="Gross amount ($)" required>
-                <FormInput type="number" step="0.01" value={fuelTxForm.grossAmount} onChange={(e) => setFuelTxForm((p) => ({ ...p, grossAmount: e.target.value }))} />
+              <FormField label="Gallons" required>
+                <FormInput type="number" step="0.001" min="0" value={fuelTxForm.gallons} onChange={(e) => setFuelTxForm((p) => ({ ...p, gallons: e.target.value }))} placeholder="e.g. 120.5" />
               </FormField>
-              <FormField label="Discount ($)">
-                <FormInput type="number" step="0.01" value={fuelTxForm.discount} onChange={(e) => setFuelTxForm((p) => ({ ...p, discount: e.target.value }))} />
+              <FormField label="Retail price per gallon ($)" required>
+                <FormInput type="number" step="0.001" min="0" value={fuelTxForm.retailPrice} onChange={(e) => setFuelTxForm((p) => ({ ...p, retailPrice: e.target.value }))} placeholder="e.g. 3.899" />
               </FormField>
-              <FormField label="Gallons">
-                <FormInput type="number" step="0.001" value={fuelTxForm.gallons} onChange={(e) => setFuelTxForm((p) => ({ ...p, gallons: e.target.value }))} />
+              <FormField label="Total paid on invoice ($)" required className="sm:col-span-2">
+                <FormInput type="number" step="0.01" min="0" value={fuelTxForm.totalPaid} onChange={(e) => setFuelTxForm((p) => ({ ...p, totalPaid: e.target.value }))} placeholder="e.g. 410.25" />
               </FormField>
             </div>
+            <div className="mt-4 rounded-lg border border-[var(--border-color)] p-3 text-sm space-y-1">
+              <div className="flex justify-between text-gray-400">
+                <span>Retail total</span>
+                <span>{formatCurrency(fuelCalc.retailCents)}</span>
+              </div>
+              <div className="flex justify-between text-gray-400">
+                <span>Paid</span>
+                <span>{formatCurrency(fuelCalc.paidCents)}</span>
+              </div>
+              <div className="flex justify-between font-semibold">
+                <span className="text-gray-200">Discount</span>
+                <span className={fuelCalc.discountCents < 0 ? 'text-red-400' : 'text-green-400'}>
+                  {formatCurrency(fuelCalc.discountCents)}
+                </span>
+              </div>
+              {fuelCalc.error && (fuelTxForm.gallons || fuelTxForm.retailPrice || fuelTxForm.totalPaid) ? (
+                <p className="text-xs text-red-400 pt-1">{fuelCalc.error}</p>
+              ) : null}
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" className="btn btn-primary w-full sm:w-auto" disabled={saving === 'fuel-tx'} onClick={() => void submitFuelTransaction()}>
+              <button type="button" className="btn btn-primary w-full sm:w-auto" disabled={saving === 'fuel-tx' || !fuelTxForm.fuelCardId || Boolean(fuelCalc.error)} onClick={() => void submitFuelTransaction()}>
                 {editingFuelId ? 'Save Fuel Changes' : 'Add Fuel Transaction'}
               </button>
               {editingFuelId ? (
@@ -469,6 +501,7 @@ export default function FuelTollPage() {
                       <p className="font-medium text-gray-100">{tx.merchant || tx.fuelCard.displayName || 'Fuel'}</p>
                       <p className="text-xs text-gray-500">
                         Truck {tx.truck.unitNumber} · {formatDate(tx.date)}{tx.gallons ? ` · ${tx.gallons} gal` : ''}
+                        {tx.discount > 0 ? ` · Saved ${formatCurrency(tx.discount)}` : ''}
                         {applied ? ' · On settlement' : ''}
                       </p>
                       {canEdit ? (
