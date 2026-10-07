@@ -176,7 +176,7 @@ export class PdfService {
         const discount = tx.discount;
         const net = f.amount;
         return wrapPdfTableRow(`
-              <td>Diesel</td>
+              <td>${tx.fuelType === 'DEF' ? 'DEF' : 'Diesel'}</td>
               <td>${fFuelDate(tx.date)}</td>
               <td class="fuel-merchant">
                   ${e(tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card')}

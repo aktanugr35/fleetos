@@ -46,6 +46,7 @@ export interface DriverLoadWeek {
 export interface DriverFuelEntry {
   id: string;
   date: Date;
+  fuelType: 'DIESEL' | 'DEF';
   merchant: string | null;
   truckUnitNumber: string;
   gallons: number | null;
@@ -319,6 +320,7 @@ export class DriverPortalService {
       select: {
         id: true,
         date: true,
+        fuelType: true,
         merchant: true,
         gallons: true,
         grossAmount: true,
@@ -359,6 +361,7 @@ export class DriverPortalService {
       week.entries.push({
         id: transaction.id,
         date: transaction.date,
+        fuelType: transaction.fuelType,
         merchant: transaction.merchant,
         truckUnitNumber: transaction.truck.unitNumber,
         gallons: transaction.gallons,

@@ -589,12 +589,18 @@ model TollDevice {
   @@map("toll_devices")
 }
 
+enum FuelKind {
+  DIESEL
+  DEF
+}
+
 model FuelTransaction {
   id          String   @id @default(uuid())
   companyId   String
   truckId     String
   fuelCardId  String
   date        DateTime
+  fuelType    FuelKind @default(DIESEL)
   merchant    String?
   gallons     Float?
   grossAmount Int

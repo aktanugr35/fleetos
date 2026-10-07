@@ -51,7 +51,8 @@ function WeekCard({ week }: { week: DriverFuelWeek }) {
         >
           <div className="min-w-0">
             <p className="font-medium text-[var(--text-primary)]">
-              {entry.merchant || 'Fuel purchase'}
+              {entry.fuelType === 'DEF' ? 'DEF' : 'Diesel'}
+              {entry.merchant ? ` · ${entry.merchant}` : ''}
             </p>
             <p className="text-xs text-[var(--text-muted)]">
               {formatDate(entry.date)} · Unit {entry.truckUnitNumber}

@@ -43,6 +43,7 @@ export interface DriverLoadWeek {
 export interface DriverFuelEntry {
   id: string;
   date: string;
+  fuelType?: 'DIESEL' | 'DEF';
   merchant: string | null;
   truckUnitNumber: string;
   gallons: number | null;

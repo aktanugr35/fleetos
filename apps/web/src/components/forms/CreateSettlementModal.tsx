@@ -56,6 +56,7 @@ interface FuelTransaction {
   id: string;
   truckId: string;
   date: string;
+  fuelType?: 'DIESEL' | 'DEF';
   merchant?: string | null;
   netAmount: number;
   fuelCard?: { displayName?: string | null; cardNumber?: string | null };
@@ -408,7 +409,7 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
                     <tbody>
                       {selectedFuelTransactions.map((t) => (
                         <tr key={`fuel-${t.id}`} className="border-b border-[var(--border-color)] last:border-0">
-                          <td className="px-4 py-2 text-gray-300">Fuel</td>
+                          <td className="px-4 py-2 text-gray-300">{t.fuelType === 'DEF' ? 'DEF' : 'Diesel'}</td>
                           <td className="px-4 py-2 text-gray-500">{t.merchant || t.fuelCard?.displayName || 'Fuel Card'} · Truck {t.truck?.unitNumber || ''}</td>
                           <td className="px-4 py-2 text-right text-red-400">-{formatCurrency(t.netAmount)}</td>
                         </tr>

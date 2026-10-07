@@ -104,6 +104,7 @@ export class FuelTollService {
         truckId: fuelCard.truckId,
         fuelCardId: fuelCard.id,
         date: input.date,
+        fuelType: input.fuelType ?? 'DIESEL',
         merchant: input.merchant,
         gallons: input.gallons,
         grossAmount: input.grossAmount,
@@ -136,6 +137,7 @@ export class FuelTollService {
       data: {
         ...(fuelCard && { fuelCardId: fuelCard.id, truckId: fuelCard.truckId }),
         ...(input.date && { date: input.date }),
+        ...(input.fuelType && { fuelType: input.fuelType }),
         ...(input.merchant !== undefined && { merchant: input.merchant }),
         ...(input.gallons !== undefined && { gallons: input.gallons }),
         ...(input.grossAmount !== undefined && { grossAmount }),

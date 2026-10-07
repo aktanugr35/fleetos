@@ -33,6 +33,7 @@ export const updateTollDeviceSchema = createTollDeviceSchema.partial();
 const fuelTransactionBaseSchema = z.object({
   fuelCardId: idSchema,
   date: z.string().transform((v) => parseLocalDateInput(v)),
+  fuelType: z.enum(['DIESEL', 'DEF']).optional(),
   merchant: optionalText,
   gallons: z.number().min(0).optional(),
   grossAmount: z.number().int().min(1, 'Gross amount must be positive'),

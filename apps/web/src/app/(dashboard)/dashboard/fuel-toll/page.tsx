@@ -40,6 +40,7 @@ interface TollDevice {
 interface FuelTransaction {
   id: string;
   date: string;
+  fuelType?: 'DIESEL' | 'DEF';
   merchant?: string | null;
   gallons?: number | null;
   grossAmount: number;
@@ -63,7 +64,7 @@ interface TollTransaction {
 }
 
 const today = () => new Date().toISOString().split('T')[0];
-const emptyFuelTx = () => ({ fuelCardId: '', date: today(), merchant: '', gallons: '', retailPrice: '', totalPaid: '' });
+const emptyFuelTx = () => ({ fuelCardId: '', date: today(), fuelType: 'DIESEL', merchant: '', gallons: '', retailPrice: '', totalPaid: '' });
 const emptyTollTx = () => ({ tollDeviceId: '', date: today(), agency: '', location: '', description: '', amount: '' });
 
 function dollarsToCents(value: string): number {
@@ -164,6 +165,7 @@ export default function FuelTollPage() {
     setFuelTxForm({
       fuelCardId: tx.fuelCard.id,
       date: toDateInputValue(tx.date),
+      fuelType: tx.fuelType === 'DEF' ? 'DEF' : 'DIESEL',
       merchant: tx.merchant || '',
       gallons: tx.gallons != null ? String(tx.gallons) : '',
       retailPrice: tx.gallons ? (tx.grossAmount / 100 / tx.gallons).toFixed(3) : '',
@@ -230,6 +232,7 @@ export default function FuelTollPage() {
     const payload = {
       fuelCardId: fuelTxForm.fuelCardId,
       date: fuelTxForm.date,
+      fuelType: fuelTxForm.fuelType,
       merchant: fuelTxForm.merchant,
       gallons: fuelCalc.gallons,
       grossAmount: fuelCalc.retailCents,
@@ -400,6 +403,16 @@ export default function FuelTollPage() {
               <FormField label="Date" required>
                 <FormInput type="date" value={fuelTxForm.date} onChange={(e) => setFuelTxForm((p) => ({ ...p, date: e.target.value }))} />
               </FormField>
+              <FormField label="Type" required>
+                <FormSelect
+                  value={fuelTxForm.fuelType}
+                  options={[
+                    { value: 'DIESEL', label: 'Diesel' },
+                    { value: 'DEF', label: 'DEF' },
+                  ]}
+                  onChange={(e) => setFuelTxForm((p) => ({ ...p, fuelType: e.target.value === 'DEF' ? 'DEF' : 'DIESEL' }))}
+                />
+              </FormField>
               <FormField label="Merchant">
                 <FormInput value={fuelTxForm.merchant} onChange={(e) => setFuelTxForm((p) => ({ ...p, merchant: e.target.value }))} placeholder="Merchant" />
               </FormField>
@@ -498,7 +511,10 @@ export default function FuelTollPage() {
                 return (
                   <div key={tx.id} className="p-4 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-100">{tx.merchant || tx.fuelCard.displayName || 'Fuel'}</p>
+                      <p className="font-medium text-gray-100">
+                        {tx.fuelType === 'DEF' ? 'DEF' : 'Diesel'}
+                        {tx.merchant ? ` · ${tx.merchant}` : ''}
+                      </p>
                       <p className="text-xs text-gray-500">
                         Truck {tx.truck.unitNumber} · {formatDate(tx.date)}{tx.gallons ? ` · ${tx.gallons} gal` : ''}
                         {tx.discount > 0 ? ` · Saved ${formatCurrency(tx.discount)}` : ''}
