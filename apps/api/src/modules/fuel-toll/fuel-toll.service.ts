@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import type {
   CreateFuelCardInput,
   CreateFuelTransactionInput,
+  FuelInvoiceInput,
   CreateTollDeviceInput,
   CreateTollTransactionInput,
   UpdateFuelCardInput,
@@ -164,6 +166,82 @@ export class FuelTollService {
       );
     }
     await prisma.fuelTransaction.delete({ where: { id } });
+  }
+
+  async createFuelInvoice(tenantId: string, input: FuelInvoiceInput) {
+    const fuelCard = await this.findFuelCard(tenantId, input.fuelCardId);
+    const invoiceId = crypto.randomUUID();
+    return prisma.$transaction(
+      input.lines.map((line) =>
+        prisma.fuelTransaction.create({ data: this.invoiceLineData(tenantId, fuelCard, invoiceId, input, line) }),
+      ),
+    );
+  }
+
+  /** `key` is the invoiceId, or the row id for entries saved before invoices existed. */
+  async replaceFuelInvoice(tenantId: string, key: string, input: FuelInvoiceInput) {
+    const existing = await this.findUnsettledInvoiceLines(tenantId, key, 'edit');
+    const fuelCard = await this.findFuelCard(tenantId, input.fuelCardId);
+    return prisma.$transaction(async (tx) => {
+      await tx.fuelTransaction.deleteMany({ where: { id: { in: existing.map((row) => row.id) } } });
+      return Promise.all(
+        input.lines.map((line) =>
+          tx.fuelTransaction.create({ data: this.invoiceLineData(tenantId, fuelCard, key, input, line) }),
+        ),
+      );
+    });
+  }
+
+  async deleteFuelInvoice(tenantId: string, key: string) {
+    const existing = await this.findUnsettledInvoiceLines(tenantId, key, 'delete');
+    await prisma.fuelTransaction.deleteMany({ where: { id: { in: existing.map((row) => row.id) } } });
+  }
+
+  private async findFuelCard(tenantId: string, fuelCardId: string) {
+    const fuelCard = await prisma.fuelCard.findFirst({
+      where: { id: fuelCardId, companyId: tenantId },
+      select: { id: true, truckId: true },
+    });
+    if (!fuelCard) throw new AppError(404, 'FUEL_CARD_NOT_FOUND', 'Fuel card not found');
+    return fuelCard;
+  }
+
+  private async findUnsettledInvoiceLines(tenantId: string, key: string, action: 'edit' | 'delete') {
+    const rows = await prisma.fuelTransaction.findMany({
+      where: { companyId: tenantId, OR: [{ invoiceId: key }, { id: key }] },
+      select: { id: true, _count: { select: { settlementFuelTransactions: true } } },
+    });
+    if (rows.length === 0) {
+      throw new AppError(404, 'FUEL_TRANSACTION_NOT_FOUND', 'Fuel invoice not found');
+    }
+    if (rows.some((row) => row._count.settlementFuelTransactions > 0)) {
+      throw new AppError(409, 'ALREADY_APPLIED', `Cannot ${action} a fuel invoice already on a settlement`);
+    }
+    return rows;
+  }
+
+  private invoiceLineData(
+    tenantId: string,
+    fuelCard: { id: string; truckId: string },
+    invoiceId: string,
+    input: FuelInvoiceInput,
+    line: FuelInvoiceInput['lines'][number],
+  ) {
+    return {
+      companyId: tenantId,
+      truckId: fuelCard.truckId,
+      fuelCardId: fuelCard.id,
+      invoiceId,
+      date: input.date,
+      fuelType: line.fuelType,
+      merchant: input.merchant,
+      reference: input.reference,
+      notes: input.notes,
+      gallons: line.gallons,
+      grossAmount: line.grossAmount,
+      discount: line.discount,
+      netAmount: line.grossAmount - line.discount,
+    };
   }
 
   async listTollTransactions(tenantId: string, filters: { truckId?: string; tollDeviceId?: string }) {

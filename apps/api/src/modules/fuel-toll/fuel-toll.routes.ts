@@ -18,6 +18,10 @@ router.post('/fuel-transactions', rbacMiddleware([...manageRoles]), fuelTollCont
 router.patch('/fuel-transactions/:id', rbacMiddleware([...manageRoles]), fuelTollController.updateFuelTransaction);
 router.delete('/fuel-transactions/:id', rbacMiddleware([...manageRoles]), fuelTollController.deleteFuelTransaction);
 
+router.post('/fuel-invoices', rbacMiddleware([...manageRoles]), fuelTollController.createFuelInvoice);
+router.put('/fuel-invoices/:id', rbacMiddleware([...manageRoles]), fuelTollController.replaceFuelInvoice);
+router.delete('/fuel-invoices/:id', rbacMiddleware([...manageRoles]), fuelTollController.deleteFuelInvoice);
+
 router.get('/toll-devices', rbacMiddleware(STAFF_ROLES), fuelTollController.listTollDevices);
 router.post('/toll-devices', rbacMiddleware([...manageRoles]), fuelTollController.createTollDevice);
 router.patch('/toll-devices/:id', rbacMiddleware([...manageRoles]), fuelTollController.updateTollDevice);

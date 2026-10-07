@@ -6,6 +6,7 @@ import {
   createFuelTransactionSchema,
   createTollDeviceSchema,
   createTollTransactionSchema,
+  fuelInvoiceSchema,
   updateFuelCardSchema,
   updateFuelTransactionSchema,
   updateTollDeviceSchema,
@@ -60,6 +61,27 @@ export class FuelTollController {
     try {
       await fuelTollService.deleteFuelTransaction(req.tenantId!, req.params.id as string);
       res.json(successResponse({ message: 'Fuel transaction deleted' }));
+    } catch (error) { next(error); }
+  }
+
+  async createFuelInvoice(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = fuelInvoiceSchema.parse(req.body);
+      res.status(201).json(successResponse(await fuelTollService.createFuelInvoice(req.tenantId!, input)));
+    } catch (error) { next(error); }
+  }
+
+  async replaceFuelInvoice(req: Request, res: Response, next: NextFunction) {
+    try {
+      const input = fuelInvoiceSchema.parse(req.body);
+      res.json(successResponse(await fuelTollService.replaceFuelInvoice(req.tenantId!, req.params.id as string, input)));
+    } catch (error) { next(error); }
+  }
+
+  async deleteFuelInvoice(req: Request, res: Response, next: NextFunction) {
+    try {
+      await fuelTollService.deleteFuelInvoice(req.tenantId!, req.params.id as string);
+      res.json(successResponse({ message: 'Fuel invoice deleted' }));
     } catch (error) { next(error); }
   }
 

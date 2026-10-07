@@ -37,11 +37,15 @@ interface TollDevice {
   truck: TruckOption;
 }
 
+type FuelKind = 'DIESEL' | 'DEF';
+
 interface FuelTransaction {
   id: string;
+  invoiceId?: string | null;
   date: string;
-  fuelType?: 'DIESEL' | 'DEF';
+  fuelType?: FuelKind;
   merchant?: string | null;
+  reference?: string | null;
   gallons?: number | null;
   grossAmount: number;
   discount: number;
@@ -63,8 +67,41 @@ interface TollTransaction {
   settlementTollTransactions?: { settlementId: string }[];
 }
 
+interface FuelInvoice {
+  key: string;
+  date: string;
+  merchant?: string | null;
+  reference?: string | null;
+  truck: { id: string; unitNumber: string };
+  fuelCard: FuelTransaction['fuelCard'];
+  lines: FuelTransaction[];
+  netAmount: number;
+  discount: number;
+  applied: boolean;
+}
+
+interface FuelLineForm {
+  enabled: boolean;
+  gallons: string;
+  retailPrice: string;
+  totalPaid: string;
+}
+
+const FUEL_KINDS: { kind: FuelKind; field: 'diesel' | 'def'; label: string }[] = [
+  { kind: 'DIESEL', field: 'diesel', label: 'Diesel' },
+  { kind: 'DEF', field: 'def', label: 'DEF' },
+];
+
 const today = () => new Date().toISOString().split('T')[0];
-const emptyFuelTx = () => ({ fuelCardId: '', date: today(), fuelType: 'DIESEL', merchant: '', gallons: '', retailPrice: '', totalPaid: '' });
+const emptyFuelLine = (enabled: boolean): FuelLineForm => ({ enabled, gallons: '', retailPrice: '', totalPaid: '' });
+const emptyFuelTx = () => ({
+  fuelCardId: '',
+  date: today(),
+  merchant: '',
+  reference: '',
+  diesel: emptyFuelLine(true),
+  def: emptyFuelLine(false),
+});
 const emptyTollTx = () => ({ tollDeviceId: '', date: today(), agency: '', location: '', description: '', amount: '' });
 
 function dollarsToCents(value: string): number {
@@ -75,8 +112,64 @@ function centsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-function isFuelApplied(tx: FuelTransaction): boolean {
-  return (tx.settlementFuelTransactions?.length ?? 0) > 0;
+function fuelKindLabel(kind?: FuelKind | null): string {
+  return kind === 'DEF' ? 'DEF' : 'Diesel';
+}
+
+function calcFuelLine(line: FuelLineForm) {
+  const gallons = parseFloat(line.gallons) || 0;
+  const price = parseFloat(line.retailPrice) || 0;
+  const paidCents = dollarsToCents(line.totalPaid);
+  const retailCents = Math.round(gallons * price * 100);
+  const discountCents = retailCents - paidCents;
+  let error: string | null = null;
+  if (gallons <= 0 || price <= 0 || paidCents < 1) {
+    error = 'Enter gallons, retail price per gallon, and the amount paid';
+  } else if (discountCents < 0) {
+    error = 'Amount paid is higher than the retail total — check the numbers';
+  }
+  return { gallons, retailCents, paidCents, discountCents, error };
+}
+
+function lineFormFrom(tx: FuelTransaction | undefined): FuelLineForm {
+  if (!tx) return emptyFuelLine(false);
+  return {
+    enabled: true,
+    gallons: tx.gallons != null ? String(tx.gallons) : '',
+    retailPrice: tx.gallons ? (tx.grossAmount / 100 / tx.gallons).toFixed(3) : '',
+    totalPaid: centsToDollars(tx.netAmount),
+  };
+}
+
+function groupFuelInvoices(transactions: FuelTransaction[]): FuelInvoice[] {
+  const groups = new Map<string, FuelInvoice>();
+  for (const tx of transactions) {
+    const key = tx.invoiceId || tx.id;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        key,
+        date: tx.date,
+        merchant: tx.merchant,
+        reference: tx.reference,
+        truck: tx.truck,
+        fuelCard: tx.fuelCard,
+        lines: [],
+        netAmount: 0,
+        discount: 0,
+        applied: false,
+      };
+      groups.set(key, group);
+    }
+    group.lines.push(tx);
+    group.netAmount += tx.netAmount;
+    group.discount += tx.discount;
+    group.applied ||= (tx.settlementFuelTransactions?.length ?? 0) > 0;
+  }
+  for (const group of groups.values()) {
+    group.lines.sort((a, b) => (a.fuelType === 'DEF' ? 1 : 0) - (b.fuelType === 'DEF' ? 1 : 0));
+  }
+  return [...groups.values()];
 }
 
 function isTollApplied(tx: TollTransaction): boolean {
@@ -94,9 +187,9 @@ export default function FuelTollPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [editingFuelId, setEditingFuelId] = useState<string | null>(null);
+  const [editingFuelKey, setEditingFuelKey] = useState<string | null>(null);
   const [editingTollId, setEditingTollId] = useState<string | null>(null);
-  const [fuelToDelete, setFuelToDelete] = useState<FuelTransaction | null>(null);
+  const [fuelToDelete, setFuelToDelete] = useState<FuelInvoice | null>(null);
   const [tollToDelete, setTollToDelete] = useState<TollTransaction | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -116,19 +209,27 @@ export default function FuelTollPage() {
   }));
 
   const fuelCalc = useMemo(() => {
-    const gallons = parseFloat(fuelTxForm.gallons) || 0;
-    const price = parseFloat(fuelTxForm.retailPrice) || 0;
-    const paidCents = dollarsToCents(fuelTxForm.totalPaid);
-    const retailCents = Math.round(gallons * price * 100);
-    const discountCents = retailCents - paidCents;
-    let error: string | null = null;
-    if (gallons <= 0 || price <= 0 || paidCents < 1) {
-      error = 'Enter gallons, retail price per gallon, and the total you paid';
-    } else if (discountCents < 0) {
-      error = 'Total paid is higher than the retail total — check the numbers';
-    }
-    return { gallons, retailCents, paidCents, discountCents, error };
-  }, [fuelTxForm.gallons, fuelTxForm.retailPrice, fuelTxForm.totalPaid]);
+    const lines = FUEL_KINDS.filter(({ field }) => fuelTxForm[field].enabled).map(({ kind, field, label }) => ({
+      kind,
+      label,
+      ...calcFuelLine(fuelTxForm[field]),
+    }));
+    const lineError = lines.find((line) => line.error);
+    const error = lines.length === 0
+      ? 'Select Diesel, DEF, or both'
+      : lineError
+        ? `${lineError.label}: ${lineError.error}`
+        : null;
+    return {
+      lines,
+      error,
+      retailCents: lines.reduce((sum, line) => sum + line.retailCents, 0),
+      paidCents: lines.reduce((sum, line) => sum + line.paidCents, 0),
+      discountCents: lines.reduce((sum, line) => sum + line.discountCents, 0),
+    };
+  }, [fuelTxForm]);
+
+  const fuelInvoices = useMemo(() => groupFuelInvoices(fuelTransactions), [fuelTransactions]);
 
   const fuelTotal = useMemo(() => fuelTransactions.reduce((sum, tx) => sum + tx.netAmount, 0), [fuelTransactions]);
   const tollTotal = useMemo(() => tollTransactions.reduce((sum, tx) => sum + tx.amount, 0), [tollTransactions]);
@@ -159,23 +260,26 @@ export default function FuelTollPage() {
     void load();
   }, []);
 
-  const startEditFuel = (tx: FuelTransaction) => {
-    if (isFuelApplied(tx)) return;
-    setEditingFuelId(tx.id);
+  const startEditFuel = (invoice: FuelInvoice) => {
+    if (invoice.applied) return;
+    setEditingFuelKey(invoice.key);
     setFuelTxForm({
-      fuelCardId: tx.fuelCard.id,
-      date: toDateInputValue(tx.date),
-      fuelType: tx.fuelType === 'DEF' ? 'DEF' : 'DIESEL',
-      merchant: tx.merchant || '',
-      gallons: tx.gallons != null ? String(tx.gallons) : '',
-      retailPrice: tx.gallons ? (tx.grossAmount / 100 / tx.gallons).toFixed(3) : '',
-      totalPaid: centsToDollars(tx.netAmount),
+      fuelCardId: invoice.fuelCard.id,
+      date: toDateInputValue(invoice.date),
+      merchant: invoice.merchant || '',
+      reference: invoice.reference || '',
+      diesel: lineFormFrom(invoice.lines.find((tx) => tx.fuelType !== 'DEF')),
+      def: lineFormFrom(invoice.lines.find((tx) => tx.fuelType === 'DEF')),
     });
   };
 
   const cancelEditFuel = () => {
-    setEditingFuelId(null);
+    setEditingFuelKey(null);
     setFuelTxForm(emptyFuelTx());
+  };
+
+  const setFuelLine = (field: 'diesel' | 'def', patch: Partial<FuelLineForm>) => {
+    setFuelTxForm((prev) => ({ ...prev, [field]: { ...prev[field], ...patch } }));
   };
 
   const startEditToll = (tx: TollTransaction) => {
@@ -227,31 +331,34 @@ export default function FuelTollPage() {
   };
 
   const submitFuelTransaction = async () => {
-    if (!fuelTxForm.fuelCardId || fuelCalc.error || fuelCalc.retailCents < 1) return;
+    if (!fuelTxForm.fuelCardId || fuelCalc.error) return;
     setSaving('fuel-tx');
     const payload = {
       fuelCardId: fuelTxForm.fuelCardId,
       date: fuelTxForm.date,
-      fuelType: fuelTxForm.fuelType,
       merchant: fuelTxForm.merchant,
-      gallons: fuelCalc.gallons,
-      grossAmount: fuelCalc.retailCents,
-      discount: fuelCalc.discountCents,
+      reference: fuelTxForm.reference,
+      lines: fuelCalc.lines.map((line) => ({
+        fuelType: line.kind,
+        gallons: line.gallons,
+        grossAmount: line.retailCents,
+        discount: line.discountCents,
+      })),
     };
     try {
-      if (editingFuelId) {
-        await api.patch(`/fuel-transactions/${editingFuelId}`, payload);
-        setToast({ type: 'success', message: 'Fuel transaction updated' });
+      if (editingFuelKey) {
+        await api.put(`/fuel-invoices/${editingFuelKey}`, payload);
+        setToast({ type: 'success', message: 'Fuel invoice updated' });
       } else {
-        await api.post('/fuel-transactions', payload);
-        setToast({ type: 'success', message: 'Fuel transaction added' });
+        await api.post('/fuel-invoices', payload);
+        setToast({ type: 'success', message: 'Fuel invoice added' });
       }
       cancelEditFuel();
       await load();
     } catch (err) {
       setToast({
         type: 'error',
-        message: getApiErrorMessage(err, editingFuelId ? 'Could not update fuel transaction' : 'Could not add fuel transaction'),
+        message: getApiErrorMessage(err, editingFuelKey ? 'Could not update fuel invoice' : 'Could not add fuel invoice'),
       });
     } finally {
       setSaving(null);
@@ -294,13 +401,13 @@ export default function FuelTollPage() {
     if (!fuelToDelete) return;
     setDeleting(true);
     try {
-      await api.delete(`/fuel-transactions/${fuelToDelete.id}`);
-      if (editingFuelId === fuelToDelete.id) cancelEditFuel();
-      setToast({ type: 'success', message: 'Fuel transaction deleted' });
+      await api.delete(`/fuel-invoices/${fuelToDelete.key}`);
+      if (editingFuelKey === fuelToDelete.key) cancelEditFuel();
+      setToast({ type: 'success', message: 'Fuel invoice deleted' });
       setFuelToDelete(null);
       await load();
     } catch (err) {
-      setToast({ type: 'error', message: getApiErrorMessage(err, 'Could not delete fuel transaction') });
+      setToast({ type: 'error', message: getApiErrorMessage(err, 'Could not delete fuel invoice') });
     } finally {
       setDeleting(false);
     }
@@ -394,7 +501,7 @@ export default function FuelTollPage() {
         {canEdit ? (
           <section className="card">
             <h2 className="font-semibold text-gray-100 mb-4">
-              {editingFuelId ? 'Edit Fuel Transaction' : 'Add Fuel Transaction'}
+              {editingFuelKey ? 'Edit Fuel Invoice' : 'Add Fuel Invoice'}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField label="Fuel card" required className="sm:col-span-2">
@@ -403,53 +510,76 @@ export default function FuelTollPage() {
               <FormField label="Date" required>
                 <FormInput type="date" value={fuelTxForm.date} onChange={(e) => setFuelTxForm((p) => ({ ...p, date: e.target.value }))} />
               </FormField>
-              <FormField label="Type" required>
-                <FormSelect
-                  value={fuelTxForm.fuelType}
-                  options={[
-                    { value: 'DIESEL', label: 'Diesel' },
-                    { value: 'DEF', label: 'DEF' },
-                  ]}
-                  onChange={(e) => setFuelTxForm((p) => ({ ...p, fuelType: e.target.value === 'DEF' ? 'DEF' : 'DIESEL' }))}
-                />
+              <FormField label="Invoice #">
+                <FormInput value={fuelTxForm.reference} onChange={(e) => setFuelTxForm((p) => ({ ...p, reference: e.target.value }))} placeholder="Invoice number" />
               </FormField>
-              <FormField label="Merchant">
+              <FormField label="Merchant" className="sm:col-span-2">
                 <FormInput value={fuelTxForm.merchant} onChange={(e) => setFuelTxForm((p) => ({ ...p, merchant: e.target.value }))} placeholder="Merchant" />
               </FormField>
-              <FormField label="Gallons" required>
-                <FormInput type="number" step="0.001" min="0" value={fuelTxForm.gallons} onChange={(e) => setFuelTxForm((p) => ({ ...p, gallons: e.target.value }))} placeholder="e.g. 120.5" />
-              </FormField>
-              <FormField label="Retail price per gallon ($)" required>
-                <FormInput type="number" step="0.001" min="0" value={fuelTxForm.retailPrice} onChange={(e) => setFuelTxForm((p) => ({ ...p, retailPrice: e.target.value }))} placeholder="e.g. 3.899" />
-              </FormField>
-              <FormField label="Total paid on invoice ($)" required className="sm:col-span-2">
-                <FormInput type="number" step="0.01" min="0" value={fuelTxForm.totalPaid} onChange={(e) => setFuelTxForm((p) => ({ ...p, totalPaid: e.target.value }))} placeholder="e.g. 410.25" />
-              </FormField>
             </div>
+
+            <div className="mt-4 space-y-3">
+              {FUEL_KINDS.map(({ field, label }) => {
+                const line = fuelTxForm[field];
+                return (
+                  <div key={field} className="rounded-lg border border-[var(--border-color)] p-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={line.enabled}
+                        onChange={(e) => setFuelLine(field, { enabled: e.target.checked })}
+                      />
+                      {label}
+                    </label>
+                    {line.enabled ? (
+                      <div className="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-3">
+                        <FormField label="Gallons" required>
+                          <FormInput type="number" step="0.001" min="0" value={line.gallons} onChange={(e) => setFuelLine(field, { gallons: e.target.value })} placeholder={field === 'def' ? 'e.g. 5' : 'e.g. 120.5'} />
+                        </FormField>
+                        <FormField label="Retail $/gal" required>
+                          <FormInput type="number" step="0.001" min="0" value={line.retailPrice} onChange={(e) => setFuelLine(field, { retailPrice: e.target.value })} placeholder={field === 'def' ? 'e.g. 4.199' : 'e.g. 3.899'} />
+                        </FormField>
+                        <FormField label="Paid ($)" required>
+                          <FormInput type="number" step="0.01" min="0" value={line.totalPaid} onChange={(e) => setFuelLine(field, { totalPaid: e.target.value })} placeholder={field === 'def' ? 'e.g. 20.00' : 'e.g. 410.25'} />
+                        </FormField>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+
             <div className="mt-4 rounded-lg border border-[var(--border-color)] p-3 text-sm space-y-1">
-              <div className="flex justify-between text-gray-400">
-                <span>Retail total</span>
-                <span>{formatCurrency(fuelCalc.retailCents)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400">
-                <span>Paid</span>
+              {fuelCalc.lines.map((line) => (
+                <div key={line.kind} className="flex justify-between text-gray-400">
+                  <span>{line.label} · retail {formatCurrency(line.retailCents)} · paid {formatCurrency(line.paidCents)}</span>
+                  <span className={line.discountCents < 0 ? 'text-red-400' : 'text-green-400'}>
+                    {formatCurrency(line.discountCents)}
+                  </span>
+                </div>
+              ))}
+              <div className="flex justify-between text-gray-300 pt-1 border-t border-[var(--border-color)]">
+                <span>Invoice total paid</span>
                 <span>{formatCurrency(fuelCalc.paidCents)}</span>
               </div>
               <div className="flex justify-between font-semibold">
-                <span className="text-gray-200">Discount</span>
+                <span className="text-gray-200">Total discount</span>
                 <span className={fuelCalc.discountCents < 0 ? 'text-red-400' : 'text-green-400'}>
                   {formatCurrency(fuelCalc.discountCents)}
                 </span>
               </div>
-              {fuelCalc.error && (fuelTxForm.gallons || fuelTxForm.retailPrice || fuelTxForm.totalPaid) ? (
+              {fuelCalc.error && FUEL_KINDS.some(({ field }) => {
+                const line = fuelTxForm[field];
+                return line.gallons || line.retailPrice || line.totalPaid;
+              }) ? (
                 <p className="text-xs text-red-400 pt-1">{fuelCalc.error}</p>
               ) : null}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" className="btn btn-primary w-full sm:w-auto" disabled={saving === 'fuel-tx' || !fuelTxForm.fuelCardId || Boolean(fuelCalc.error)} onClick={() => void submitFuelTransaction()}>
-                {editingFuelId ? 'Save Fuel Changes' : 'Add Fuel Transaction'}
+                {editingFuelKey ? 'Save Invoice Changes' : 'Add Fuel Invoice'}
               </button>
-              {editingFuelId ? (
+              {editingFuelKey ? (
                 <button type="button" className="btn btn-secondary w-full sm:w-auto" disabled={saving === 'fuel-tx'} onClick={cancelEditFuel}>
                   Cancel
                 </button>
@@ -499,46 +629,55 @@ export default function FuelTollPage() {
 
       <div className="grid grid-cols-1 gap-4 mt-6 xl:grid-cols-2">
         <section className="card p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--border-color)] font-semibold">Fuel Transactions</div>
+          <div className="px-4 py-3 border-b border-[var(--border-color)] font-semibold">Fuel Invoices</div>
           {loading ? (
             <div className="p-4 text-sm text-gray-500">Loading...</div>
-          ) : fuelTransactions.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500">No fuel transactions yet.</div>
+          ) : fuelInvoices.length === 0 ? (
+            <div className="p-4 text-sm text-gray-500">No fuel invoices yet.</div>
           ) : (
             <div className="divide-y divide-[var(--border-color)]">
-              {fuelTransactions.map((tx) => {
-                const applied = isFuelApplied(tx);
-                return (
-                  <div key={tx.id} className="p-4 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-100">
-                        {tx.fuelType === 'DEF' ? 'DEF' : 'Diesel'}
-                        {tx.merchant ? ` · ${tx.merchant}` : ''}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Truck {tx.truck.unitNumber} · {formatDate(tx.date)}{tx.gallons ? ` · ${tx.gallons} gal` : ''}
-                        {tx.discount > 0 ? ` · Saved ${formatCurrency(tx.discount)}` : ''}
-                        {applied ? ' · On settlement' : ''}
-                      </p>
-                      {canEdit ? (
-                        applied ? (
-                          <p className="text-xs text-gray-600 mt-2">Remove it from the settlement first to edit or delete.</p>
-                        ) : (
-                          <div className="mt-2 flex gap-3">
-                            <button type="button" className="text-xs text-gray-500 hover:text-blue-400 transition" onClick={() => startEditFuel(tx)}>
-                              Edit
-                            </button>
-                            <button type="button" className="text-xs text-gray-500 hover:text-red-400 transition" onClick={() => setFuelToDelete(tx)}>
-                              Delete
-                            </button>
-                          </div>
-                        )
-                      ) : null}
-                    </div>
-                    <p className="font-semibold text-red-400 shrink-0">{formatCurrency(tx.netAmount)}</p>
+              {fuelInvoices.map((invoice) => (
+                <div key={invoice.key} className="p-4 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-100">
+                      {invoice.lines.map((tx) => fuelKindLabel(tx.fuelType)).join(' + ')}
+                      {invoice.merchant ? ` · ${invoice.merchant}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Truck {invoice.truck.unitNumber} · {formatDate(invoice.date)}
+                      {invoice.reference ? ` · Invoice ${invoice.reference}` : ''}
+                      {invoice.discount > 0 ? ` · Saved ${formatCurrency(invoice.discount)}` : ''}
+                      {invoice.applied ? ' · On settlement' : ''}
+                    </p>
+                    {invoice.lines.length > 1 ? (
+                      <ul className="mt-1 text-xs text-gray-500 space-y-0.5">
+                        {invoice.lines.map((tx) => (
+                          <li key={tx.id}>
+                            {fuelKindLabel(tx.fuelType)}{tx.gallons ? ` · ${tx.gallons} gal` : ''} · {formatCurrency(tx.netAmount)}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : invoice.lines[0]?.gallons ? (
+                      <p className="text-xs text-gray-500">{invoice.lines[0].gallons} gal</p>
+                    ) : null}
+                    {canEdit ? (
+                      invoice.applied ? (
+                        <p className="text-xs text-gray-600 mt-2">Remove it from the settlement first to edit or delete.</p>
+                      ) : (
+                        <div className="mt-2 flex gap-3">
+                          <button type="button" className="text-xs text-gray-500 hover:text-blue-400 transition" onClick={() => startEditFuel(invoice)}>
+                            Edit
+                          </button>
+                          <button type="button" className="text-xs text-gray-500 hover:text-red-400 transition" onClick={() => setFuelToDelete(invoice)}>
+                            Delete
+                          </button>
+                        </div>
+                      )
+                    ) : null}
                   </div>
-                );
-              })}
+                  <p className="font-semibold text-red-400 shrink-0">{formatCurrency(invoice.netAmount)}</p>
+                </div>
+              ))}
             </div>
           )}
         </section>
@@ -587,8 +726,8 @@ export default function FuelTollPage() {
 
       <ConfirmDialog
         open={Boolean(fuelToDelete)}
-        title="Delete fuel transaction?"
-        message="This fuel entry will be permanently removed."
+        title="Delete fuel invoice?"
+        message="This invoice and its Diesel/DEF lines will be permanently removed."
         confirmLabel="Delete"
         variant="danger"
         loading={deleting}

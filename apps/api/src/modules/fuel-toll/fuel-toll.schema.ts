@@ -63,6 +63,38 @@ export const updateFuelTransactionSchema = fuelTransactionBaseSchema.partial().s
   }
 });
 
+const fuelInvoiceLineSchema = z
+  .object({
+    fuelType: z.enum(['DIESEL', 'DEF']),
+    gallons: z.number().positive('Gallons must be positive'),
+    grossAmount: z.number().int().min(1, 'Retail total must be positive'),
+    discount: z.number().int().min(0),
+  })
+  .refine((line) => line.grossAmount - line.discount >= 1, {
+    message: 'Discount cannot exceed fuel amount',
+    path: ['discount'],
+  });
+
+export const fuelInvoiceSchema = z
+  .object({
+    fuelCardId: idSchema,
+    date: z.string().transform((v) => parseLocalDateInput(v)),
+    merchant: optionalText,
+    reference: optionalText,
+    notes: optionalText,
+    lines: z.array(fuelInvoiceLineSchema).min(1, 'Add Diesel or DEF').max(2),
+  })
+  .superRefine((data, ctx) => {
+    const types = data.lines.map((line) => line.fuelType);
+    if (new Set(types).size !== types.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lines'],
+        message: 'Each fuel type can appear only once per invoice',
+      });
+    }
+  });
+
 export const createTollTransactionSchema = z.object({
   tollDeviceId: idSchema,
   date: z.string().transform((v) => parseLocalDateInput(v)),
@@ -83,5 +115,6 @@ export type CreateTollDeviceInput = z.infer<typeof createTollDeviceSchema>;
 export type UpdateTollDeviceInput = z.infer<typeof updateTollDeviceSchema>;
 export type CreateFuelTransactionInput = z.infer<typeof createFuelTransactionSchema>;
 export type UpdateFuelTransactionInput = z.infer<typeof updateFuelTransactionSchema>;
+export type FuelInvoiceInput = z.infer<typeof fuelInvoiceSchema>;
 export type CreateTollTransactionInput = z.infer<typeof createTollTransactionSchema>;
 export type UpdateTollTransactionInput = z.infer<typeof updateTollTransactionSchema>;

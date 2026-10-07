@@ -168,8 +168,18 @@ export class PdfService {
     const companyFees = settlement.deductions.filter(d => d.deduction.type === 'COMPANY_FEE');
     const trueDeductions = settlement.deductions.filter(d => !['FUEL', 'TOLL', 'COMPANY_FEE'].includes(d.deduction.type));
 
+    const fuelRows = [...settlement.fuelTransactions].sort((a, b) => {
+      const byDate = a.fuelTransaction.date.getTime() - b.fuelTransaction.date.getTime();
+      if (byDate !== 0) return byDate;
+      const aInvoice = a.fuelTransaction.invoiceId ?? a.fuelTransaction.id;
+      const bInvoice = b.fuelTransaction.invoiceId ?? b.fuelTransaction.id;
+      if (aInvoice !== bInvoice) return aInvoice.localeCompare(bInvoice);
+      const dieselFirst = (type: string) => (type === 'DIESEL' ? 0 : 1);
+      return dieselFirst(a.fuelTransaction.fuelType) - dieselFirst(b.fuelTransaction.fuelType);
+    });
+
     const fuelTransactionsHtml = [
-      ...settlement.fuelTransactions.map(f => {
+      ...fuelRows.map(f => {
         const tx = f.fuelTransaction;
         const qty = tx.gallons || 0;
         const gross = tx.grossAmount;
@@ -180,7 +190,7 @@ export class PdfService {
               <td>${fFuelDate(tx.date)}</td>
               <td class="fuel-merchant">
                   ${e(tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card')}
-                  <div class="sub-text">Truck ${e(tx.truck.unitNumber)}${tx.reference ? ` · ${e(tx.reference)}` : ''}</div>
+                  <div class="sub-text">Truck ${e(tx.truck.unitNumber)}${tx.reference ? ` · Invoice ${e(tx.reference)}` : ''}</div>
               </td>
               <td class="fuel-qty">${qty ? `${qty} gal` : '—'}</td>
               <td>${fMoney(gross)}</td>

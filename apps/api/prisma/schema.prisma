@@ -601,6 +601,8 @@ model FuelTransaction {
   fuelCardId  String
   date        DateTime
   fuelType    FuelKind @default(DIESEL)
+  /// Shared by the Diesel and DEF lines of one invoice; null for single-line legacy entries.
+  invoiceId   String?
   merchant    String?
   gallons     Float?
   grossAmount Int
@@ -620,6 +622,7 @@ model FuelTransaction {
   @@index([companyId])
   @@index([truckId])
   @@index([fuelCardId])
+  @@index([invoiceId])
   @@index([date])
   @@map("fuel_transactions")
 }
