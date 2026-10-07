@@ -16,6 +16,7 @@ router.patch('/fuel-cards/:id', rbacMiddleware([...manageRoles]), fuelTollContro
 router.get('/fuel-transactions', rbacMiddleware(STAFF_ROLES), fuelTollController.listFuelTransactions);
 router.post('/fuel-transactions', rbacMiddleware([...manageRoles]), fuelTollController.createFuelTransaction);
 router.patch('/fuel-transactions/:id', rbacMiddleware([...manageRoles]), fuelTollController.updateFuelTransaction);
+router.delete('/fuel-transactions/:id', rbacMiddleware([...manageRoles]), fuelTollController.deleteFuelTransaction);
 
 router.get('/toll-devices', rbacMiddleware(STAFF_ROLES), fuelTollController.listTollDevices);
 router.post('/toll-devices', rbacMiddleware([...manageRoles]), fuelTollController.createTollDevice);
@@ -24,5 +25,6 @@ router.patch('/toll-devices/:id', rbacMiddleware([...manageRoles]), fuelTollCont
 router.get('/toll-transactions', rbacMiddleware(STAFF_ROLES), fuelTollController.listTollTransactions);
 router.post('/toll-transactions', rbacMiddleware([...manageRoles]), fuelTollController.createTollTransaction);
 router.patch('/toll-transactions/:id', rbacMiddleware([...manageRoles]), fuelTollController.updateTollTransaction);
+router.delete('/toll-transactions/:id', rbacMiddleware([...manageRoles]), fuelTollController.deleteTollTransaction);
 
 export default router;

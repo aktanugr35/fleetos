@@ -56,6 +56,13 @@ export class FuelTollController {
     } catch (error) { next(error); }
   }
 
+  async deleteFuelTransaction(req: Request, res: Response, next: NextFunction) {
+    try {
+      await fuelTollService.deleteFuelTransaction(req.tenantId!, req.params.id as string);
+      res.json(successResponse({ message: 'Fuel transaction deleted' }));
+    } catch (error) { next(error); }
+  }
+
   async listTollDevices(req: Request, res: Response, next: NextFunction) {
     try {
       res.json(successResponse(await fuelTollService.listTollDevices(req.tenantId!, req.query.truckId as string | undefined)));
@@ -96,6 +103,13 @@ export class FuelTollController {
     try {
       const input = updateTollTransactionSchema.parse(req.body);
       res.json(successResponse(await fuelTollService.updateTollTransaction(req.tenantId!, req.params.id as string, input)));
+    } catch (error) { next(error); }
+  }
+
+  async deleteTollTransaction(req: Request, res: Response, next: NextFunction) {
+    try {
+      await fuelTollService.deleteTollTransaction(req.tenantId!, req.params.id as string);
+      res.json(successResponse({ message: 'Toll transaction deleted' }));
     } catch (error) { next(error); }
   }
 }

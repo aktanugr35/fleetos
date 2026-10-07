@@ -148,6 +148,22 @@ export class FuelTollService {
     });
   }
 
+  async deleteFuelTransaction(tenantId: string, id: string) {
+    const existing = await prisma.fuelTransaction.findFirst({
+      where: { id, companyId: tenantId },
+      include: { settlementFuelTransactions: { select: { settlementId: true } } },
+    });
+    if (!existing) throw new AppError(404, 'FUEL_TRANSACTION_NOT_FOUND', 'Fuel transaction not found');
+    if (existing.settlementFuelTransactions.length > 0) {
+      throw new AppError(
+        409,
+        'ALREADY_APPLIED',
+        'Cannot delete a fuel transaction already on a settlement',
+      );
+    }
+    await prisma.fuelTransaction.delete({ where: { id } });
+  }
+
   async listTollTransactions(tenantId: string, filters: { truckId?: string; tollDeviceId?: string }) {
     return prisma.tollTransaction.findMany({
       where: { companyId: tenantId, ...filters },
@@ -210,6 +226,22 @@ export class FuelTollService {
         ...(input.notes !== undefined && { notes: input.notes }),
       },
     });
+  }
+
+  async deleteTollTransaction(tenantId: string, id: string) {
+    const existing = await prisma.tollTransaction.findFirst({
+      where: { id, companyId: tenantId },
+      include: { settlementTollTransactions: { select: { settlementId: true } } },
+    });
+    if (!existing) throw new AppError(404, 'TOLL_TRANSACTION_NOT_FOUND', 'Toll transaction not found');
+    if (existing.settlementTollTransactions.length > 0) {
+      throw new AppError(
+        409,
+        'ALREADY_APPLIED',
+        'Cannot delete a toll transaction already on a settlement',
+      );
+    }
+    await prisma.tollTransaction.delete({ where: { id } });
   }
 }
 
