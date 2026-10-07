@@ -118,8 +118,20 @@ docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructu
 
 ## Backup
 
+Nightly full snapshot on the VPS (Postgres + uploads + `.env.prod`), kept 14 days:
+
 ```bash
-docker exec haulyard-prod-db pg_dump -U fleetos fleetos > "haulyard-$(date +%Y%m%d).sql"
+chmod +x scripts/vps/backup.sh
+sh scripts/vps/backup.sh
+(crontab -l 2>/dev/null | grep -v haulyard-backup.sh; echo '0 3 * * * /root/fleetos/scripts/vps/backup.sh >> /var/log/haulyard-backup.log 2>&1') | crontab -
+```
+
+Copy the latest file to a Mac (`~/Desktop/yedek`) every 14 days: `scripts/mac/install-mac-pull.sh`.
+
+Restore (replaces live data — type `RESTORE`):
+
+```bash
+sh scripts/vps/restore.sh /root/backups/haulyard-latest.tar.gz
 ```
 
 ## Troubleshooting
