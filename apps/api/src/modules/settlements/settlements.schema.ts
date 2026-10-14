@@ -7,6 +7,9 @@ export const createSettlementSchema = z.object({
   weekStartDate: z.string().transform((v) => parseLocalDateInput(v)),
   weekEndDate: z.string().transform((v) => parseLocalDateInput(v)),
   loadIds: z.array(z.string()).default([]),
+  /** Omitted means every eligible fuel/toll entry in the period is included. */
+  fuelTransactionIds: z.array(z.string()).optional(),
+  tollTransactionIds: z.array(z.string()).optional(),
   notes: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (compareCalendarDates(data.weekEndDate, data.weekStartDate) < 0) {

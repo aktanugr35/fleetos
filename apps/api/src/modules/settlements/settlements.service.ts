@@ -51,12 +51,12 @@ export class SettlementsService {
     const hasLoads = loadsToSettle.length > 0;
     const hasDeductions = eligibleData.deductions.length > 0;
     const hasCredits = eligibleData.credits.length > 0;
-    const fuelTransactions = eligibleData.fuelTransactions.filter((t) =>
-      loadsToSettle.some((load) => load.truckId === t.truckId)
-    );
-    const tollTransactions = eligibleData.tollTransactions.filter((t) =>
-      loadsToSettle.some((load) => load.truckId === t.truckId)
-    );
+    const fuelTransactions = input.fuelTransactionIds
+      ? eligibleData.fuelTransactions.filter((t) => input.fuelTransactionIds!.includes(t.id))
+      : eligibleData.fuelTransactions;
+    const tollTransactions = input.tollTransactionIds
+      ? eligibleData.tollTransactions.filter((t) => input.tollTransactionIds!.includes(t.id))
+      : eligibleData.tollTransactions;
     const hasFuelOrToll = fuelTransactions.length > 0 || tollTransactions.length > 0;
     const companyFeeCents = eligibleData.companyFeeCents;
 
@@ -392,6 +392,36 @@ export class SettlementsService {
     return { loads, periodStart: start, periodEnd: end };
   }
 
+  /**
+   * Fuel and tolls are tracked per truck, so a settlement period with no loads yet still has to
+   * know which truck the driver was in: the trucks of the period's loads, the truck the driver
+   * owns, and the truck of the driver's latest load before the period ends.
+   */
+  private async resolveDriverTruckIds(
+    driverId: string,
+    candidates: Array<{ truckId: string; driverId: string | null; pickupDate: Date }>,
+    periodLoads: Array<{ truckId: string }>,
+    periodEnd: Date,
+  ) {
+    const truckIds = new Set(periodLoads.map((l) => l.truckId));
+
+    const ownedTruck = await prisma.truck.findUnique({
+      where: { ownerDriverId: driverId },
+      select: { id: true },
+    });
+    if (ownedTruck) truckIds.add(ownedTruck.id);
+
+    const latestDriven = candidates
+      .filter((l) => l.driverId === driverId && l.pickupDate.getTime() <= periodEnd.getTime())
+      .reduce<{ truckId: string; pickupDate: Date } | null>(
+        (latest, l) => (!latest || l.pickupDate > latest.pickupDate ? l : latest),
+        null,
+      );
+    if (latestDriven) truckIds.add(latestDriven.truckId);
+
+    return [...truckIds];
+  }
+
   private async fetchDriverLoadCandidates(tenantId: string, driverId: string) {
     const baseWhere = {
       companyId: tenantId,
@@ -491,7 +521,7 @@ export class SettlementsService {
     });
 
     const companyFeeCents = driver.exemptFromCompanyFee ? 0 : (company?.weeklyCompanyFee ?? 0);
-    const truckIds = [...new Set(rawLoads.map((l) => l.truckId))];
+    const truckIds = await this.resolveDriverTruckIds(driverId, candidates, rawLoads, end);
     const [fuelTransactions, tollTransactions] = truckIds.length > 0
       ? await Promise.all([
           prisma.fuelTransaction.findMany({
@@ -499,6 +529,7 @@ export class SettlementsService {
               companyId: tenantId,
               truckId: { in: truckIds },
               date: { gte: start, lte: end },
+              settlementFuelTransactions: { none: {} },
             },
             include: { fuelCard: true, truck: true },
             orderBy: { date: 'asc' },
@@ -508,6 +539,7 @@ export class SettlementsService {
               companyId: tenantId,
               truckId: { in: truckIds },
               date: { gte: start, lte: end },
+              settlementTollTransactions: { none: {} },
             },
             include: { tollDevice: true, truck: true },
             orderBy: { date: 'asc' },

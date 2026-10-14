@@ -168,33 +168,49 @@ export class PdfService {
     const companyFees = settlement.deductions.filter(d => d.deduction.type === 'COMPANY_FEE');
     const trueDeductions = settlement.deductions.filter(d => !['FUEL', 'TOLL', 'COMPANY_FEE'].includes(d.deduction.type));
 
-    const fuelRows = [...settlement.fuelTransactions].sort((a, b) => {
-      const byDate = a.fuelTransaction.date.getTime() - b.fuelTransaction.date.getTime();
-      if (byDate !== 0) return byDate;
-      const aInvoice = a.fuelTransaction.invoiceId ?? a.fuelTransaction.id;
-      const bInvoice = b.fuelTransaction.invoiceId ?? b.fuelTransaction.id;
-      if (aInvoice !== bInvoice) return aInvoice.localeCompare(bInvoice);
-      const dieselFirst = (type: string) => (type === 'DIESEL' ? 0 : 1);
-      return dieselFirst(a.fuelTransaction.fuelType) - dieselFirst(b.fuelTransaction.fuelType);
-    });
+    const fuelKindLabel = (type: string) => (type === 'DEF' ? 'DEF' : 'Diesel');
+    const fuelInvoices = new Map<string, typeof settlement.fuelTransactions>();
+    for (const row of settlement.fuelTransactions) {
+      const key = row.fuelTransaction.invoiceId ?? row.fuelTransaction.id;
+      fuelInvoices.set(key, [...(fuelInvoices.get(key) ?? []), row]);
+    }
+    const fuelInvoiceRows = [...fuelInvoices.values()]
+      .map((rows) =>
+        [...rows].sort((a, b) =>
+          (a.fuelTransaction.fuelType === 'DIESEL' ? 0 : 1) - (b.fuelTransaction.fuelType === 'DIESEL' ? 0 : 1),
+        ),
+      )
+      .sort((a, b) => a[0].fuelTransaction.date.getTime() - b[0].fuelTransaction.date.getTime());
 
     const fuelTransactionsHtml = [
-      ...fuelRows.map(f => {
-        const tx = f.fuelTransaction;
-        const qty = tx.gallons || 0;
-        const gross = tx.grossAmount;
-        const discount = tx.discount;
-        const net = f.amount;
+      ...fuelInvoiceRows.map(rows => {
+        const tx = rows[0].fuelTransaction;
+        const gross = rows.reduce((sum, r) => sum + r.fuelTransaction.grossAmount, 0);
+        const discount = rows.reduce((sum, r) => sum + r.fuelTransaction.discount, 0);
+        const net = rows.reduce((sum, r) => sum + r.amount, 0);
+        const qtyHtml = rows
+          .map((r) => {
+            const gallons = r.fuelTransaction.gallons;
+            const qty = gallons ? `${gallons} gal` : '—';
+            return rows.length > 1 ? `${qty} <span class="sub-text">${fuelKindLabel(r.fuelTransaction.fuelType)}</span>` : qty;
+          })
+          .join('<br>');
+        const breakdown = rows.length > 1
+          ? `<div class="sub-text">${rows
+              .map((r) => `${fuelKindLabel(r.fuelTransaction.fuelType)} ${fMoney(r.amount)}`)
+              .join(' · ')}</div>`
+          : '';
         return wrapPdfTableRow(`
-              <td>${tx.fuelType === 'DEF' ? 'DEF' : 'Diesel'}</td>
+              <td>${rows.map((r) => fuelKindLabel(r.fuelTransaction.fuelType)).join(' + ')}</td>
               <td>${fFuelDate(tx.date)}</td>
               <td class="fuel-merchant">
                   ${e(tx.merchant || tx.fuelCard.displayName || tx.fuelCard.provider || 'Fuel Card')}
                   <div class="sub-text">Truck ${e(tx.truck.unitNumber)}${tx.reference ? ` · Invoice ${e(tx.reference)}` : ''}</div>
+                  ${breakdown}
               </td>
-              <td class="fuel-qty">${qty ? `${qty} gal` : '—'}</td>
+              <td class="fuel-qty">${qtyHtml}</td>
               <td>${fMoney(gross)}</td>
-              <td class="text-green">${discount > 0 ? fMoney(discount) : fMoney(0)}</td>
+              <td class="text-green">${fMoney(discount > 0 ? discount : 0)}</td>
               <td class="text-right font-bold">${fMoney(net)}</td>
         `, FUEL_COLS);
       }),
@@ -396,18 +412,18 @@ export class PdfService {
             
             .badge-green { background: #4ade80; color: white; padding: 2px 10px; border-radius: 12px; font-size: 9px; }
 
-            .fuel-table col.col-type { width: 8%; }
+            .fuel-table col.col-type { width: 11%; }
             .fuel-table col.col-date { width: 10%; }
-            .fuel-table col.col-merchant { width: 34%; }
+            .fuel-table col.col-merchant { width: 31%; }
             .fuel-table col.col-qty { width: 10%; }
             .fuel-table col.col-amount { width: 14%; }
             .fuel-table col.col-discount { width: 12%; }
             .fuel-table col.col-pay { width: 12%; }
             .fuel-table .fuel-merchant { word-wrap: break-word; overflow-wrap: break-word; }
             .fuel-table .fuel-qty { white-space: nowrap; }
-            .fuel-table .pdf-row-table td:nth-child(1) { width: 8%; }
+            .fuel-table .pdf-row-table td:nth-child(1) { width: 11%; }
             .fuel-table .pdf-row-table td:nth-child(2) { width: 10%; }
-            .fuel-table .pdf-row-table td:nth-child(3) { width: 34%; }
+            .fuel-table .pdf-row-table td:nth-child(3) { width: 31%; }
             .fuel-table .pdf-row-table td:nth-child(4) { width: 10%; }
             .fuel-table .pdf-row-table td:nth-child(5) { width: 14%; }
             .fuel-table .pdf-row-table td:nth-child(6) { width: 12%; }

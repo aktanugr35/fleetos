@@ -112,10 +112,6 @@ function centsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-function fuelKindLabel(kind?: FuelKind | null): string {
-  return kind === 'DEF' ? 'DEF' : 'Diesel';
-}
-
 function calcFuelLine(line: FuelLineForm) {
   const gallons = parseFloat(line.gallons) || 0;
   const price = parseFloat(line.retailPrice) || 0;
@@ -176,6 +172,20 @@ function isTollApplied(tx: TollTransaction): boolean {
   return (tx.settlementTollTransactions?.length ?? 0) > 0;
 }
 
+type FuelStatusFilter = 'all' | 'open' | 'settled';
+
+const FUEL_PAGE_SIZE = 15;
+
+function FuelLineCell({ tx }: { tx?: FuelTransaction }) {
+  if (!tx) return <span className="text-gray-600">—</span>;
+  return (
+    <>
+      <div className="text-gray-200">{formatCurrency(tx.netAmount)}</div>
+      {tx.gallons ? <div className="text-xs text-gray-500">{tx.gallons} gal</div> : null}
+    </>
+  );
+}
+
 export default function FuelTollPage() {
   const { can } = usePermission();
   const canEdit = can('financial:write');
@@ -192,6 +202,12 @@ export default function FuelTollPage() {
   const [fuelToDelete, setFuelToDelete] = useState<FuelInvoice | null>(null);
   const [tollToDelete, setTollToDelete] = useState<TollTransaction | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [fuelFilter, setFuelFilterState] = useState({ search: '', truckId: '', status: 'all' as FuelStatusFilter, from: '', to: '' });
+  const [fuelPage, setFuelPage] = useState(1);
+  const setFuelFilter: typeof setFuelFilterState = (update) => {
+    setFuelFilterState(update);
+    setFuelPage(1);
+  };
 
   const [fuelCardForm, setFuelCardForm] = useState({ truckId: '', provider: '', cardNumber: '', displayName: '' });
   const [tollDeviceForm, setTollDeviceForm] = useState({ truckId: '', provider: '', deviceNumber: '', displayName: '' });
@@ -230,6 +246,41 @@ export default function FuelTollPage() {
   }, [fuelTxForm]);
 
   const fuelInvoices = useMemo(() => groupFuelInvoices(fuelTransactions), [fuelTransactions]);
+
+  const fuelTruckOptions = useMemo(() => {
+    const byId = new Map(fuelInvoices.map((invoice) => [invoice.truck.id, invoice.truck.unitNumber]));
+    return [...byId.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }))
+      .map(([value, unitNumber]) => ({ value, label: `Truck ${unitNumber}` }));
+  }, [fuelInvoices]);
+
+  const filteredFuelInvoices = useMemo(() => {
+    const search = fuelFilter.search.trim().toLowerCase();
+    return fuelInvoices.filter((invoice) => {
+      if (fuelFilter.truckId && invoice.truck.id !== fuelFilter.truckId) return false;
+      if (fuelFilter.status === 'open' && invoice.applied) return false;
+      if (fuelFilter.status === 'settled' && !invoice.applied) return false;
+      const day = toDateInputValue(invoice.date);
+      if (fuelFilter.from && day < fuelFilter.from) return false;
+      if (fuelFilter.to && day > fuelFilter.to) return false;
+      if (search) {
+        const haystack = [invoice.merchant, invoice.reference, invoice.fuelCard.displayName, invoice.truck.unitNumber]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [fuelInvoices, fuelFilter]);
+
+  const filteredFuelTotal = filteredFuelInvoices.reduce((sum, invoice) => sum + invoice.netAmount, 0);
+  const fuelPageCount = Math.max(1, Math.ceil(filteredFuelInvoices.length / FUEL_PAGE_SIZE));
+  const currentFuelPage = Math.min(fuelPage, fuelPageCount);
+  const pagedFuelInvoices = filteredFuelInvoices.slice(
+    (currentFuelPage - 1) * FUEL_PAGE_SIZE,
+    currentFuelPage * FUEL_PAGE_SIZE,
+  );
 
   const fuelTotal = useMemo(() => fuelTransactions.reduce((sum, tx) => sum + tx.netAmount, 0), [fuelTransactions]);
   const tollTotal = useMemo(() => tollTransactions.reduce((sum, tx) => sum + tx.amount, 0), [tollTransactions]);
@@ -271,6 +322,7 @@ export default function FuelTollPage() {
       diesel: lineFormFrom(invoice.lines.find((tx) => tx.fuelType !== 'DEF')),
       def: lineFormFrom(invoice.lines.find((tx) => tx.fuelType === 'DEF')),
     });
+    document.getElementById('fuel-invoice-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const cancelEditFuel = () => {
@@ -499,7 +551,7 @@ export default function FuelTollPage() {
         ) : null}
 
         {canEdit ? (
-          <section className="card">
+          <section id="fuel-invoice-form" className="card scroll-mt-4">
             <h2 className="font-semibold text-gray-100 mb-4">
               {editingFuelKey ? 'Edit Fuel Invoice' : 'Add Fuel Invoice'}
             </h2>
@@ -627,61 +679,127 @@ export default function FuelTollPage() {
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 mt-6 xl:grid-cols-2">
-        <section className="card p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--border-color)] font-semibold">Fuel Invoices</div>
-          {loading ? (
-            <div className="p-4 text-sm text-gray-500">Loading...</div>
-          ) : fuelInvoices.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500">No fuel invoices yet.</div>
-          ) : (
-            <div className="divide-y divide-[var(--border-color)]">
-              {fuelInvoices.map((invoice) => (
-                <div key={invoice.key} className="p-4 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-100">
-                      {invoice.lines.map((tx) => fuelKindLabel(tx.fuelType)).join(' + ')}
-                      {invoice.merchant ? ` · ${invoice.merchant}` : ''}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Truck {invoice.truck.unitNumber} · {formatDate(invoice.date)}
-                      {invoice.reference ? ` · Invoice ${invoice.reference}` : ''}
-                      {invoice.discount > 0 ? ` · Saved ${formatCurrency(invoice.discount)}` : ''}
-                      {invoice.applied ? ' · On settlement' : ''}
-                    </p>
-                    {invoice.lines.length > 1 ? (
-                      <ul className="mt-1 text-xs text-gray-500 space-y-0.5">
-                        {invoice.lines.map((tx) => (
-                          <li key={tx.id}>
-                            {fuelKindLabel(tx.fuelType)}{tx.gallons ? ` · ${tx.gallons} gal` : ''} · {formatCurrency(tx.netAmount)}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : invoice.lines[0]?.gallons ? (
-                      <p className="text-xs text-gray-500">{invoice.lines[0].gallons} gal</p>
-                    ) : null}
-                    {canEdit ? (
-                      invoice.applied ? (
-                        <p className="text-xs text-gray-600 mt-2">Remove it from the settlement first to edit or delete.</p>
-                      ) : (
-                        <div className="mt-2 flex gap-3">
-                          <button type="button" className="text-xs text-gray-500 hover:text-blue-400 transition" onClick={() => startEditFuel(invoice)}>
-                            Edit
-                          </button>
-                          <button type="button" className="text-xs text-gray-500 hover:text-red-400 transition" onClick={() => setFuelToDelete(invoice)}>
-                            Delete
-                          </button>
-                        </div>
-                      )
-                    ) : null}
-                  </div>
-                  <p className="font-semibold text-red-400 shrink-0">{formatCurrency(invoice.netAmount)}</p>
-                </div>
-              ))}
+      <section className="card p-0 overflow-hidden mt-6">
+        <div className="px-4 py-3 border-b border-[var(--border-color)] flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-gray-100">Fuel History</h2>
+          <span className="text-xs text-gray-500">
+            {filteredFuelInvoices.length} invoice{filteredFuelInvoices.length === 1 ? '' : 's'} · {formatCurrency(filteredFuelTotal)}
+          </span>
+        </div>
+        <div className="px-4 py-3 border-b border-[var(--border-color)] grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <FormInput
+            value={fuelFilter.search}
+            onChange={(e) => setFuelFilter((p) => ({ ...p, search: e.target.value }))}
+            placeholder="Search merchant or invoice #"
+            className="lg:col-span-2"
+          />
+          <FormSelect
+            value={fuelFilter.truckId}
+            onChange={(e) => setFuelFilter((p) => ({ ...p, truckId: e.target.value }))}
+            options={[{ value: '', label: 'All trucks' }, ...fuelTruckOptions]}
+          />
+          <FormSelect
+            value={fuelFilter.status}
+            onChange={(e) => setFuelFilter((p) => ({ ...p, status: e.target.value as FuelStatusFilter }))}
+            options={[
+              { value: 'all', label: 'All statuses' },
+              { value: 'open', label: 'Not on a statement' },
+              { value: 'settled', label: 'On a statement' },
+            ]}
+          />
+          <div className="flex items-center gap-2">
+            <FormInput type="date" value={fuelFilter.from} onChange={(e) => setFuelFilter((p) => ({ ...p, from: e.target.value }))} aria-label="From date" />
+            <FormInput type="date" value={fuelFilter.to} onChange={(e) => setFuelFilter((p) => ({ ...p, to: e.target.value }))} aria-label="To date" />
+          </div>
+        </div>
+        {loading ? (
+          <div className="p-4 text-sm text-gray-500">Loading...</div>
+        ) : fuelInvoices.length === 0 ? (
+          <div className="p-4 text-sm text-gray-500">No fuel invoices yet.</div>
+        ) : filteredFuelInvoices.length === 0 ? (
+          <div className="p-4 text-sm text-gray-500">No invoices match these filters.</div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-[var(--border-color)]">
+                    <th className="px-4 py-2 font-medium">Date</th>
+                    <th className="px-4 py-2 font-medium">Truck</th>
+                    <th className="px-4 py-2 font-medium">Merchant / Invoice</th>
+                    <th className="px-4 py-2 font-medium text-right">Diesel</th>
+                    <th className="px-4 py-2 font-medium text-right">DEF</th>
+                    <th className="px-4 py-2 font-medium text-right">Saved</th>
+                    <th className="px-4 py-2 font-medium text-right">Paid</th>
+                    <th className="px-4 py-2 font-medium">Status</th>
+                    {canEdit ? <th className="px-4 py-2" /> : null}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-color)]">
+                  {pagedFuelInvoices.map((invoice) => {
+                    const diesel = invoice.lines.find((tx) => tx.fuelType !== 'DEF');
+                    const def = invoice.lines.find((tx) => tx.fuelType === 'DEF');
+                    return (
+                      <tr key={invoice.key} className="hover:bg-white/[0.02]">
+                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-300">{formatDate(invoice.date)}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-300">{invoice.truck.unitNumber}</td>
+                        <td className="px-4 py-2.5 min-w-[10rem]">
+                          <div className="text-gray-100">{invoice.merchant || invoice.fuelCard.displayName || 'Fuel'}</div>
+                          {invoice.reference ? <div className="text-xs text-gray-500">#{invoice.reference}</div> : null}
+                        </td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap"><FuelLineCell tx={diesel} /></td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap"><FuelLineCell tx={def} /></td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap text-green-400">
+                          {invoice.discount > 0 ? formatCurrency(invoice.discount) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap font-semibold text-red-400">{formatCurrency(invoice.netAmount)}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          {invoice.applied ? (
+                            <span className="px-2 py-0.5 text-[11px] rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">On statement</span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-[11px] rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/30">Open</span>
+                          )}
+                        </td>
+                        {canEdit ? (
+                          <td className="px-4 py-2.5 whitespace-nowrap text-right">
+                            {invoice.applied ? (
+                              <span className="text-xs text-gray-600" title="Remove it from the statement first to edit or delete">Locked</span>
+                            ) : (
+                              <div className="flex justify-end gap-3">
+                                <button type="button" className="text-xs text-gray-400 hover:text-blue-400 transition" onClick={() => startEditFuel(invoice)}>
+                                  Edit
+                                </button>
+                                <button type="button" className="text-xs text-gray-400 hover:text-red-400 transition" onClick={() => setFuelToDelete(invoice)}>
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        ) : null}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </section>
+            {fuelPageCount > 1 ? (
+              <div className="px-4 py-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs text-gray-500">
+                <span>Page {currentFuelPage} of {fuelPageCount}</span>
+                <div className="flex gap-2">
+                  <button type="button" className="btn btn-secondary px-3 py-1 text-xs" disabled={currentFuelPage <= 1} onClick={() => setFuelPage(currentFuelPage - 1)}>
+                    Previous
+                  </button>
+                  <button type="button" className="btn btn-secondary px-3 py-1 text-xs" disabled={currentFuelPage >= fuelPageCount} onClick={() => setFuelPage(currentFuelPage + 1)}>
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
+      </section>
 
+      <div className="mt-6">
         <section className="card p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-[var(--border-color)] font-semibold">Toll Transactions</div>
           {loading ? (

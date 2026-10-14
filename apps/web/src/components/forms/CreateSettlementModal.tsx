@@ -57,6 +57,9 @@ interface FuelTransaction {
   truckId: string;
   date: string;
   fuelType?: 'DIESEL' | 'DEF';
+  invoiceId?: string | null;
+  reference?: string | null;
+  gallons?: number | null;
   merchant?: string | null;
   netAmount: number;
   fuelCard?: { displayName?: string | null; cardNumber?: string | null };
@@ -74,6 +77,29 @@ interface TollTransaction {
   tollDevice?: { displayName?: string | null; deviceNumber?: string | null };
   truck?: { unitNumber: string };
 }
+
+interface FuelInvoiceGroup {
+  key: string;
+  lines: FuelTransaction[];
+  netAmount: number;
+}
+
+function groupFuelByInvoice(transactions: FuelTransaction[]): FuelInvoiceGroup[] {
+  const groups = new Map<string, FuelTransaction[]>();
+  for (const tx of transactions) {
+    const key = tx.invoiceId ?? tx.id;
+    groups.set(key, [...(groups.get(key) ?? []), tx]);
+  }
+  return [...groups.entries()]
+    .map(([key, lines]) => ({
+      key,
+      lines: [...lines].sort((a, b) => (a.fuelType === 'DEF' ? 1 : 0) - (b.fuelType === 'DEF' ? 1 : 0)),
+      netAmount: lines.reduce((sum, l) => sum + l.netAmount, 0),
+    }))
+    .sort((a, b) => a.lines[0].date.localeCompare(b.lines[0].date));
+}
+
+const fuelKindLabel = (type?: string) => (type === 'DEF' ? 'DEF' : 'Diesel');
 
 export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSettlementModalProps) {
   const [loading, setLoading] = useState(false);
@@ -99,6 +125,8 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
   const [weekStartDate, setWeekStartDate] = useState<string>('');
   const [weekEndDate, setWeekEndDate] = useState<string>('');
   const [selectedLoadIds, setSelectedLoadIds] = useState<string[]>([]);
+  const [excludedFuelKeys, setExcludedFuelKeys] = useState<Set<string>>(new Set());
+  const [excludedTollIds, setExcludedTollIds] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -171,6 +199,8 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
       setCompanyFeeCents(res.data.data.companyFeeCents ?? 0);
       setEligibleSummary(res.data.data.summary || null);
       setSelectedLoadIds(loads.map((l) => l.id));
+      setExcludedFuelKeys(new Set());
+      setExcludedTollIds(new Set());
       setErrors((prev) => ({ ...prev, _eligible: '' }));
     } catch (err: unknown) {
       const message =
@@ -197,9 +227,20 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
 
   const driver = drivers.find(d => d.id === selectedDriver);
   const selectedLoadsObj = eligibleLoads.filter(l => selectedLoadIds.includes(l.id));
-  const selectedTruckIds = new Set(selectedLoadsObj.map((l) => l.truckId));
-  const selectedFuelTransactions = eligibleFuelTransactions.filter((t) => selectedTruckIds.has(t.truckId));
-  const selectedTollTransactions = eligibleTollTransactions.filter((t) => selectedTruckIds.has(t.truckId));
+  const fuelInvoices = groupFuelByInvoice(eligibleFuelTransactions);
+  const selectedFuelTransactions = fuelInvoices
+    .filter((invoice) => !excludedFuelKeys.has(invoice.key))
+    .flatMap((invoice) => invoice.lines);
+  const selectedTollTransactions = eligibleTollTransactions.filter((t) => !excludedTollIds.has(t.id));
+
+  const toggleInSet = (setter: typeof setExcludedFuelKeys, key: string) => {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
   
   // Use backend-calculated values
   const grossPayCents = selectedLoadsObj.reduce((sum, l) => sum + l.calculatedGrossCents, 0);
@@ -250,6 +291,8 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
         weekStartDate,
         weekEndDate,
         loadIds: selectedLoadIds,
+        fuelTransactionIds: selectedFuelTransactions.map((t) => t.id),
+        tollTransactionIds: selectedTollTransactions.map((t) => t.id),
         notes: notes || undefined,
       });
       const payload = res.data.data as {
@@ -399,30 +442,67 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
             <div className="card p-0 overflow-hidden">
               <div className="px-4 py-3 border-b border-[var(--border-color)] bg-gray-500/5">
                 <h4 className="font-semibold text-gray-200">Fuel & Toll in Period</h4>
-                <p className="text-[10px] text-gray-500 mt-0.5">Included when attached to selected load trucks</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  Dated in this period and not on another statement. Uncheck anything you want to leave out.
+                </p>
               </div>
-              <div className="max-h-40 overflow-y-auto">
-                {selectedFuelTransactions.length === 0 && selectedTollTransactions.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No fuel/toll transactions for selected trucks</p>
+              <div className="max-h-60 overflow-y-auto p-2">
+                {fuelInvoices.length === 0 && eligibleTollTransactions.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">No fuel/toll transactions dated in this period</p>
                 ) : (
-                  <table className="w-full text-sm text-left">
-                    <tbody>
-                      {selectedFuelTransactions.map((t) => (
-                        <tr key={`fuel-${t.id}`} className="border-b border-[var(--border-color)] last:border-0">
-                          <td className="px-4 py-2 text-gray-300">{t.fuelType === 'DEF' ? 'DEF' : 'Diesel'}</td>
-                          <td className="px-4 py-2 text-gray-500">{t.merchant || t.fuelCard?.displayName || 'Fuel Card'} · Truck {t.truck?.unitNumber || ''}</td>
-                          <td className="px-4 py-2 text-right text-red-400">-{formatCurrency(t.netAmount)}</td>
-                        </tr>
-                      ))}
-                      {selectedTollTransactions.map((t) => (
-                        <tr key={`toll-${t.id}`} className="border-b border-[var(--border-color)] last:border-0">
-                          <td className="px-4 py-2 text-gray-300">Toll</td>
-                          <td className="px-4 py-2 text-gray-500">{t.agency || t.location || t.description || 'Toll'} · Truck {t.truck?.unitNumber || ''}</td>
-                          <td className="px-4 py-2 text-right text-red-400">-{formatCurrency(t.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="space-y-1">
+                    {fuelInvoices.map((invoice) => {
+                      const first = invoice.lines[0];
+                      const included = !excludedFuelKeys.has(invoice.key);
+                      return (
+                        <label
+                          key={`fuel-${invoice.key}`}
+                          className={`flex items-start gap-3 px-3 py-2 rounded-lg border border-[var(--border-color)] hover:border-blue-500/30 cursor-pointer transition ${included ? '' : 'opacity-50'}`}
+                        >
+                          <input type="checkbox" className="mt-1" checked={included} onChange={() => toggleInSet(setExcludedFuelKeys, invoice.key)} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between gap-3">
+                              <span className="text-gray-200">
+                                {invoice.lines.map((l) => fuelKindLabel(l.fuelType)).join(' + ')}
+                                <span className="text-gray-500"> · {first.merchant || first.fuelCard?.displayName || 'Fuel Card'}</span>
+                              </span>
+                              <span className="text-red-400 shrink-0">-{formatCurrency(invoice.netAmount)}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {formatDate(first.date)} · Truck {first.truck?.unitNumber || ''}
+                              {first.reference ? ` · Invoice ${first.reference}` : ''}
+                              {' · '}
+                              {invoice.lines
+                                .map((l) => `${fuelKindLabel(l.fuelType)}${l.gallons ? ` ${l.gallons} gal` : ''} ${formatCurrency(l.netAmount)}`)
+                                .join(' / ')}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                    {eligibleTollTransactions.map((t) => {
+                      const included = !excludedTollIds.has(t.id);
+                      return (
+                        <label
+                          key={`toll-${t.id}`}
+                          className={`flex items-start gap-3 px-3 py-2 rounded-lg border border-[var(--border-color)] hover:border-blue-500/30 cursor-pointer transition ${included ? '' : 'opacity-50'}`}
+                        >
+                          <input type="checkbox" className="mt-1" checked={included} onChange={() => toggleInSet(setExcludedTollIds, t.id)} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between gap-3">
+                              <span className="text-gray-200">
+                                Toll<span className="text-gray-500"> · {t.agency || t.location || t.description || 'Toll'}</span>
+                              </span>
+                              <span className="text-red-400 shrink-0">-{formatCurrency(t.amount)}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {formatDate(t.date)} · Truck {t.truck?.unitNumber || ''}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
