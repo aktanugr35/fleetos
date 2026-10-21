@@ -136,7 +136,7 @@ export default function FactoringPage() {
     <div>
       <PageHeader
         title="Factoring"
-        description="Submit delivered loads to factoring or in-house finance. Amazon loads are not listed."
+        description="Delivered and TONU loads appear here to submit to factoring or in-house finance. Amazon loads are not listed."
       />
 
       {missingRecipients ? (
@@ -238,13 +238,13 @@ export default function FactoringPage() {
                       <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{load.driverName}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-right font-semibold text-[var(--text-primary)]">{formatCurrency(load.amountCents)}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
-                        {load.billingSubmittedAt && load.billingMethod ? (
+                        {load.billingSubmittedAt ? (
                           <div className="flex items-center gap-3">
                             <span
                               className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-500"
-                              title={load.billingSubmittedTo ? `Emailed to ${load.billingSubmittedTo}` : undefined}
+                              title={load.billingSubmittedTo ? `Emailed to ${load.billingSubmittedTo}` : 'Invoiced before the Factoring page existed'}
                             >
-                              ✓ {METHOD_LABEL[load.billingMethod]} · {formatDate(load.billingSubmittedAt)}
+                              ✓ {load.billingMethod ? METHOD_LABEL[load.billingMethod] : 'Submitted'} · {formatDate(load.billingSubmittedAt)}
                             </span>
                             <button
                               type="button"

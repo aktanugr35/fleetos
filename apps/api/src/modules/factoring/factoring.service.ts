@@ -5,11 +5,14 @@ import { sendCompanyMail } from '../../services/smtp-mailer.service';
 import { BILLING_METHOD_LABEL, buildBillingSubmissionEmail } from './factoring.email';
 import type { FactoringListQuery } from './factoring.schema';
 
-/** Amazon loads are paid through Amazon Relay, so they never go to factoring. */
+/**
+ * Only delivered and TONU loads can be invoiced. Amazon loads are paid through Amazon Relay,
+ * so they never go to factoring.
+ */
 function billableLoadsWhere(tenantId: string): Prisma.LoadWhereInput {
   return {
     companyId: tenantId,
-    status: { not: 'CANCELLED' },
+    status: { in: ['DELIVERED', 'TONU'] },
     NOT: { brokerName: { contains: 'amazon', mode: 'insensitive' } },
   };
 }
