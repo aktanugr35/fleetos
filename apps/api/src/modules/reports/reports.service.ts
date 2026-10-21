@@ -5,6 +5,15 @@ import {
   grossLineCents,
   sumDeliveredGrossByDeliveryMonth,
 } from './reports.revenue';
+import { createBrokerResolver } from './broker-identity';
+
+async function loadBrokerResolver(tenantId: string) {
+  const brokers = await prisma.broker.findMany({
+    where: { companyId: tenantId },
+    select: { id: true, name: true, mcNumber: true },
+  });
+  return createBrokerResolver(brokers);
+}
 
 function milesForLoad(load: {
   totalMiles: number | null;
@@ -174,20 +183,26 @@ export class ReportsService {
   }
 
   async getBrokerSummary(tenantId: string, limit = 12) {
-    const rows = await prisma.load.groupBy({
-      by: ['brokerName'],
-      where: { companyId: tenantId, status: 'DELIVERED' },
-      _count: { id: true },
-      _sum: { rateTotal: true },
-      orderBy: { _sum: { rateTotal: 'desc' } },
-      take: limit,
-    });
+    const [rows, resolveBroker] = await Promise.all([
+      prisma.load.groupBy({
+        by: ['brokerId', 'brokerMC', 'brokerName'],
+        where: { companyId: tenantId, status: 'DELIVERED' },
+        _count: { id: true },
+        _sum: { rateTotal: true },
+      }),
+      loadBrokerResolver(tenantId),
+    ]);
 
-    return rows.map((r) => ({
-      brokerName: r.brokerName,
-      loadCount: r._count.id,
-      revenueCents: r._sum.rateTotal || 0,
-    }));
+    const totals = new Map<string, { brokerName: string; loadCount: number; revenueCents: number }>();
+    for (const r of rows) {
+      const { key, name } = resolveBroker(r);
+      const agg = totals.get(key) ?? { brokerName: name, loadCount: 0, revenueCents: 0 };
+      agg.loadCount += r._count.id;
+      agg.revenueCents += r._sum.rateTotal || 0;
+      totals.set(key, agg);
+    }
+
+    return [...totals.values()].sort((a, b) => b.revenueCents - a.revenueCents).slice(0, limit);
   }
 
   /**
@@ -199,6 +214,7 @@ export class ReportsService {
     from: Date,
     to: Date
   ): Promise<OperationalAnalytics> {
+    const resolveBroker = await loadBrokerResolver(tenantId);
     const loads = await prisma.load.findMany({
       where: {
         companyId: tenantId,
@@ -207,6 +223,8 @@ export class ReportsService {
       select: {
         id: true,
         driverId: true,
+        brokerId: true,
+        brokerMC: true,
         brokerName: true,
         status: true,
         pickupDate: true,
@@ -246,6 +264,7 @@ export class ReportsService {
     };
 
     type BrokerAgg = {
+      brokerName: string;
       totalLoads: number;
       deliveredLoads: number;
       totalMiles: number;
@@ -320,9 +339,11 @@ export class ReportsService {
         dAgg.pendingOrTransitLoads += 1;
       }
 
-      let bAgg = brokerMap.get(load.brokerName);
+      const broker = resolveBroker(load);
+      let bAgg = brokerMap.get(broker.key);
       if (!bAgg) {
         bAgg = {
+          brokerName: broker.name,
           totalLoads: 0,
           deliveredLoads: 0,
           totalMiles: 0,
@@ -330,7 +351,7 @@ export class ReportsService {
           deadheadMiles: 0,
           grossRevenueDeliveredCents: 0,
         };
-        brokerMap.set(load.brokerName, bAgg);
+        brokerMap.set(broker.key, bAgg);
       }
       bAgg.totalLoads += 1;
       bAgg.totalMiles += miles;
@@ -373,9 +394,9 @@ export class ReportsService {
       }))
       .sort((x, y) => y.grossRevenueDeliveredCents - x.grossRevenueDeliveredCents);
 
-    const brokers = Array.from(brokerMap.entries())
-      .map(([brokerName, a]) => ({
-        brokerName,
+    const brokers = Array.from(brokerMap.values())
+      .map((a) => ({
+        brokerName: a.brokerName,
         totalLoads: a.totalLoads,
         deliveredLoads: a.deliveredLoads,
         grossRevenueDeliveredCents: a.grossRevenueDeliveredCents,

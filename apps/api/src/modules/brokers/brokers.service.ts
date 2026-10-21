@@ -111,7 +111,14 @@ export class BrokersService {
 
   async create(tenantId: string, input: CreateBrokerInput) {
     try {
-      return await prisma.broker.create({ data: { companyId: tenantId, ...input } });
+      const broker = await prisma.broker.create({ data: { companyId: tenantId, ...input } });
+      await prisma.$executeRaw`
+        UPDATE "loads" SET "brokerId" = ${broker.id}
+        WHERE "companyId" = ${tenantId}
+          AND "brokerId" IS NULL
+          AND regexp_replace(COALESCE("brokerMC", ''), '\\D', '', 'g') = ${broker.mcNumber}
+      `;
+      return broker;
     } catch (error) {
       if (isDuplicate(error)) {
         throw new AppError(409, 'BROKER_MC_EXISTS', 'A broker with this MC number already exists');
