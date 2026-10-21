@@ -109,3 +109,24 @@ export const reportLimiter = rateLimit({
     return req.user?.userId || req.ip || 'anonymous';
   },
 });
+
+/**
+ * SMTP test email limiter
+ * 10 test emails per 10 minutes per user
+ */
+export const emailTestLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many test emails. Please try again in a few minutes.',
+    },
+  },
+  keyGenerator: (req) => {
+    return req.user?.userId || req.ip || 'anonymous';
+  },
+});

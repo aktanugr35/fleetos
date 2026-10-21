@@ -23,6 +23,7 @@ export type FleetPermission =
   | 'loads:dispatch'
   | 'loads:cancel'
   | 'loads:stats'
+  | 'factoring:view'
   | 'compliance:view'
   | 'passwords:view'
   | 'passwords:manage'
@@ -75,6 +76,7 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'loads:dispatch': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.DISPATCHER],
   'loads:cancel': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.DISPATCHER],
   'loads:stats': STAFF_ROLES,
+  'factoring:view': STAFF_ROLES,
   'compliance:view': STAFF_ROLES,
   'passwords:view': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],
   'passwords:manage': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN],

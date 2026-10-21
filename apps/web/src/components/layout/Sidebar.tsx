@@ -137,6 +137,17 @@ const navigation: NavItem[] = [
     ),
   },
   {
+    label: 'Factoring',
+    href: '/dashboard/factoring',
+    permission: 'factoring:view',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" />
+        <path d="M12 11v6" /><path d="M14 12.5h-2.5a1.25 1.25 0 0 0 0 2.5h1a1.25 1.25 0 0 1 0 2.5H10" />
+      </svg>
+    ),
+  },
+  {
     label: 'Compliance',
     href: '/dashboard/compliance',
     permission: 'compliance:view',

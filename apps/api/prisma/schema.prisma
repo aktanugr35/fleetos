@@ -49,8 +49,36 @@ model Company {
   complianceRecords     ComplianceRecord[]
   passwords             CompanyPassword[]
   brokers               Broker[]
+  emailSettings         CompanyEmailSettings?
 
   @@map("companies")
+}
+
+// Outgoing mail server the company sends from (e.g. to its factoring company).
+model CompanyEmailSettings {
+  id                String   @id @default(uuid())
+  companyId         String   @unique
+  smtpHost          String
+  smtpPort          Int
+  /// true = implicit TLS (usually port 465); false = STARTTLS / plain (usually 587).
+  smtpSecure        Boolean  @default(false)
+  smtpUser          String
+  /// AES-GCM payload from credentials-crypto; never returned by the API.
+  smtpPasswordEnc   String
+  fromEmail         String
+  fromName          String?
+  replyTo           String?
+  /// Comma-separated recipients notified when a load is submitted for factoring / in-house finance.
+  factoringEmail    String?
+  inHouseFinanceEmail String?
+  lastTestedAt      DateTime?
+  lastTestError     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_email_settings")
 }
 
 // ─── USER / AUTH ──────────────────────────────────────
@@ -309,6 +337,11 @@ enum LoadStatus {
   TONU
 }
 
+enum BillingMethod {
+  FACTORING
+  IN_HOUSE
+}
+
 model Load {
   id                   String     @id @default(uuid())
   companyId            String
@@ -343,6 +376,11 @@ model Load {
   detentionPay  Int? @default(0)
   lumperFee     Int? @default(0)
   tonuAmount    Int? @default(0)
+
+  /// How the load was billed; set when it is submitted from the Factoring page.
+  billingMethod      BillingMethod?
+  billingSubmittedAt DateTime?
+  billingSubmittedTo String?
 
   notes     String?
   createdAt DateTime @default(now())

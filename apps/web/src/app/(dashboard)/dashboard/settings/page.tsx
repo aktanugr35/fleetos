@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Toast } from '@/components/ui/Toast';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { usePermission } from '@/hooks/usePermission';
+import { EmailSettingsCard } from '@/components/settings/EmailSettingsCard';
 import api from '@/lib/api';
 
 export default function SettingsPage() {
@@ -347,6 +348,12 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {canEditCompany ? (
+        <div className="mt-6">
+          <EmailSettingsCard notify={(type, message) => setToast({ type, message })} />
+        </div>
+      ) : null}
 
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
     </div>

@@ -36,6 +36,7 @@ import geoRoutes from './modules/geo/geo.routes';
 import usersRoutes from './modules/users/users.routes';
 import driverIntakeRoutes from './modules/driver-intake/driver-intake.routes';
 import passwordsRoutes from './modules/passwords/passwords.routes';
+import factoringRoutes from './modules/factoring/factoring.routes';
 
 // ─── Express App ────────────────────────────────────────
 const app = express();
@@ -124,6 +125,7 @@ app.use('/api/v1/brokers', brokerRoutes);
 app.use('/api/v1/trucks', truckRoutes);
 app.use('/api/v1/trailers', trailerRoutes);
 app.use('/api/v1/loads', loadRoutes);
+app.use('/api/v1/factoring', factoringRoutes);
 app.use('/api/v1/settlements', settlementRoutes);
 app.use('/api/v1/dispatcher-settlements', dispatcherSettlementRoutes);
 app.use('/api/v1/deductions', deductionRoutes);
