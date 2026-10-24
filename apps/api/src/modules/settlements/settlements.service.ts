@@ -11,9 +11,11 @@ import {
 } from '../../utils/datePeriod';
 import { notificationsService } from '../notifications/notifications.service';
 import { logger } from '../../utils/logger';
+import { nextStatementNumber } from '../../utils/statement-number';
 import {
   calculateLoadSettlementAmounts,
   grossRevenueFromLoad,
+  isAdjustmentEligible,
   resolveLoadRole,
   type SettlementLoadRole,
 } from './settlements.eligible';
@@ -99,10 +101,8 @@ export class SettlementsService {
     const periodDeductions = eligibleData.deductions;
     const credits = eligibleData.credits;
 
-    const count = await prisma.settlement.count({ where: { companyId: tenantId } });
-    const settlementNumber = `SET-${new Date().getFullYear()}-${(count + 1).toString().padStart(5, '0')}`;
-
     const settlement = await prisma.$transaction(async (tx) => {
+      const settlementNumber = await nextStatementNumber(tx, 'SET', tenantId);
       const settlementDeductions = periodDeductions.map((d) => ({
         deductionId: d.id,
         amount: d.amount,
@@ -317,6 +317,9 @@ export class SettlementsService {
       },
     });
     if (!existing) throw new AppError(404, 'SETTLEMENT_NOT_FOUND', 'Settlement not found');
+    if (existing.status === 'PAID') {
+      throw new AppError(409, 'SETTLEMENT_PAID', 'Paid statements cannot be deleted');
+    }
 
     const autoCompanyFeeIds = existing.deductions
       .filter((row) => row.deduction.type === 'COMPANY_FEE')
@@ -479,26 +482,45 @@ export class SettlementsService {
       isWithinPeriodInZone(getLoadWorkDate(load), start, end)
     );
 
+    const settledPeriodSelect = { select: { settlement: { select: { periodStart: true, periodEnd: true } } } };
     const [allDeductions, allCredits] = await Promise.all([
       prisma.deduction.findMany({
-        where: { companyId: tenantId, driverId },
+        where: { companyId: tenantId, driverId, type: { notIn: ['COMPANY_FEE', 'FUEL', 'TOLL'] } },
+        include: { settlementDeductions: settledPeriodSelect },
         orderBy: { date: 'asc' },
       }),
       prisma.credit.findMany({
         where: { companyId: tenantId, driverId },
+        include: { settlementCredits: settledPeriodSelect },
         orderBy: { date: 'asc' },
       }),
     ]);
 
-    const deductions = allDeductions.filter(
-      (d) => !['COMPANY_FEE', 'FUEL', 'TOLL'].includes(d.type) && isWithinPeriod(d.date, start, end)
-    );
-    const credits = allCredits.filter((c) => isWithinPeriod(c.date, start, end));
+    const deductions = allDeductions
+      .filter((d) =>
+        isAdjustmentEligible(
+          { date: d.date, isRecurring: d.isRecurring, settledPeriods: d.settlementDeductions.map((l) => l.settlement) },
+          start,
+          end,
+          isWithinPeriod,
+        ),
+      )
+      .map(({ settlementDeductions: _links, ...d }) => d);
+    const credits = allCredits
+      .filter((c) =>
+        isAdjustmentEligible(
+          { date: c.date, isRecurring: c.isRecurring, settledPeriods: c.settlementCredits.map((l) => l.settlement) },
+          start,
+          end,
+          isWithinPeriod,
+        ),
+      )
+      .map(({ settlementCredits: _links, ...c }) => c);
 
     const company = await prisma.company.findUnique({ where: { id: tenantId } });
     const commissionRate = driver.exemptFromCompanyCommission
       ? 0
-      : (company?.defaultOOCommissionRate || 1200);
+      : (company?.defaultOOCommissionRate ?? 1200);
 
     const loads = rawLoads.map((load) => {
       const grossRev = grossRevenueFromLoad(load);

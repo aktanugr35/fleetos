@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Toast } from '@/components/ui/Toast';
-import { MonthlyGrossChart } from '@/components/reports/MonthlyGrossChart';
+import { MonthlyGrossChart, type MonthlyGrossPoint } from '@/components/reports/MonthlyGrossChart';
 import { formatCurrency } from '@/lib/utils';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { usePermission } from '@/hooks/usePermission';
@@ -29,7 +29,7 @@ interface OperationalAnalyticsResponse {
     totalDriverWorkDays: number;
     fleetActiveCalendarDays: number;
   };
-  revenueByMonth: { monthKey: string; label: string; revenueCents: number }[];
+  revenueByMonth: MonthlyGrossPoint[];
   drivers: {
     driverId: string;
     firstName: string;
@@ -411,7 +411,7 @@ export default function ReportsPage() {
               <p className="text-2xl font-bold text-[var(--text-primary)] mt-1 tabular-nums">
                 {formatCurrency(c?.grossRevenueDeliveredCents ?? 0)}
               </p>
-              <p className="text-xs text-[var(--text-muted)] mt-2">Delivered only · line haul + extras</p>
+              <p className="text-xs text-[var(--text-muted)] mt-2">Delivered + TONU · line haul + extras</p>
             </div>
             <div className="card py-5">
               <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide">Fleet days</p>
@@ -467,8 +467,8 @@ export default function ReportsPage() {
           </div>
 
           <div className="card">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Delivered gross by delivery month</h3>
-            <p className="text-xs text-[var(--text-muted)] mb-4">Hover a bar for the exact amount.</p>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Gross revenue by month</h3>
+            <p className="text-xs text-[var(--text-muted)] mb-4">Delivered and TONU loads, counted in the month they were delivered (TONU: pickup month).</p>
             {!data?.revenueByMonth.length ? (
               <p className="text-sm text-[var(--text-muted)] py-8 text-center">No delivered revenue in this range.</p>
             ) : (

@@ -68,7 +68,7 @@ export function CreateCreditModal({
     }
 
     if (!fixedDriverId && !credit) {
-      api.get('/drivers').then((res) => setDrivers(res.data.data)).catch(() => {});
+      api.get('/drivers?limit=500').then((res) => setDrivers(res.data.data)).catch(() => {});
     }
   }, [isOpen, fixedDriverId, credit]);
 

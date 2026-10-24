@@ -3,6 +3,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { getLoadWorkDate, getPeriodBounds, isWithinPeriodInZone } from '../../utils/datePeriod';
 import { logger } from '../../utils/logger';
+import { nextStatementNumber } from '../../utils/statement-number';
 import { grossRevenueFromLoad } from '../settlements/settlements.eligible';
 import type { CreateDispatcherSettlementInput } from './dispatcher-settlements.schema';
 import { dispatcherPdfService } from './dispatcher-pdf.service';
@@ -169,10 +170,8 @@ export class DispatcherSettlementsService {
       };
     });
 
-    const count = await prisma.dispatcherSettlement.count({ where: { companyId: tenantId } });
-    const statementNumber = `DSP-${new Date().getFullYear()}-${(count + 1).toString().padStart(5, '0')}`;
-
     const settlement = await prisma.$transaction(async (tx) => {
+      const statementNumber = await nextStatementNumber(tx, 'DSP', tenantId);
       if (loadsToSettle.length > 0) {
         await tx.load.updateMany({
           where: {
@@ -283,6 +282,9 @@ export class DispatcherSettlementsService {
     });
     if (!existing) {
       throw new AppError(404, 'DISPATCHER_SETTLEMENT_NOT_FOUND', 'Dispatcher settlement not found');
+    }
+    if (existing.status === 'PAID') {
+      throw new AppError(409, 'SETTLEMENT_PAID', 'Paid statements cannot be deleted');
     }
 
     await prisma.dispatcherSettlement.delete({ where: { id: settlementId } });

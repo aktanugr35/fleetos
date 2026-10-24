@@ -48,6 +48,59 @@ export function revenueDateWhere(from: Date, toExclusive: Date): Prisma.LoadWher
   };
 }
 
+export interface MonthRevenueLoad {
+  id: string;
+  loadNumber: string;
+  puNumber: string | null;
+  brokerName: string;
+  status: LoadStatus;
+  revenueDate: string;
+  amountCents: number;
+}
+
+export interface MonthRevenue {
+  monthKey: string;
+  label: string;
+  revenueCents: number;
+  loadCount: number;
+  /** The range covers only part of this month, so the bar is not a full month. */
+  partial: boolean;
+  loads: MonthRevenueLoad[];
+}
+
+export function utcMonthKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** One entry per UTC calendar month from `from` to `to`, zero-filled, oldest first. */
+export function buildMonthlySeries(from: Date, to: Date, loadsByMonth: Map<string, MonthRevenueLoad[]>): MonthRevenue[] {
+  const series: MonthRevenue[] = [];
+  let y = from.getUTCFullYear();
+  let m = from.getUTCMonth();
+  const lastKey = utcMonthKey(to);
+  for (;;) {
+    const monthStart = new Date(Date.UTC(y, m, 1));
+    const nextMonthStart = new Date(Date.UTC(y, m + 1, 1));
+    const monthKey = utcMonthKey(monthStart);
+    const loads = (loadsByMonth.get(monthKey) ?? []).sort((a, b) => a.revenueDate.localeCompare(b.revenueDate));
+    series.push({
+      monthKey,
+      label: monthStart.toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }),
+      revenueCents: loads.reduce((sum, l) => sum + l.amountCents, 0),
+      loadCount: loads.length,
+      partial: from > monthStart || to.getTime() < nextMonthStart.getTime() - 1,
+      loads,
+    });
+    if (monthKey === lastKey) break;
+    m += 1;
+    if (m === 12) {
+      m = 0;
+      y += 1;
+    }
+  }
+  return series;
+}
+
 export function localMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }

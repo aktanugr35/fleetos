@@ -159,9 +159,7 @@ export function DispatcherSettlementDetailModal({
   };
 
   const deleteMessage =
-    settlement?.status === SettlementStatus.PAID
-      ? `Delete statement ${settlement.statementNumber || settlement.id.slice(0, 8)}? It was marked as paid. Booked loads will become available again so you can recreate the settlement. This cannot be undone.`
-      : settlement?.status === SettlementStatus.FINALIZED
+    settlement?.status === SettlementStatus.FINALIZED
         ? `Delete statement ${settlement.statementNumber || settlement.id.slice(0, 8)}? Booked loads will become available again so you can recreate the settlement. This cannot be undone.`
         : `Delete draft statement ${settlement?.statementNumber || settlementId?.slice(0, 8)}? Booked loads will become available again. This cannot be undone.`;
 
@@ -250,7 +248,7 @@ export function DispatcherSettlementDetailModal({
       )}
 
       <ModalFooter>
-        {settlement && canWrite ? (
+        {settlement && canWrite && settlement.status !== SettlementStatus.PAID ? (
           <button
             type="button"
             className="btn btn-secondary text-red-400 border-red-500/30 hover:bg-red-500/10 mr-auto"

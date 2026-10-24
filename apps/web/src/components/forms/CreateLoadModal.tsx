@@ -132,7 +132,7 @@ export function CreateLoadModal({ isOpen, onClose, onSuccess, loadId = null }: C
       api.get(loadId ? '/drivers?status=all&limit=200' : '/drivers?status=active&limit=200'),
       api.get('/dispatchers?status=active&limit=200'),
       api.get('/trucks?status=active&limit=200'),
-      api.get('/trailers'),
+      api.get('/trailers?limit=500'),
     ]).then(([d, disp, t, tr]) => {
       setDrivers(d.data.data);
       setDispatchers(disp.data.data);

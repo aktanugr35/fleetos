@@ -34,7 +34,7 @@ export default function DeductionsPage() {
       setLoading(true);
       try {
         const [driversRes, deductionsRes] = await Promise.all([
-          api.get('/drivers'),
+          api.get('/drivers?limit=500'),
           api.get('/deductions?limit=500'),
         ]);
         setDrivers(driversRes.data.data);

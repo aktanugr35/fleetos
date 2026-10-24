@@ -9,6 +9,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
+import { Pagination, type PageMeta } from '@/components/ui/Pagination';
 import api from '@/lib/api';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -34,12 +35,16 @@ export default function TrailersPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+
   const fetchTrailers = async () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await api.get('/trailers');
+      const res = await api.get('/trailers', { params: { page, limit: 20 } });
       setTrailers(res.data.data);
+      setMeta(res.data.meta ?? null);
     } catch (err) {
       logErrorDev('trailers', err);
       setFetchError(getApiErrorMessage(err, 'Failed to load trailers'));
@@ -51,7 +56,7 @@ export default function TrailersPage() {
 
   useEffect(() => {
     fetchTrailers();
-  }, []);
+  }, [page]);
 
   return (
     <div>
@@ -133,6 +138,8 @@ export default function TrailersPage() {
           </div>
         )}
       </div>
+
+      <Pagination meta={meta} noun="trailer" onPageChange={setPage} />
 
       <CreateTrailerModal
         isOpen={canManage && (showCreate || Boolean(editingTrailerId))}

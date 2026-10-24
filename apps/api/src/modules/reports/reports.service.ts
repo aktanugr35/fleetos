@@ -8,6 +8,10 @@ import {
   revenueDate,
   revenueDateWhere,
   sumDeliveredGrossByDeliveryMonth,
+  buildMonthlySeries,
+  utcMonthKey,
+  type MonthRevenue,
+  type MonthRevenueLoad,
 } from './reports.revenue';
 import { createBrokerResolver } from './broker-identity';
 
@@ -49,7 +53,7 @@ export interface OperationalAnalytics {
     /** Calendar days (UTC) in range with at least one pickup */
     fleetActiveCalendarDays: number;
   };
-  revenueByMonth: { monthKey: string; label: string; revenueCents: number }[];
+  revenueByMonth: MonthRevenue[];
   drivers: {
     driverId: string;
     firstName: string;
@@ -234,6 +238,8 @@ export class ReportsService {
         brokerId: true,
         brokerMC: true,
         brokerName: true,
+        loadNumber: true,
+        puNumber: true,
         status: true,
         pickupDate: true,
         deliveryDate: true,
@@ -285,7 +291,7 @@ export class ReportsService {
 
     const driverMap = new Map<string, DriverAgg>();
     const brokerMap = new Map<string, BrokerAgg>();
-    const revenueByMonth = new Map<string, number>();
+    const revenueByMonth = new Map<string, MonthRevenueLoad[]>();
     const fleetDayKeys = new Set<string>();
     let pickupWindowLoads = 0;
 
@@ -313,8 +319,18 @@ export class ReportsService {
       if (countsAsRevenue && earnedOn) {
         if (deliveredInRange) deliveredLoads += 1;
         grossRevenueDeliveredCents += cents;
-        const ym = `${earnedOn.getUTCFullYear()}-${String(earnedOn.getUTCMonth() + 1).padStart(2, '0')}`;
-        revenueByMonth.set(ym, (revenueByMonth.get(ym) ?? 0) + cents);
+        const ym = utcMonthKey(earnedOn);
+        const monthLoads = revenueByMonth.get(ym) ?? [];
+        monthLoads.push({
+          id: load.id,
+          loadNumber: load.loadNumber,
+          puNumber: load.puNumber,
+          brokerName: load.brokerName,
+          status: load.status,
+          revenueDate: earnedOn.toISOString(),
+          amountCents: cents,
+        });
+        revenueByMonth.set(ym, monthLoads);
       }
 
       const dName = load.driver;
@@ -386,17 +402,7 @@ export class ReportsService {
       }
     }
 
-    const revenueByMonthArr = Array.from(revenueByMonth.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([monthKey, revenueCents]) => {
-        const [y, m] = monthKey.split('-').map(Number);
-        const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleString('en-US', {
-          month: 'short',
-          year: 'numeric',
-          timeZone: 'UTC',
-        });
-        return { monthKey, label, revenueCents };
-      });
+    const revenueByMonthArr = buildMonthlySeries(from, to, revenueByMonth);
 
     const drivers = Array.from(driverMap.entries())
       .map(([driverId, a]) => ({

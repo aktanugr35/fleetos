@@ -40,7 +40,7 @@ export default function SettingsPage() {
         setCompanyName(c.name || '');
         setCompanyAddress(c.address || '');
         setCompanyPhone(c.phone || '');
-        setCommissionRate(c.defaultOOCommissionRate ? (c.defaultOOCommissionRate / 100).toString() : '12');
+        setCommissionRate(c.defaultOOCommissionRate != null ? (c.defaultOOCommissionRate / 100).toString() : '12');
         setCompanyFee(c.weeklyCompanyFee ? (c.weeklyCompanyFee / 100).toFixed(2) : '0');
         setHasLogo(Boolean(c.hasLogo || c.logoUrl));
       }
@@ -128,7 +128,7 @@ export default function SettingsPage() {
         name: companyName,
         address: companyAddress,
         phone: companyPhone,
-        defaultOOCommissionRate: Math.round(parseFloat(commissionRate) * 100),
+        defaultOOCommissionRate: Math.round((parseFloat(commissionRate) || 0) * 100),
         weeklyCompanyFee: Math.round(parseFloat(companyFee || '0') * 100),
       });
       setToast({ type: 'success', message: 'Company settings saved!' });

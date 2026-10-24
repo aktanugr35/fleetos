@@ -58,6 +58,29 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+/**
+ * One refresh at a time: the API rotates the refresh token, so parallel 401s must share a
+ * single refresh call instead of each presenting the same (soon revoked) token.
+ */
+let refreshInFlight: Promise<void> | null = null;
+
+function refreshSession(): Promise<void> {
+  if (!refreshInFlight) {
+    refreshInFlight = axios
+      .post(`${API_BASE_URL}/api/v1/auth/refresh`, {}, { withCredentials: true })
+      .then(() => undefined)
+      .catch((err) => {
+        // Another tab rotated the token a moment ago; its new cookie is already ours.
+        if (err?.response?.data?.error?.code === 'REFRESH_RACE') return;
+        throw err;
+      })
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -72,11 +95,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        await axios.post(
-          `${API_BASE_URL}/api/v1/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
+        await refreshSession();
         return api(originalRequest);
       } catch (refreshError) {
         if (typeof window !== 'undefined') {

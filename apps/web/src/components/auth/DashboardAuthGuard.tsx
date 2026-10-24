@@ -8,6 +8,8 @@ import api from '@/lib/api';
 export function DashboardAuthGuard({ children }: { children: React.ReactNode }) {
   const { setAuth, clearAuth, setSuperAdminTenantId, setSuperAdminCompanies } = useAuthStore();
   const [ready, setReady] = useState(false);
+  const [unreachable, setUnreachable] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,10 +71,15 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
         if (!cancelled) {
           setReady(true);
         }
-      } catch {
-        if (!cancelled) {
+      } catch (err) {
+        if (cancelled) return;
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 401 || status === 403) {
           await rejectToLogin();
+          return;
         }
+        // Server restarting or network blip: keep the session and let the user retry.
+        setUnreachable(true);
       }
     };
 
@@ -81,7 +88,27 @@ export function DashboardAuthGuard({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [setAuth, clearAuth, setSuperAdminTenantId, setSuperAdminCompanies]);
+  }, [setAuth, clearAuth, setSuperAdminTenantId, setSuperAdminCompanies, attempt]);
+
+  if (unreachable && !ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)]">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <p className="text-sm text-gray-400">Could not reach the server. Your session is still active.</p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setUnreachable(false);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (

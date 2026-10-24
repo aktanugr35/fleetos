@@ -8,6 +8,7 @@ import { SettlementStatus } from '@haulyard/shared-types';
 import { Toast } from '@/components/ui/Toast';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { usePermission } from '@/hooks/usePermission';
+import { Pagination, type PageMeta } from '@/components/ui/Pagination';
 import api from '@/lib/api';
 
 interface DispatcherSettlementRow {
@@ -47,6 +48,9 @@ export default function DispatcherSettlementsPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+
   const load = useCallback(async () => {
     if (!canList) {
       setSettlements([]);
@@ -55,14 +59,15 @@ export default function DispatcherSettlementsPage() {
     }
     setLoading(true);
     try {
-      const res = await api.get('/dispatcher-settlements?limit=50');
+      const res = await api.get('/dispatcher-settlements', { params: { page, limit: 20 } });
       setSettlements(res.data.data as DispatcherSettlementRow[]);
+      setMeta(res.data.meta ?? null);
     } catch {
       setSettlements([]);
     } finally {
       setLoading(false);
     }
-  }, [canList]);
+  }, [canList, page]);
 
   useEffect(() => {
     void load();
@@ -136,6 +141,8 @@ export default function DispatcherSettlementsPage() {
           </div>
         )}
       </div>
+
+      <Pagination meta={meta} noun="statement" onPageChange={setPage} />
 
       <CreateDispatcherSettlementModal
         isOpen={showCreate}

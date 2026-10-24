@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from 'node:test';
 import {
+  buildMonthlySeries,
   currentMonthDeliveredGrossCents,
   earnsRevenue,
   effectiveDeliveryDate,
@@ -84,6 +85,38 @@ describe('reports.revenue', () => {
       anchor,
     );
     assert.equal(total, 50_000);
+  });
+
+  it('buildMonthlySeries fills empty months and flags partial ones', () => {
+    const series = buildMonthlySeries(
+      new Date('2026-07-27T00:00:00Z'),
+      new Date('2026-10-24T23:59:59.999Z'),
+      new Map([
+        [
+          '2026-09',
+          [
+            {
+              id: 'a',
+              loadNumber: 'L1',
+              puNumber: null,
+              brokerName: 'B',
+              status: 'DELIVERED' as const,
+              revenueDate: '2026-09-03T00:00:00.000Z',
+              amountCents: 120_000,
+            },
+          ],
+        ],
+      ]),
+    );
+    assert.deepEqual(
+      series.map((m) => [m.monthKey, m.revenueCents, m.partial]),
+      [
+        ['2026-07', 0, true],
+        ['2026-08', 0, false],
+        ['2026-09', 120_000, false],
+        ['2026-10', 0, true],
+      ],
+    );
   });
 
   it('counts delivered and TONU loads as revenue, nothing else', () => {

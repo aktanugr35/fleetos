@@ -78,6 +78,31 @@ export function calculateLoadSettlementAmounts(input: LoadPayInput): LoadPayResu
   };
 }
 
+export interface PeriodAdjustment {
+  date: Date;
+  isRecurring: boolean;
+  /** Periods of the settlements this deduction/credit is already on. */
+  settledPeriods: { periodStart: Date; periodEnd: Date }[];
+}
+
+/**
+ * A one-off deduction/credit is settled once, on a statement whose period contains its date.
+ * A recurring one applies to every period from its date on, but only once per period.
+ */
+export function isAdjustmentEligible(
+  item: PeriodAdjustment,
+  start: Date,
+  end: Date,
+  isWithinPeriod: (date: Date, start: Date, end: Date) => boolean,
+): boolean {
+  if (!item.isRecurring) {
+    return item.settledPeriods.length === 0 && isWithinPeriod(item.date, start, end);
+  }
+  const started = isWithinPeriod(item.date, start, end) || item.date.getTime() <= start.getTime();
+  if (!started) return false;
+  return !item.settledPeriods.some((p) => p.periodStart <= end && p.periodEnd >= start);
+}
+
 /** When the same load is both driver-assigned and owner-truck, treat as OWNER_DRIVER. */
 export function resolveLoadRole(
   hasDriverAssignment: boolean,

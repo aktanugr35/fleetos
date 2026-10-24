@@ -95,7 +95,7 @@ export function CreateDeductionModal({
     }
 
     if (!fixedDriverId && !deduction) {
-      api.get('/drivers').then((res) => setDrivers(res.data.data)).catch(() => {});
+      api.get('/drivers?limit=500').then((res) => setDrivers(res.data.data)).catch(() => {});
     }
   }, [isOpen, fixedDriverId, deduction]);
 

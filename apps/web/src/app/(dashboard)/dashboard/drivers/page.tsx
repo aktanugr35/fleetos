@@ -13,6 +13,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
+import { Pagination, type PageMeta } from '@/components/ui/Pagination';
 import api from '@/lib/api';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -87,9 +88,12 @@ export default function DriversPage() {
   const [driverToRemove, setDriverToRemove] = useState<Driver | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+
   useEffect(() => {
     fetchDrivers();
-  }, [search, typeFilter]);
+  }, [search, typeFilter, page]);
 
   const fetchDrivers = async () => {
     try {
@@ -98,8 +102,11 @@ export default function DriversPage() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (typeFilter) params.set('type', typeFilter);
+      params.set('page', String(page));
+      params.set('limit', '20');
       const res = await api.get(`/drivers?${params}`);
       setDrivers(res.data.data);
+      setMeta(res.data.meta ?? null);
     } catch (err) {
       logErrorDev('drivers', err);
       setFetchError(getApiErrorMessage(err, 'Failed to load drivers'));
@@ -147,11 +154,11 @@ export default function DriversPage() {
           wrapperClassName="flex-1 sm:max-w-sm"
           placeholder="Search drivers..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
         <select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
+          onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
           className="input w-full sm:w-auto"
         >
           <option value="">All Types</option>
@@ -268,6 +275,8 @@ export default function DriversPage() {
           </div>
         )}
       </div>
+
+      <Pagination meta={meta} noun="driver" onPageChange={setPage} />
 
       <CreateDriverModal
         isOpen={manageDrivers && (showCreate || Boolean(editingDriverId))}

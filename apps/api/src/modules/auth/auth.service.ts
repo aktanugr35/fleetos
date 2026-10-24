@@ -10,6 +10,7 @@ import { signAccessToken, type AccessTokenPayload } from './auth.tokens';
 
 const BCRYPT_ROUNDS = 12;
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const REFRESH_RACE_GRACE_MS = 30_000;
 
 export class AuthService {
   /**
@@ -83,6 +84,12 @@ export class AuthService {
       throw new AppError(401, 'INVALID_TOKEN', 'Invalid refresh token');
     }
 
+    // A tab or request that lost a refresh race presents the token a moment after it was rotated;
+    // the browser already holds the new cookie, so that is not a reuse attack.
+    if (storedToken.revokedAt && Date.now() - storedToken.revokedAt.getTime() < REFRESH_RACE_GRACE_MS) {
+      throw new AppError(401, 'REFRESH_RACE', 'Session was just refreshed; retry the request');
+    }
+
     // Check if revoked
     if (storedToken.revokedAt) {
       // Possible token reuse attack — revoke all tokens for this user
@@ -104,11 +111,15 @@ export class AuthService {
       throw new AppError(401, 'ACCOUNT_DISABLED', 'Your account has been disabled');
     }
 
-    // Rotate: revoke old token and create new one
-    await prisma.refreshToken.update({
-      where: { id: storedToken.id },
+    // Rotate: revoke old token and create new one. Conditional so two concurrent refreshes
+    // cannot both succeed with the same token.
+    const rotated = await prisma.refreshToken.updateMany({
+      where: { id: storedToken.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (rotated.count === 0) {
+      throw new AppError(401, 'REFRESH_RACE', 'Session was just refreshed; retry the request');
+    }
 
     const newAccessToken = this.generateAccessToken({
       userId: user.id,

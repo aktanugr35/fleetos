@@ -286,6 +286,26 @@ export class LoadsService {
     const existing = await prisma.load.findFirst({ where: { id: loadId, companyId: tenantId } });
     if (!existing) throw new AppError(404, 'LOAD_NOT_FOUND', 'Load not found');
 
+    const paidStatement = await prisma.settlementLine.findFirst({
+      where: { loadId, settlement: { status: 'PAID' } },
+      select: { settlement: { select: { statementNumber: true } } },
+    });
+    const paidDispatcherStatement = paidStatement
+      ? null
+      : await prisma.dispatcherSettlementLine.findFirst({
+          where: { loadId, dispatcherSettlement: { status: 'PAID' } },
+          select: { dispatcherSettlement: { select: { statementNumber: true } } },
+        });
+    const paidNumber =
+      paidStatement?.settlement.statementNumber ?? paidDispatcherStatement?.dispatcherSettlement.statementNumber;
+    if (paidStatement || paidDispatcherStatement) {
+      throw new AppError(
+        409,
+        'LOAD_ON_PAID_SETTLEMENT',
+        `This load is on a paid statement${paidNumber ? ` (${paidNumber})` : ''} and can no longer be edited`,
+      );
+    }
+
     await this.assertFleetAssignments(tenantId, {
       ...(input.driverId !== undefined ? { driverId: input.driverId } : {}),
       ...(input.truckId !== undefined ? { truckId: input.truckId } : {}),

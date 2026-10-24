@@ -34,7 +34,7 @@ export default function CreditsPage() {
       setLoading(true);
       try {
         const [driversRes, creditsRes] = await Promise.all([
-          api.get('/drivers'),
+          api.get('/drivers?limit=500'),
           api.get('/credits?limit=500'),
         ]);
         setDrivers(driversRes.data.data);

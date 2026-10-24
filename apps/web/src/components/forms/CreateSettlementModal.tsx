@@ -132,7 +132,7 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/drivers').then(r => setDrivers(r.data.data)).catch(() => {});
+      api.get('/drivers?limit=500').then(r => setDrivers(r.data.data)).catch(() => {});
       const end = new Date();
       const start = new Date();
       start.setDate(end.getDate() - 7);

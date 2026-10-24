@@ -10,6 +10,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { LoadingBlock } from '@/components/ui/LoadingBlock';
 import { getApiErrorMessage } from '@/lib/api-errors';
 import { logErrorDev } from '@/lib/logger';
+import { Pagination, type PageMeta } from '@/components/ui/Pagination';
 import api from '@/lib/api';
 import { usePermission } from '@/hooks/usePermission';
 
@@ -52,12 +53,16 @@ export default function TrucksPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+
   const fetchTrucks = async () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await api.get('/trucks');
+      const res = await api.get('/trucks', { params: { page, limit: 20 } });
       setTrucks(res.data.data);
+      setMeta(res.data.meta ?? null);
     } catch (err) {
       logErrorDev('trucks', err);
       setFetchError(getApiErrorMessage(err, 'Failed to load trucks'));
@@ -69,7 +74,7 @@ export default function TrucksPage() {
 
   useEffect(() => {
     fetchTrucks();
-  }, []);
+  }, [page]);
 
   return (
     <div>
@@ -171,6 +176,8 @@ export default function TrucksPage() {
           </div>
         )}
       </div>
+
+      <Pagination meta={meta} noun="truck" onPageChange={setPage} />
 
       <CreateTruckModal
         isOpen={canManage && (showCreate || Boolean(editingTruckId))}
