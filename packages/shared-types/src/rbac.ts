@@ -35,7 +35,9 @@ export type FleetPermission =
   | 'dispatcher-settlements:create'
   | 'dispatcher-settlements:finalize'
   | 'financial:list'
-  | 'financial:write';
+  | 'financial:write'
+  | 'accounting:view'
+  | 'accounting:write';
 
 /** Office staff (excludes DRIVER portal users) */
 export const STAFF_ROLES: UserRole[] = [
@@ -89,6 +91,9 @@ export const FLEET_RBAC_MATRIX: Record<FleetPermission, UserRole[]> = {
   'dispatcher-settlements:finalize': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
   'financial:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
   'financial:list': STAFF_ROLES,
+  // Company profit and loss; dispatchers do not see it.
+  'accounting:view': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
+  'accounting:write': [UserRole.SUPER_ADMIN, UserRole.COMPANY_ADMIN, UserRole.ACCOUNTING],
 };
 
 export function roleHasPermission(

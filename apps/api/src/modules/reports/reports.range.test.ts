@@ -18,10 +18,19 @@ describe('resolveReportDateRange', () => {
     assert.equal(range.preset, undefined);
   });
 
-  it('defaults to 90d preset when no query', () => {
+  it('defaults to the last 6 calendar months, starting on the 1st', () => {
     const range = resolveReportDateRange(mockReq({}));
-    assert.equal(range.preset, '90d');
-    assert.ok(range.from <= range.to);
+    assert.equal(range.preset, '6m');
+    const now = new Date();
+    const expected = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+    assert.equal(range.from.toISOString(), expected.toISOString());
+  });
+
+  it('starts the 3 month preset on the 1st of the month two months ago', () => {
+    const range = resolveReportDateRange(mockReq({ preset: '90d' }));
+    const now = new Date();
+    assert.equal(range.from.getUTCDate(), 1);
+    assert.equal(range.from.getUTCMonth(), new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1)).getUTCMonth());
   });
 
   it('rejects invalid date format', () => {

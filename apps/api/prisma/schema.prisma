@@ -50,6 +50,7 @@ model Company {
   passwords             CompanyPassword[]
   brokers               Broker[]
   emailSettings         CompanyEmailSettings?
+  accountingEntries     AccountingEntry[]
 
   @@map("companies")
 }
@@ -254,6 +255,7 @@ model Truck {
   fuelTransactions  FuelTransaction[]
   tollTransactions  TollTransaction[]
   complianceRecords ComplianceRecord[]
+  accountingEntries AccountingEntry[]
 
   @@index([companyId])
   @@map("trucks")
@@ -1008,4 +1010,37 @@ model CompanyPassword {
   @@index([companyId])
   @@index([companyId, category])
   @@map("company_passwords")
+}
+
+// ─── ACCOUNTING ───────────────────────────────────────
+enum AccountingEntryKind {
+  EXPENSE
+  INCOME
+}
+
+// Manually entered company costs and extra income. Load revenue, driver and dispatcher pay,
+// fuel, tolls and factoring fees come from their own tables.
+model AccountingEntry {
+  id            String              @id @default(uuid())
+  companyId     String
+  kind          AccountingEntryKind @default(EXPENSE)
+  category      String
+  date          DateTime
+  amount        Int // cent
+  vendor        String?
+  description   String?
+  paymentMethod String?
+  reference     String?
+  truckId       String?
+  createdById   String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  truck   Truck?  @relation(fields: [truckId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, date])
+  @@index([companyId, kind, category])
+  @@index([truckId])
+  @@map("accounting_entries")
 }

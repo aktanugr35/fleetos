@@ -12,6 +12,7 @@ export interface DriverLoadExportRow {
   driverName: string;
   bookedByName: string | null;
   totalCents: number;
+  factoringFeeCents?: number | null;
 }
 
 export interface DriverLoadExportMeta {
@@ -105,6 +106,23 @@ export function buildDriverLoadsWorkbook(
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
   });
   totalRow.getCell(TOTAL_COLUMN).numFmt = '$#,##0.00';
+
+  const feeCents = rows.reduce((sum, row) => sum + (row.factoringFeeCents ?? 0), 0);
+  const summaryRows: [string, number][] = [
+    ['Factoring Fee', -feeCents],
+    ['Net', totalCents - feeCents],
+  ];
+  for (const [label, cents] of summaryRows) {
+    const added = sheet.addRow(['', '', '', '', '', label, cents / 100]);
+    added.font = { bold: true };
+    added.getCell(6).alignment = { horizontal: 'right' };
+    for (const col of [6, TOTAL_COLUMN]) {
+      const cell = added.getCell(col);
+      cell.border = THIN_BORDER;
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+    }
+    added.getCell(TOTAL_COLUMN).numFmt = '$#,##0.00;-$#,##0.00';
+  }
 
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: HEADERS.length } };

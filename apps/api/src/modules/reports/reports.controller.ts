@@ -27,6 +27,7 @@ interface ExportableLoad {
   detentionPay?: number | null;
   lumperFee?: number | null;
   tonuAmount?: number | null;
+  factoringFeeCents?: number | null;
 }
 
 function toExportRow(load: ExportableLoad): DriverLoadExportRow {
@@ -42,6 +43,7 @@ function toExportRow(load: ExportableLoad): DriverLoadExportRow {
       ? `${load.bookedByDispatcher.firstName} ${load.bookedByDispatcher.lastName}`.trim()
       : null,
     totalCents: grossRevenueFromLoad(load),
+    factoringFeeCents: load.factoringFeeCents ?? null,
   };
 }
 

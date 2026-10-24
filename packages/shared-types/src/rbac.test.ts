@@ -67,6 +67,13 @@ describe('roleHasPermission', () => {
     assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'brokers:write'), false);
   });
 
+  it('only admins and accounting see the company books', () => {
+    assert.equal(roleHasPermission(UserRole.COMPANY_ADMIN, 'accounting:write'), true);
+    assert.equal(roleHasPermission(UserRole.ACCOUNTING, 'accounting:write'), true);
+    assert.equal(roleHasPermission(UserRole.DISPATCHER, 'accounting:view'), false);
+    assert.equal(roleHasPermission(UserRole.DRIVER, 'accounting:view'), false);
+  });
+
   it('driver cannot access brokers', () => {
     assert.equal(roleHasPermission(UserRole.DRIVER, 'brokers:list'), false);
     assert.equal(roleHasPermission(UserRole.DRIVER, 'brokers:write'), false);

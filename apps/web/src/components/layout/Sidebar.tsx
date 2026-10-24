@@ -230,6 +230,16 @@ const navigation: NavItem[] = [
       </svg>
     ),
   },
+  {
+    label: 'Accounting',
+    href: '/dashboard/accounting',
+    permission: 'accounting:view',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 3h16v18l-3-2-3 2-2-2-2 2-3-2-3 2z" /><path d="M8 8h8" /><path d="M8 12h8" /><path d="M8 16h5" />
+      </svg>
+    ),
+  },
 ];
 
 const bottomNavigation: NavItem[] = [

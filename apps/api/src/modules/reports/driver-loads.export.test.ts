@@ -71,6 +71,23 @@ describe('buildDriverLoadsWorkbook', () => {
     assert.equal(totals.getCell(7).value, 2185.39);
   });
 
+  it('adds factoring fee and net rows under the total', () => {
+    const workbook = buildDriverLoadsWorkbook(
+      [
+        row({ totalCents: 200_000, factoringFeeCents: 5_000 }),
+        row({ totalCents: 80_000, factoringFeeCents: 2_500 }),
+        row({ totalCents: 0, factoringFeeCents: null }),
+      ],
+      meta,
+    );
+    const sheet = workbook.getWorksheet('Loads')!;
+    assert.equal(sheet.getRow(5).getCell(7).value, 2800);
+    assert.equal(sheet.getRow(6).getCell(6).value, 'Factoring Fee');
+    assert.equal(sheet.getRow(6).getCell(7).value, -75);
+    assert.equal(sheet.getRow(7).getCell(6).value, 'Net');
+    assert.equal(sheet.getRow(7).getCell(7).value, 2725);
+  });
+
   it('falls back to a dash when no dispatcher booked the load', () => {
     const workbook = buildDriverLoadsWorkbook([row({ bookedByName: null })], meta);
     assert.equal(workbook.getWorksheet('Loads')!.getRow(2).getCell(6).value, '—');

@@ -66,9 +66,9 @@ interface DriverOption {
 const PRESETS: { id: ReportPreset; label: string; hint: string }[] = [
   { id: 'mtd', label: 'This month', hint: 'Matches the dashboard' },
   { id: '30d', label: '30 days', hint: 'Rolling window, UTC' },
-  { id: '90d', label: '90 days', hint: 'Default' },
-  { id: '6m', label: '~6 months', hint: '183 days' },
-  { id: '12m', label: '~1 year', hint: '365 days' },
+  { id: '90d', label: '3 months', hint: 'Last 3 calendar months' },
+  { id: '6m', label: '6 months', hint: 'Same months as the dashboard' },
+  { id: '12m', label: '12 months', hint: 'Last 12 calendar months' },
   { id: 'ytd', label: 'Year to date', hint: 'Jan 1 → today (UTC)' },
 ];
 
@@ -124,7 +124,7 @@ export default function ReportsPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const [mode, setMode] = useState<'preset' | 'custom'>('preset');
-  const [preset, setPreset] = useState<ReportPreset>('90d');
+  const [preset, setPreset] = useState<ReportPreset>('6m');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 

@@ -43,7 +43,8 @@ function rollingStartFromToday(numDays: number): Date {
 
 /**
  * Resolve `from` / `to` (YYYY-MM-DD, UTC day bounds) or `preset` (mtd|30d|90d|6m|12m|ytd).
- * Custom `from` + `to` overrides `preset`.
+ * Custom `from` + `to` overrides `preset`. `90d`, `6m` and `12m` are the last 3, 6 and 12
+ * whole calendar months including the current one, the same months the dashboard charts.
  */
 export function resolveReportDateRange(req: Request): ReportDateRange {
   const fromQ = typeof req.query.from === 'string' ? req.query.from.trim() : '';
@@ -74,7 +75,7 @@ export function resolveReportDateRange(req: Request): ReportDateRange {
   }
 
   const presets: ReportPreset[] = ['mtd', '30d', '90d', '6m', '12m', 'ytd'];
-  const preset = (presetRaw || '90d') as ReportPreset;
+  const preset = (presetRaw || '6m') as ReportPreset;
   if (!presets.includes(preset)) {
     throw new AppError(
       400,
@@ -90,12 +91,9 @@ export function resolveReportDateRange(req: Request): ReportDateRange {
     from = utcDayStart(todayY, 0, 1);
   } else if (preset === '30d') {
     from = rollingStartFromToday(30);
-  } else if (preset === '90d') {
-    from = rollingStartFromToday(90);
-  } else if (preset === '6m') {
-    from = rollingStartFromToday(183);
   } else {
-    from = rollingStartFromToday(365);
+    const months = preset === '90d' ? 3 : preset === '6m' ? 6 : 12;
+    from = utcDayStart(todayY, todayM - (months - 1), 1);
   }
 
   if (to.getTime() - from.getTime() > MAX_RANGE_MS) {
