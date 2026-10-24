@@ -22,7 +22,7 @@ function parseYmd(s: string): { y: number; m: number; d: number } | null {
   return { y, m: mo, d };
 }
 
-export type ReportPreset = '30d' | '90d' | '6m' | '12m' | 'ytd';
+export type ReportPreset = 'mtd' | '30d' | '90d' | '6m' | '12m' | 'ytd';
 
 export interface ReportDateRange {
   from: Date;
@@ -42,7 +42,7 @@ function rollingStartFromToday(numDays: number): Date {
 }
 
 /**
- * Resolve `from` / `to` (YYYY-MM-DD, UTC day bounds) or `preset` (30d|90d|6m|12m|ytd).
+ * Resolve `from` / `to` (YYYY-MM-DD, UTC day bounds) or `preset` (mtd|30d|90d|6m|12m|ytd).
  * Custom `from` + `to` overrides `preset`.
  */
 export function resolveReportDateRange(req: Request): ReportDateRange {
@@ -73,18 +73,20 @@ export function resolveReportDateRange(req: Request): ReportDateRange {
     return { from, to: toEnd };
   }
 
-  const presets: ReportPreset[] = ['30d', '90d', '6m', '12m', 'ytd'];
+  const presets: ReportPreset[] = ['mtd', '30d', '90d', '6m', '12m', 'ytd'];
   const preset = (presetRaw || '90d') as ReportPreset;
   if (!presets.includes(preset)) {
     throw new AppError(
       400,
       'INVALID_PRESET',
-      'Provide from & to (YYYY-MM-DD) or preset=30d|90d|6m|12m|ytd'
+      'Provide from & to (YYYY-MM-DD) or preset=mtd|30d|90d|6m|12m|ytd'
     );
   }
 
   let from: Date;
-  if (preset === 'ytd') {
+  if (preset === 'mtd') {
+    from = utcDayStart(todayY, todayM, 1);
+  } else if (preset === 'ytd') {
     from = utcDayStart(todayY, 0, 1);
   } else if (preset === '30d') {
     from = rollingStartFromToday(30);

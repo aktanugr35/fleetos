@@ -85,7 +85,10 @@ export class SettlementsService {
 
       return {
         loadId: load.id,
-        description: `Load ${load.loadNumber} - ${load.totalRevenueCents / 100} gross`,
+        description:
+          load.status === LoadStatus.TONU
+            ? `TONU - Load ${load.loadNumber} - ${load.totalRevenueCents / 100} gross`
+            : `Load ${load.loadNumber} - ${load.totalRevenueCents / 100} gross`,
         grossAmount: load.totalRevenueCents,
         commissionRate: driver.payRate || 0,
         commissionAmount: load.companyCommissionCents || 0,

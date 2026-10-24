@@ -10,7 +10,7 @@ import { getApiErrorMessage } from '@/lib/api-errors';
 import { usePermission } from '@/hooks/usePermission';
 import api from '@/lib/api';
 
-type ReportPreset = '30d' | '90d' | '6m' | '12m' | 'ytd';
+type ReportPreset = 'mtd' | '30d' | '90d' | '6m' | '12m' | 'ytd';
 type ReportTab = 'overview' | 'drivers' | 'brokers';
 
 interface OperationalAnalyticsResponse {
@@ -64,6 +64,7 @@ interface DriverOption {
 }
 
 const PRESETS: { id: ReportPreset; label: string; hint: string }[] = [
+  { id: 'mtd', label: 'This month', hint: 'Matches the dashboard' },
   { id: '30d', label: '30 days', hint: 'Rolling window, UTC' },
   { id: '90d', label: '90 days', hint: 'Default' },
   { id: '6m', label: '~6 months', hint: '183 days' },
@@ -238,7 +239,7 @@ export default function ReportsPage() {
       <section className="card space-y-5">
         <div>
           <h2 className="text-sm font-semibold text-[var(--text-primary)]">1 · Pick a period</h2>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Dates are UTC. Loads are counted by pickup date in the range.</p>
+          <p className="text-xs text-[var(--text-muted)] mt-1">Dates are UTC. Loads and miles are counted by pickup date; gross revenue (delivered + TONU) by delivery date, same as the dashboard.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -466,7 +467,7 @@ export default function ReportsPage() {
           </div>
 
           <div className="card">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Delivered gross by pickup month</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Delivered gross by delivery month</h3>
             <p className="text-xs text-[var(--text-muted)] mb-4">Hover a bar for the exact amount.</p>
             {!data?.revenueByMonth.length ? (
               <p className="text-sm text-[var(--text-muted)] py-8 text-center">No delivered revenue in this range.</p>
@@ -481,7 +482,7 @@ export default function ReportsPage() {
         <div className="space-y-3 animate-fade-in">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Driver performance</h2>
           <p className="text-sm text-[var(--text-muted)]">
-            <strong>Work days</strong> = distinct UTC calendar days with a pickup for that driver. Revenue = delivered loads only.
+            <strong>Work days</strong> = distinct UTC calendar days with a pickup for that driver. Revenue = delivered and TONU loads in the range.
           </p>
           <div className="card p-0 overflow-hidden border border-[var(--border-color)]">
             <div className="overflow-x-auto">
@@ -542,7 +543,7 @@ export default function ReportsPage() {
       {tab === 'brokers' && (
         <div className="space-y-3 animate-fade-in">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Broker performance</h2>
-          <p className="text-sm text-[var(--text-muted)]">Same pickup window. Gross = delivered loads only.</p>
+          <p className="text-sm text-[var(--text-muted)]">Loads by pickup date. Gross = delivered and TONU loads in the range.</p>
           <div className="card p-0 overflow-hidden border border-[var(--border-color)]">
             <div className="overflow-x-auto">
               <table className="data-table text-sm">

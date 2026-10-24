@@ -2,8 +2,10 @@ import assert from 'node:assert';
 import { describe, it } from 'node:test';
 import {
   currentMonthDeliveredGrossCents,
+  earnsRevenue,
   effectiveDeliveryDate,
   grossLineCents,
+  revenueDate,
   sumDeliveredGrossByDeliveryMonth,
 } from './reports.revenue';
 
@@ -82,5 +84,35 @@ describe('reports.revenue', () => {
       anchor,
     );
     assert.equal(total, 50_000);
+  });
+
+  it('counts delivered and TONU loads as revenue, nothing else', () => {
+    assert.deepEqual(
+      (['PENDING', 'IN_TRANSIT', 'DELIVERED', 'TONU', 'CANCELLED'] as const).filter(earnsRevenue),
+      ['DELIVERED', 'TONU'],
+    );
+  });
+
+  it('falls back to pickup date when a delivered load has no delivery date', () => {
+    assert.equal(
+      revenueDate({ actualDeliveryDate: null, deliveryDate: null, pickupDate: new Date(2026, 6, 4) })?.getTime(),
+      new Date(2026, 6, 4).getTime(),
+    );
+    const total = currentMonthDeliveredGrossCents(
+      [
+        {
+          rateTotal: 70_000,
+          detentionPay: 0,
+          lumperFee: 0,
+          fuelSurcharge: 0,
+          tonuAmount: 0,
+          deliveryDate: null,
+          actualDeliveryDate: null,
+          pickupDate: new Date(2026, 6, 4),
+        },
+      ],
+      new Date(2026, 6, 10),
+    );
+    assert.equal(total, 70_000);
   });
 });

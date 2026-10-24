@@ -1,11 +1,18 @@
-import type { Load } from '@prisma/client';
+import type { Load, LoadStatus, Prisma } from '@prisma/client';
 
 type LoadGrossFields = Pick<
   Load,
   'rateTotal' | 'detentionPay' | 'lumperFee' | 'fuelSurcharge' | 'tonuAmount'
 >;
 
-type LoadDeliveryFields = Pick<Load, 'deliveryDate' | 'actualDeliveryDate'>;
+type LoadDeliveryFields = Pick<Load, 'deliveryDate' | 'actualDeliveryDate'> & { pickupDate?: Date };
+
+/** Statuses whose loads earn revenue: delivered loads and TONU (truck ordered, not used) pay-outs. */
+export const REVENUE_STATUSES = ['DELIVERED', 'TONU'] as const satisfies readonly LoadStatus[];
+
+export function earnsRevenue(status: LoadStatus): boolean {
+  return (REVENUE_STATUSES as readonly LoadStatus[]).includes(status);
+}
 
 export function grossLineCents(load: LoadGrossFields): number {
   return (
@@ -19,6 +26,26 @@ export function grossLineCents(load: LoadGrossFields): number {
 
 export function effectiveDeliveryDate(load: LoadDeliveryFields): Date | null {
   return load.actualDeliveryDate ?? load.deliveryDate ?? null;
+}
+
+/**
+ * The date a load's revenue belongs to: when it was delivered, or its pickup date when no
+ * delivery date was ever entered (typical for TONU). Dashboard and Reports must both use this.
+ */
+export function revenueDate(load: LoadDeliveryFields): Date | null {
+  return effectiveDeliveryDate(load) ?? load.pickupDate ?? null;
+}
+
+/** Prisma filter matching loads whose {@link revenueDate} is in [from, to). */
+export function revenueDateWhere(from: Date, toExclusive: Date): Prisma.LoadWhereInput {
+  const range = { gte: from, lt: toExclusive };
+  return {
+    OR: [
+      { actualDeliveryDate: range },
+      { actualDeliveryDate: null, deliveryDate: range },
+      { actualDeliveryDate: null, deliveryDate: null, pickupDate: range },
+    ],
+  };
 }
 
 export function localMonthKey(date: Date): string {
@@ -40,7 +67,7 @@ export function sumDeliveredGrossByDeliveryMonth<T extends LoadGrossFields & Loa
 ): Map<string, number> {
   const grouped = new Map<string, number>();
   for (const load of loads) {
-    const deliveredOn = effectiveDeliveryDate(load);
+    const deliveredOn = revenueDate(load);
     if (!deliveredOn) continue;
     if (options?.from && deliveredOn < options.from) continue;
     if (options?.to && deliveredOn > options.to) continue;
@@ -56,7 +83,7 @@ export function currentMonthDeliveredGrossCents<T extends LoadGrossFields & Load
 ): number {
   let total = 0;
   for (const load of loads) {
-    const deliveredOn = effectiveDeliveryDate(load);
+    const deliveredOn = revenueDate(load);
     if (!deliveredOn || !isInLocalCalendarMonth(deliveredOn, anchor)) continue;
     total += grossLineCents(load);
   }

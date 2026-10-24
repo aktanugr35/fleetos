@@ -130,9 +130,11 @@ export class PdfService {
         ? (line.grossAmount / rpmBaseMiles / 100).toFixed(3)
         : '0.000';
 
+      const isTonu = load.status === 'TONU';
+
       return wrapPdfTableRow(`
             <td>
-                ${e(load.loadNumber)}
+                ${e(load.loadNumber)}${isTonu ? ' <span class="tonu-badge">TONU</span>' : ''}
                 <div class="sub-text">${e(load.puNumber || load.referenceNumber || 'N/A')}</div>
             </td>
             <td>
@@ -141,7 +143,7 @@ export class PdfService {
             </td>
             <td>
                 ${e(load.deliveryLocation)}
-                <div class="sub-text">${load.deliveryDate ? fDateTime(load.deliveryDate) : 'N/A'}</div>
+                <div class="sub-text">${isTonu ? 'TONU — truck ordered, not used' : load.deliveryDate ? fDateTime(load.deliveryDate) : 'N/A'}</div>
             </td>
             <td>
                 ${totalMiles.toFixed(2)} mi
@@ -376,6 +378,7 @@ export class PdfService {
             td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; vertical-align: top; }
             .text-right { text-align: right; }
             .sub-text { color: #64748b; font-size: 9px; margin-top: 2px; line-height: 1.2; }
+            .tonu-badge { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 3px; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-size: 8px; font-weight: bold; vertical-align: middle; }
 
             .pdf-row,
             .pdf-row-table,

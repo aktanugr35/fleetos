@@ -34,6 +34,7 @@ interface Load {
   companyCommissionCents: number;
   role: string; // DRIVER | OWNER | OWNER_DRIVER
   truckId: string;
+  status: string;
 }
 
 interface Deduction {
@@ -417,6 +418,9 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-blue-400">{load.loadNumber}</span>
                               {getRoleBadge(load.role)}
+                              {load.status === 'TONU' && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/15 text-amber-400">TONU</span>
+                              )}
                             </div>
                             <div className="text-right">
                               <span className="font-medium text-gray-200">{formatCurrency(load.totalRevenueCents)}</span>
@@ -424,7 +428,11 @@ export function CreateSettlementModal({ isOpen, onClose, onSuccess }: CreateSett
                             </div>
                           </div>
                           <div className="text-xs text-gray-500 mt-1 flex gap-4">
-                            <span>Delivered: {formatDateTimeAmPm(load.deliveryDate)}</span>
+                            {load.status === 'TONU' ? (
+                              <span>Truck ordered, not used</span>
+                            ) : (
+                              <span>Delivered: {formatDateTimeAmPm(load.deliveryDate)}</span>
+                            )}
                             <span>{load.miles} miles</span>
                             {load.companyCommissionCents > 0 && (
                               <span className="text-yellow-500">Commission: {formatCurrency(load.companyCommissionCents)}</span>

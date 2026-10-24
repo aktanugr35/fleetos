@@ -2,7 +2,11 @@ import { prisma } from '../../config/database';
 import type { LoadStatus } from '@prisma/client';
 import {
   currentMonthDeliveredGrossCents,
+  earnsRevenue,
   grossLineCents,
+  REVENUE_STATUSES,
+  revenueDate,
+  revenueDateWhere,
   sumDeliveredGrossByDeliveryMonth,
 } from './reports.revenue';
 import { createBrokerResolver } from './broker-identity';
@@ -91,11 +95,8 @@ export class ReportsService {
     const deliveredLoads = await prisma.load.findMany({
       where: {
         companyId: tenantId,
-        status: 'DELIVERED',
-        OR: [
-          { actualDeliveryDate: { gte: monthStart, lt: nextMonthStart } },
-          { deliveryDate: { gte: monthStart, lt: nextMonthStart } },
-        ],
+        status: { in: [...REVENUE_STATUSES] },
+        ...revenueDateWhere(monthStart, nextMonthStart),
       },
       select: {
         rateTotal: true,
@@ -105,6 +106,7 @@ export class ReportsService {
         tonuAmount: true,
         deliveryDate: true,
         actualDeliveryDate: true,
+        pickupDate: true,
       },
     });
 
@@ -158,12 +160,13 @@ export class ReportsService {
     const loads = await prisma.load.findMany({
       where: {
         companyId: tenantId,
-        status: 'DELIVERED',
-        OR: [{ deliveryDate: { gte: startDate } }, { actualDeliveryDate: { gte: startDate } }],
+        status: { in: [...REVENUE_STATUSES] },
+        ...revenueDateWhere(startDate, new Date(now.getFullYear(), now.getMonth() + 1, 1)),
       },
       select: {
         deliveryDate: true,
         actualDeliveryDate: true,
+        pickupDate: true,
         rateTotal: true,
         detentionPay: true,
         lumperFee: true,
@@ -186,7 +189,7 @@ export class ReportsService {
     const [rows, resolveBroker] = await Promise.all([
       prisma.load.groupBy({
         by: ['brokerId', 'brokerMC', 'brokerName'],
-        where: { companyId: tenantId, status: 'DELIVERED' },
+        where: { companyId: tenantId, status: { in: [...REVENUE_STATUSES] } },
         _count: { id: true },
         _sum: { rateTotal: true },
       }),
@@ -206,8 +209,9 @@ export class ReportsService {
   }
 
   /**
-   * Loads whose **pickupDate** falls in [from, to] (inclusive, UTC day bounds from caller).
-   * Revenue and delivered counts use load **status**; miles sum over all matching loads.
+   * [from, to] is inclusive (UTC day bounds from caller). Load counts, miles and work days cover
+   * loads picked up in the range; revenue covers DELIVERED and TONU loads whose
+   * {@link revenueDate} is in the range, so they match the dashboard.
    */
   async getOperationalAnalytics(
     tenantId: string,
@@ -215,10 +219,14 @@ export class ReportsService {
     to: Date
   ): Promise<OperationalAnalytics> {
     const resolveBroker = await loadBrokerResolver(tenantId);
+    const toExclusive = new Date(to.getTime() + 1);
     const loads = await prisma.load.findMany({
       where: {
         companyId: tenantId,
-        pickupDate: { gte: from, lte: to },
+        OR: [
+          { pickupDate: { gte: from, lte: to } },
+          { status: { in: [...REVENUE_STATUSES] }, ...revenueDateWhere(from, toExclusive) },
+        ],
       },
       select: {
         id: true,
@@ -228,6 +236,8 @@ export class ReportsService {
         brokerName: true,
         status: true,
         pickupDate: true,
+        deliveryDate: true,
+        actualDeliveryDate: true,
         rateTotal: true,
         detentionPay: true,
         lumperFee: true,
@@ -277,25 +287,33 @@ export class ReportsService {
     const brokerMap = new Map<string, BrokerAgg>();
     const revenueByMonth = new Map<string, number>();
     const fleetDayKeys = new Set<string>();
+    let pickupWindowLoads = 0;
 
     for (const load of loads) {
-      byStatus[load.status] = (byStatus[load.status] ?? 0) + 1;
+      const inPickupWindow = load.pickupDate >= from && load.pickupDate <= to;
+      const earnedOn = revenueDate(load);
+      const countsAsRevenue = earnsRevenue(load.status) && earnedOn !== null && earnedOn >= from && earnedOn <= to;
+      const deliveredInRange = countsAsRevenue && load.status === 'DELIVERED';
+      const cents = countsAsRevenue ? grossLineCents(load) : 0;
 
-      const miles = milesForLoad(load);
-      const lm = load.loadedMiles ?? 0;
-      const dh = load.deadheadMiles ?? 0;
-      companyTotalMiles += miles;
-      companyLoadedMiles += lm;
-      companyDeadheadMiles += dh;
-
+      const miles = inPickupWindow ? milesForLoad(load) : 0;
+      const lm = inPickupWindow ? (load.loadedMiles ?? 0) : 0;
+      const dh = inPickupWindow ? (load.deadheadMiles ?? 0) : 0;
       const dayKey = utcYmd(load.pickupDate);
-      fleetDayKeys.add(dayKey);
 
-      if (load.status === 'DELIVERED') {
-        deliveredLoads += 1;
-        const cents = grossLineCents(load);
+      if (inPickupWindow) {
+        pickupWindowLoads += 1;
+        byStatus[load.status] = (byStatus[load.status] ?? 0) + 1;
+        companyTotalMiles += miles;
+        companyLoadedMiles += lm;
+        companyDeadheadMiles += dh;
+        fleetDayKeys.add(dayKey);
+      }
+
+      if (countsAsRevenue && earnedOn) {
+        if (deliveredInRange) deliveredLoads += 1;
         grossRevenueDeliveredCents += cents;
-        const ym = `${load.pickupDate.getUTCFullYear()}-${String(load.pickupDate.getUTCMonth() + 1).padStart(2, '0')}`;
+        const ym = `${earnedOn.getUTCFullYear()}-${String(earnedOn.getUTCMonth() + 1).padStart(2, '0')}`;
         revenueByMonth.set(ym, (revenueByMonth.get(ym) ?? 0) + cents);
       }
 
@@ -323,20 +341,23 @@ export class ReportsService {
         };
         driverMap.set(load.driverId, dAgg);
       }
-      dAgg.totalLoads += 1;
-      dAgg.dayKeys.add(dayKey);
-      dAgg.totalMiles += miles;
-      dAgg.loadedMiles += lm;
-      dAgg.deadheadMiles += dh;
-      if (load.status === 'DELIVERED') {
-        dAgg.deliveredLoads += 1;
-        dAgg.grossRevenueDeliveredCents += grossLineCents(load);
-      } else if (load.status === 'CANCELLED') {
-        dAgg.cancelledLoads += 1;
-      } else if (load.status === 'TONU') {
-        dAgg.tonuLoads += 1;
-      } else if (load.status === 'PENDING' || load.status === 'IN_TRANSIT') {
-        dAgg.pendingOrTransitLoads += 1;
+      if (inPickupWindow) {
+        dAgg.totalLoads += 1;
+        dAgg.dayKeys.add(dayKey);
+        dAgg.totalMiles += miles;
+        dAgg.loadedMiles += lm;
+        dAgg.deadheadMiles += dh;
+        if (load.status === 'CANCELLED') {
+          dAgg.cancelledLoads += 1;
+        } else if (load.status === 'TONU') {
+          dAgg.tonuLoads += 1;
+        } else if (load.status === 'PENDING' || load.status === 'IN_TRANSIT') {
+          dAgg.pendingOrTransitLoads += 1;
+        }
+      }
+      if (countsAsRevenue) {
+        if (deliveredInRange) dAgg.deliveredLoads += 1;
+        dAgg.grossRevenueDeliveredCents += cents;
       }
 
       const broker = resolveBroker(load);
@@ -353,13 +374,15 @@ export class ReportsService {
         };
         brokerMap.set(broker.key, bAgg);
       }
-      bAgg.totalLoads += 1;
-      bAgg.totalMiles += miles;
-      bAgg.loadedMiles += lm;
-      bAgg.deadheadMiles += dh;
-      if (load.status === 'DELIVERED') {
-        bAgg.deliveredLoads += 1;
-        bAgg.grossRevenueDeliveredCents += grossLineCents(load);
+      if (inPickupWindow) {
+        bAgg.totalLoads += 1;
+        bAgg.totalMiles += miles;
+        bAgg.loadedMiles += lm;
+        bAgg.deadheadMiles += dh;
+      }
+      if (countsAsRevenue) {
+        if (deliveredInRange) bAgg.deliveredLoads += 1;
+        bAgg.grossRevenueDeliveredCents += cents;
       }
     }
 
@@ -417,9 +440,9 @@ export class ReportsService {
         to: to.toISOString(),
       },
       basis:
-        'Loads are included when pickupDate (UTC) is within the selected range. Revenue counts only DELIVERED loads (rate + extras).',
+        'Load counts, miles and work days use pickupDate (UTC). Revenue covers DELIVERED and TONU loads (rate + extras) by delivery date, falling back to pickup date; delivered counts are DELIVERED only. Same as the dashboard.',
       company: {
-        totalLoads: loads.length,
+        totalLoads: pickupWindowLoads,
         byStatus,
         deliveredLoads,
         grossRevenueDeliveredCents,

@@ -549,7 +549,7 @@ export class LoadsService {
       SELECT COALESCE(SUM("rateTotal" + COALESCE("detentionPay", 0) + COALESCE("lumperFee", 0) + COALESCE("tonuAmount", 0)), 0) as total
       FROM loads
       WHERE "companyId" = ${tenantId}
-      AND status = 'DELIVERED'
+      AND status IN ('DELIVERED', 'TONU')
     `;
 
     return {
