@@ -56,8 +56,8 @@ describe('buildDriverLoadsWorkbook', () => {
 
     const header = sheet.getRow(1);
     assert.deepEqual(
-      [1, 2, 3, 4, 5, 6, 7].map((col) => header.getCell(col).value),
-      ['Load ID', 'PU Date', 'Destination', 'Broker', 'Driver', 'Booked By', 'Total'],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].map((col) => header.getCell(col).value),
+      ['Load ID', 'PU Date', 'Destination', 'Broker', 'Driver', 'Booked By', 'Gross', 'Fee', 'Net'],
     );
 
     assert.equal(sheet.getRow(2).getCell(1).value, 'VT-2026-00071');
@@ -71,21 +71,23 @@ describe('buildDriverLoadsWorkbook', () => {
     assert.equal(totals.getCell(7).value, 2185.39);
   });
 
-  it('adds factoring fee and net rows under the total', () => {
+  it('shows gross, factoring fee and net on every load and in the totals', () => {
     const workbook = buildDriverLoadsWorkbook(
       [
         row({ totalCents: 200_000, factoringFeeCents: 5_000 }),
         row({ totalCents: 80_000, factoringFeeCents: 2_500 }),
-        row({ totalCents: 0, factoringFeeCents: null }),
+        row({ totalCents: 40_000, factoringFeeCents: null }),
       ],
       meta,
     );
     const sheet = workbook.getWorksheet('Loads')!;
-    assert.equal(sheet.getRow(5).getCell(7).value, 2800);
-    assert.equal(sheet.getRow(6).getCell(6).value, 'Factoring Fee');
-    assert.equal(sheet.getRow(6).getCell(7).value, -75);
-    assert.equal(sheet.getRow(7).getCell(6).value, 'Net');
-    assert.equal(sheet.getRow(7).getCell(7).value, 2725);
+    const money = (r: number) => [7, 8, 9].map((col) => sheet.getRow(r).getCell(col).value);
+    assert.deepEqual(money(2), [2000, 50, 1950]);
+    assert.deepEqual(money(3), [800, 25, 775]);
+    assert.deepEqual(money(4), [400, 0, 400]);
+    assert.equal(sheet.getRow(5).getCell(1).value, 'Total');
+    assert.deepEqual(money(5), [3200, 75, 3125]);
+    assert.equal(sheet.rowCount, 5);
   });
 
   it('falls back to a dash when no dispatcher booked the load', () => {
@@ -118,6 +120,7 @@ describe('buildDriverLoadsWorkbook', () => {
     const totals = workbook.getWorksheet('Loads')!.getRow(2);
     assert.equal(totals.getCell(6).value, '0 loads');
     assert.equal(totals.getCell(7).value, 0);
+    assert.equal(totals.getCell(9).value, 0);
   });
 });
 

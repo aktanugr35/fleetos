@@ -21,9 +21,10 @@ export interface DriverLoadExportMeta {
   periodEnd: Date;
 }
 
-const HEADERS = ['Load ID', 'PU Date', 'Destination', 'Broker', 'Driver', 'Booked By', 'Total'] as const;
+const HEADERS = ['Load ID', 'PU Date', 'Destination', 'Broker', 'Driver', 'Booked By', 'Gross', 'Fee', 'Net'] as const;
 
-const TOTAL_COLUMN = HEADERS.length;
+const MONEY_COLUMNS = [7, 8, 9];
+const MONEY_FORMAT = '$#,##0.00;-$#,##0.00';
 
 const THIN_BORDER = {
   top: { style: 'thin' as const, color: { argb: 'FF000000' } },
@@ -61,7 +62,9 @@ export function buildDriverLoadsWorkbook(
     { key: 'broker', width: 20 },
     { key: 'driver', width: 16 },
     { key: 'bookedBy', width: 18 },
-    { key: 'total', width: 14 },
+    { key: 'gross', width: 14 },
+    { key: 'fee', width: 12 },
+    { key: 'net', width: 14 },
   ];
 
   const headerRow = sheet.addRow([...HEADERS]);
@@ -73,6 +76,7 @@ export function buildDriverLoadsWorkbook(
   });
 
   for (const row of rows) {
+    const feeCents = row.factoringFeeCents ?? 0;
     const added = sheet.addRow([
       excelSafeText(row.loadNumber),
       excelDate(row.pickupDate),
@@ -81,16 +85,19 @@ export function buildDriverLoadsWorkbook(
       excelSafeText(row.driverName),
       excelSafeText(row.bookedByName || '—'),
       row.totalCents / 100,
+      feeCents / 100,
+      (row.totalCents - feeCents) / 100,
     ]);
     added.eachCell((cell) => {
       cell.border = THIN_BORDER;
     });
     added.getCell(2).numFmt = 'd-mmm-yy';
     added.getCell(2).alignment = { horizontal: 'center' };
-    added.getCell(TOTAL_COLUMN).numFmt = '$#,##0.00';
+    for (const col of MONEY_COLUMNS) added.getCell(col).numFmt = MONEY_FORMAT;
   }
 
   const totalCents = rows.reduce((sum, row) => sum + row.totalCents, 0);
+  const feeTotalCents = rows.reduce((sum, row) => sum + (row.factoringFeeCents ?? 0), 0);
   const totalRow = sheet.addRow([
     'Total',
     '',
@@ -99,30 +106,15 @@ export function buildDriverLoadsWorkbook(
     '',
     `${rows.length} load${rows.length === 1 ? '' : 's'}`,
     totalCents / 100,
+    feeTotalCents / 100,
+    (totalCents - feeTotalCents) / 100,
   ]);
   totalRow.font = { bold: true };
   totalRow.eachCell((cell) => {
     cell.border = THIN_BORDER;
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
   });
-  totalRow.getCell(TOTAL_COLUMN).numFmt = '$#,##0.00';
-
-  const feeCents = rows.reduce((sum, row) => sum + (row.factoringFeeCents ?? 0), 0);
-  const summaryRows: [string, number][] = [
-    ['Factoring Fee', -feeCents],
-    ['Net', totalCents - feeCents],
-  ];
-  for (const [label, cents] of summaryRows) {
-    const added = sheet.addRow(['', '', '', '', '', label, cents / 100]);
-    added.font = { bold: true };
-    added.getCell(6).alignment = { horizontal: 'right' };
-    for (const col of [6, TOTAL_COLUMN]) {
-      const cell = added.getCell(col);
-      cell.border = THIN_BORDER;
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
-    }
-    added.getCell(TOTAL_COLUMN).numFmt = '$#,##0.00;-$#,##0.00';
-  }
+  for (const col of MONEY_COLUMNS) totalRow.getCell(col).numFmt = MONEY_FORMAT;
 
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: HEADERS.length } };
