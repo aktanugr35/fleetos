@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -12,7 +12,7 @@ import { usePermission } from '@/hooks/usePermission';
 import api from '@/lib/api';
 
 type BillingMethod = 'FACTORING' | 'IN_HOUSE';
-type View = 'open' | 'submitted' | 'all';
+type View = 'open' | 'submitted' | 'all' | 'fees';
 
 interface FactoringLoad {
   id: string;
@@ -28,6 +28,13 @@ interface FactoringLoad {
   billingMethod: BillingMethod | null;
   billingSubmittedAt: string | null;
   billingSubmittedTo: string | null;
+  feeCents: number | null;
+}
+
+interface FeeTotals {
+  feeCents: number;
+  grossCents: number;
+  loadCount: number;
 }
 
 interface Summary {
@@ -36,6 +43,7 @@ interface Summary {
   emailConfigured: boolean;
   factoringEmail: string | null;
   inHouseFinanceEmail: string | null;
+  fees: Omit<FeeTotals, 'feeCents'> & { totalFeeCents: number; byMonth: (FeeTotals & { month: string })[] };
 }
 
 interface Meta {
@@ -55,7 +63,83 @@ const VIEWS: { id: View; label: string }[] = [
   { id: 'open', label: 'To submit' },
   { id: 'submitted', label: 'Submitted' },
   { id: 'all', label: 'All' },
+  { id: 'fees', label: 'Fees' },
 ];
+
+function feePercent(feeCents: number, grossCents: number) {
+  return grossCents > 0 ? `${((feeCents / grossCents) * 100).toFixed(2)}%` : '—';
+}
+
+function monthLabel(month: string) {
+  const [year, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(year, m - 1, 15)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** Parses "$1,234.56" style input into cents; blank means no fee. */
+function parseFeeInput(raw: string): number | null | undefined {
+  const cleaned = raw.replace(/[$,\s]/g, '');
+  if (!cleaned) return null;
+  if (!/^\d+(\.\d{0,2})?$/.test(cleaned)) return undefined;
+  return Math.round(Number(cleaned) * 100);
+}
+
+function FeeCell({ load, onSave }: { load: FactoringLoad; onSave: (load: FactoringLoad, feeCents: number | null) => Promise<boolean> }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+
+  const start = () => {
+    setValue(load.feeCents != null ? (load.feeCents / 100).toFixed(2) : '');
+    setEditing(true);
+  };
+
+  const save = async () => {
+    if (savingRef.current) return;
+    const cents = parseFeeInput(value);
+    if (cents === undefined) return;
+    if (cents === load.feeCents) {
+      setEditing(false);
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    const ok = await onSave(load, cents);
+    savingRef.current = false;
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  if (!editing) {
+    return load.feeCents != null ? (
+      <button type="button" onClick={start} className="font-medium text-red-400 hover:underline" title="Edit fee">
+        −{formatCurrency(load.feeCents)}
+      </button>
+    ) : (
+      <button type="button" onClick={start} className="text-xs text-[var(--text-muted)] hover:text-[var(--brand-amber)] transition">
+        + Add fee
+      </button>
+    );
+  }
+
+  const invalid = parseFeeInput(value) === undefined;
+  return (
+    <input
+      autoFocus
+      className={`input w-24 py-1 text-right text-xs ${invalid ? 'border-red-500' : ''}`}
+      inputMode="decimal"
+      placeholder="0.00"
+      value={value}
+      disabled={saving}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => void save()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') void save();
+        if (e.key === 'Escape') setEditing(false);
+      }}
+    />
+  );
+}
 
 export default function FactoringPage() {
   const { can } = usePermission();
@@ -130,6 +214,20 @@ export default function FactoringPage() {
     }
   };
 
+  const handleFeeSave = async (load: FactoringLoad, feeCents: number | null) => {
+    try {
+      await api.put(`/factoring/loads/${load.id}/fee`, { feeCents });
+      setLoads((prev) => prev.map((l) => (l.id === load.id ? { ...l, feeCents } : l)));
+      void fetchLoads();
+      return true;
+    } catch (err) {
+      setToast({ type: 'error', message: getApiErrorMessage(err, 'Could not save the fee') });
+      return false;
+    }
+  };
+
+  const fees = summary?.fees;
+
   const missingRecipients = summary && (!summary.emailConfigured || (!summary.factoringEmail && !summary.inHouseFinanceEmail));
 
   return (
@@ -157,7 +255,14 @@ export default function FactoringPage() {
           <div className="mt-0.5 text-xs text-[var(--text-muted)]">Loads not submitted</div>
           <div className="mt-1 text-[10px] text-[var(--text-muted)]">{formatCurrency(summary?.openAmountCents ?? 0)} waiting to be invoiced</div>
         </div>
-        <div className="card sm:col-span-2 text-xs text-[var(--text-muted)] space-y-1">
+        <div className="card">
+          <div className="text-2xl font-bold text-red-400">{formatCurrency(fees?.totalFeeCents ?? 0)}</div>
+          <div className="mt-0.5 text-xs text-[var(--text-muted)]">Total factoring fees paid</div>
+          <div className="mt-1 text-[10px] text-[var(--text-muted)]">
+            {fees?.loadCount ?? 0} load{fees?.loadCount === 1 ? '' : 's'} · {feePercent(fees?.totalFeeCents ?? 0, fees?.grossCents ?? 0)} of their amount
+          </div>
+        </div>
+        <div className="card text-xs text-[var(--text-muted)] space-y-1">
           <div>
             <span className="text-[var(--text-secondary)]">Factoring email:</span>{' '}
             {summary?.factoringEmail || <span className="text-amber-400">not set</span>}
@@ -198,12 +303,53 @@ export default function FactoringPage() {
         />
       </div>
 
+      {view === 'fees' && fees && fees.byMonth.length > 0 ? (
+        <div className="card p-0 overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-[var(--border-color)] text-sm font-semibold text-[var(--text-primary)]">Fees by month</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-[var(--text-muted)] border-b border-[var(--border-color)]">
+                  <th className="px-4 py-2 font-medium">Month</th>
+                  <th className="px-4 py-2 font-medium text-right">Loads</th>
+                  <th className="px-4 py-2 font-medium text-right">Load amount</th>
+                  <th className="px-4 py-2 font-medium text-right">Fees</th>
+                  <th className="px-4 py-2 font-medium text-right">Fee %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-color)]">
+                {fees.byMonth.map((m) => (
+                  <tr key={m.month}>
+                    <td className="px-4 py-2.5 text-[var(--text-primary)]">{monthLabel(m.month)}</td>
+                    <td className="px-4 py-2.5 text-right text-[var(--text-secondary)]">{m.loadCount}</td>
+                    <td className="px-4 py-2.5 text-right text-[var(--text-secondary)]">{formatCurrency(m.grossCents)}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-red-400">{formatCurrency(m.feeCents)}</td>
+                    <td className="px-4 py-2.5 text-right text-[var(--text-secondary)]">{feePercent(m.feeCents, m.grossCents)}</td>
+                  </tr>
+                ))}
+                <tr className="bg-[var(--bg-secondary)] font-semibold">
+                  <td className="px-4 py-2.5 text-[var(--text-primary)]">Total</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--text-primary)]">{fees.loadCount}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--text-primary)]">{formatCurrency(fees.grossCents)}</td>
+                  <td className="px-4 py-2.5 text-right text-red-400">{formatCurrency(fees.totalFeeCents)}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--text-primary)]">{feePercent(fees.totalFeeCents, fees.grossCents)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
       <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="p-4 text-sm text-[var(--text-muted)]">Loading...</div>
         ) : loads.length === 0 ? (
           <div className="p-8 text-center text-sm text-[var(--text-muted)]">
-            {view === 'open' ? 'Every load has been submitted.' : 'No loads found.'}
+            {view === 'open'
+              ? 'Every load has been submitted.'
+              : view === 'fees'
+                ? 'No fees entered yet. Use "+ Add fee" next to a load in any other tab.'
+                : 'No loads found.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -215,10 +361,8 @@ export default function FactoringPage() {
                   <th className="px-4 py-2 font-medium">PU #</th>
                   <th className="px-4 py-2 font-medium">PU date</th>
                   <th className="px-4 py-2 font-medium">DO date</th>
-                  <th className="px-4 py-2 font-medium">Pickup</th>
-                  <th className="px-4 py-2 font-medium">Drop off</th>
-                  <th className="px-4 py-2 font-medium">Driver</th>
                   <th className="px-4 py-2 font-medium text-right">Amount</th>
+                  <th className="px-4 py-2 font-medium text-right">Fee</th>
                   <th className="px-4 py-2 font-medium">Billing</th>
                 </tr>
               </thead>
@@ -233,10 +377,10 @@ export default function FactoringPage() {
                       <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{load.puNumber || '—'}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{formatDate(load.pickupDate)}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{load.deliveryDate ? formatDate(load.deliveryDate) : '—'}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{load.pickupLocation}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{load.deliveryLocation}</td>
-                      <td className="px-4 py-2.5 whitespace-nowrap text-[var(--text-secondary)]">{load.driverName}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-right font-semibold text-[var(--text-primary)]">{formatCurrency(load.amountCents)}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-right">
+                        <FeeCell load={load} onSave={handleFeeSave} />
+                      </td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         {load.billingSubmittedAt ? (
                           <div className="flex items-center gap-3">

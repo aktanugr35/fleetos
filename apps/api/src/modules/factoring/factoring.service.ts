@@ -3,6 +3,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler.middleware';
 import { sendCompanyMail } from '../../services/smtp-mailer.service';
 import { BILLING_METHOD_LABEL, buildBillingSubmissionEmail } from './factoring.email';
+import { amountCents, summarizeFees } from './factoring.fees';
 import type { FactoringListQuery } from './factoring.schema';
 
 /**
@@ -35,14 +36,11 @@ const LOAD_SELECT = {
   billingMethod: true,
   billingSubmittedAt: true,
   billingSubmittedTo: true,
+  factoringFeeCents: true,
   driver: { select: { firstName: true, lastName: true } },
 } satisfies Prisma.LoadSelect;
 
 type FactoringLoadRow = Prisma.LoadGetPayload<{ select: typeof LOAD_SELECT }>;
-
-function amountCents(load: Pick<FactoringLoadRow, 'rateTotal' | 'detentionPay' | 'lumperFee' | 'tonuAmount'>) {
-  return load.rateTotal + (load.detentionPay ?? 0) + (load.lumperFee ?? 0) + (load.tonuAmount ?? 0);
-}
 
 function toRow(load: FactoringLoadRow) {
   return {
@@ -60,6 +58,7 @@ function toRow(load: FactoringLoadRow) {
     billingMethod: load.billingMethod,
     billingSubmittedAt: load.billingSubmittedAt,
     billingSubmittedTo: load.billingSubmittedTo,
+    feeCents: load.factoringFeeCents,
   };
 }
 
@@ -68,6 +67,7 @@ export const factoringService = {
     const where: Prisma.LoadWhereInput = { ...billableLoadsWhere(tenantId) };
     if (query.view === 'open') where.billingSubmittedAt = null;
     if (query.view === 'submitted') where.billingSubmittedAt = { not: null };
+    if (query.view === 'fees') where.factoringFeeCents = { not: null };
     if (query.search) {
       where.OR = [
         { loadNumber: { contains: query.search, mode: 'insensitive' } },
@@ -77,7 +77,7 @@ export const factoringService = {
     }
 
     const openWhere: Prisma.LoadWhereInput = { ...billableLoadsWhere(tenantId), billingSubmittedAt: null };
-    const [loads, total, openLoads, settings] = await Promise.all([
+    const [loads, total, openLoads, settings, feeLoads] = await Promise.all([
       prisma.load.findMany({
         where,
         select: LOAD_SELECT,
@@ -94,6 +94,20 @@ export const factoringService = {
         where: { companyId: tenantId },
         select: { factoringEmail: true, inHouseFinanceEmail: true },
       }),
+      prisma.load.findMany({
+        where: { ...billableLoadsWhere(tenantId), factoringFeeCents: { not: null } },
+        select: {
+          rateTotal: true,
+          detentionPay: true,
+          lumperFee: true,
+          tonuAmount: true,
+          factoringFeeCents: true,
+          billingSubmittedAt: true,
+          actualDeliveryDate: true,
+          deliveryDate: true,
+          pickupDate: true,
+        },
+      }),
     ]);
 
     return {
@@ -105,8 +119,20 @@ export const factoringService = {
         emailConfigured: Boolean(settings),
         factoringEmail: settings?.factoringEmail ?? null,
         inHouseFinanceEmail: settings?.inHouseFinanceEmail ?? null,
+        fees: summarizeFees(feeLoads),
       },
     };
+  },
+
+  /** Fees can be entered or changed at any time, before or after the load is submitted. */
+  async updateFee(tenantId: string, loadId: string, feeCents: number | null) {
+    const result = await prisma.load.updateMany({
+      where: { id: loadId, ...billableLoadsWhere(tenantId) },
+      data: { factoringFeeCents: feeCents },
+    });
+    if (result.count === 0) throw new AppError(404, 'LOAD_NOT_FOUND', 'Load not found');
+    const updated = await prisma.load.findUniqueOrThrow({ where: { id: loadId }, select: LOAD_SELECT });
+    return toRow(updated);
   },
 
   async submit(tenantId: string, loadId: string, method: BillingMethod) {

@@ -14,6 +14,11 @@ router.post(
   auditMiddleware('LOAD_BILLING_SUBMIT', 'Load', (req) => req.params.id as string),
   factoringController.submit,
 );
+router.put(
+  '/loads/:id/fee',
+  auditMiddleware('LOAD_FACTORING_FEE_UPDATE', 'Load', (req) => req.params.id as string),
+  factoringController.updateFee,
+);
 router.post(
   '/loads/:id/undo',
   auditMiddleware('LOAD_BILLING_UNDO', 'Load', (req) => req.params.id as string),
